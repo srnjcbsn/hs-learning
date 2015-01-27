@@ -1,4 +1,4 @@
-module PDDL where
+module PDDL.PDDL where
 
 import           Data.List (intercalate)
 import           Data.Set  (Set)
