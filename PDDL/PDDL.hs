@@ -1,63 +1,70 @@
 module PDDL where
 
-import Data.Set (Set)
-import qualified Data.Set as Set
-import Data.List (intercalate)
+import           Data.List (intercalate)
+import           Data.Set  (Set)
+import qualified Data.Set  as Set
 
 type Name = String
+type Type = String
 
-type Variable = Name
-newtype Fluent = Fluent (Name, [Variable]) deriving (Show, Ord, Eq)
-type GroundedFluent = (Name, [Name])
+data Argument = Const Name
+              | Ref Name
+              deriving (Show, Eq, Ord)
 
-data Formula = Predicate Fluent
+type Predicate = (Name, [Argument])
+
+data Formula = Predicate Predicate
              | Neg Formula
-             | Con (Set Formula)
+             | Con [Formula]
              deriving (Ord, Eq, Show)
 
+type PredicateSpec = (Name, [Name])
+
 data ActionSpec = ActionSpec
-    { name :: String
-    , variables :: [Variable]
+    { aName   :: String
+    , aParas  :: [Name]
     , precond :: Formula
-    , effect :: Formula
+    , effect  :: Formula
     } deriving Show
 
 type Action = (Name, [Name])
 
 data Domain = Domain
-    { predicates   :: Set Fluent
+    { predicates   :: [PredicateSpec]
     , actionsSpecs :: [ActionSpec]
     , constants    :: Set Name
     } deriving Show
 
-type State = Set GroundedFluent
+type State = Set Predicate
 
 data Problem = Problem
     { initialState :: State
     , goalState    :: State
     }
 
+paramNames :: PredicateSpec -> [Name]
+paramNames = snd
+
 dom :: Domain
 dom =
     Domain { predicates = preds
-    , actionsSpecs = [suck]
-    , constants = Set.empty
-    }
-    where
-        preds = Set.fromList [ Fluent ("at", ["l"])
-                             , Fluent ("clean", ["l"])
-                             ]
+           , actionsSpecs = [suck]
+           , constants = Set.empty
+           } where
+                preds = [ ("at", ["l"])
+                        , ("clean", ["l"])
+                        ]
 
-        precs l = Con (Set.fromList [ Predicate $ Fluent ("at", [l])
-                                    , Neg (Predicate $ Fluent ("clean", [l]))
-                                    ])
+                precs l = Con [ Predicate ("at", [l])
+                              , Neg (Predicate ("clean", [l]))
+                              ]
 
-        effects l = Predicate $ Fluent ("clean", [l])
-        suck = ActionSpec { name = "suck"
-                          , variables = ["l"]
-                          , precond = precs "l"
-                          , effect = effects "l"
-                          }
+                effects l = Predicate ("clean", [l])
+                suck = ActionSpec { aName = "suck"
+                                  , aParas = ["l"]
+                                  , precond = precs (Ref "l")
+                                  , effect = effects (Ref "l")
+                                  }
 
 type Planner = Domain -> Problem -> Maybe [Action]
 
