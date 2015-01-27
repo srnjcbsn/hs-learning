@@ -2,6 +2,7 @@ module PDDL where
 
 import Data.Set (Set)
 import qualified Data.Set as Set
+import Data.List (intercalate)
 
 type Name = String
 
@@ -56,29 +57,35 @@ apply = undefined
 updateAction :: ActionSpec -> State -> State -> State -> ActionSpec
 updateAction action oldState internalState actualState = undefined
 
-showMultiple ls = unwords ls
-showParameters ls = showMultiple $ map ("?" ++) ls
+showParameters :: [String] -> String
+showParameters ls = unwords $ map ("?" ++) ls
 
-instance Show Formula where
-    show (Predicate (n, vs)) =
+class PDDL p where
+    toPddl :: p -> String
+
+instance PDDL Formula where
+    toPddl (Predicate (n, vs)) =
         "(" ++ n ++ " " ++ showParameters vs ++ ")"
-        -- unwords ["(" ++ n, map ((++) "?") vs ++ ")"]
-    show (Neg f) = show f
-    show (Con fs) = "(and " ++ showMultiple (map show (Set.toList fs)) ++ ")"
+    toPddl (Neg f) = "(not " ++ toPddl f ++ ")"
+    toPddl (Con fs) = "(and " ++ unwords (map toPddl (Set.toList fs)) ++ ")"
 
-instance Show Domain where
-    show domain =
-        let boilerPlate = "(define (domain dom)\n\t(:requirements :strips)"
-            consts = Set.toList (constants domain)
-            constsStr = "(:constants" ++ showMultiple consts ++ ")"
+instance PDDL Domain where
+    toPddl domain =
+        let consts = Set.toList (constants domain)
+            constsStr = "(:constants" ++ unwords consts ++ ")"
             preds = Set.toList (predicates domain)
             showFluent (n, vs) = "(" ++ n ++ " " ++ showParameters vs ++ ")"
             predsStr = "(:predicates " ++ unwords (map showFluent preds) ++ ")"
             showActionS (n, vs, p, e) =
                 "(:action " ++ n ++ "\n\t"
                 ++ ":parameters (" ++ showParameters vs ++ ")\n\t"
-                ++ ":precondition (" ++ show p ++ ")\n\t"
-                ++ ":effect (" ++ show e ++ ")\n\t"
+                ++ ":precondition (" ++ toPddl p ++ ")\n\t"
+                ++ ":effect (" ++ toPddl e ++ ")\n\t"
                 ++ ")"
             actions = unwords $ map showActionS $ (Set.toList . actionsSpecs) domain
-        in boilerPlate ++ constsStr ++ predsStr ++ actions ++ ")"
+        in intercalate "\n\t" [constsStr, predsStr, actions]
+
+domainToPdll :: String -> Domain -> String
+domainToPdll name domain =
+    "(define (domain " ++ name ++ ")\n\t(:requirements :strips)\n\t"
+    ++ toPddl domain ++ "\n\t)"
