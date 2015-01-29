@@ -3,12 +3,21 @@ module PDDL.ParserSpec (main, spec) where
 import PDDL.Parser
 import Test.Hspec
 import Test.Hspec.QuickCheck
+import Test.QuickCheck
 
 testParsePredicateSpec :: Spec
-testParsePredicateSpec =
-    describe "PDDL Parser" $
+testParsePredicateSpec = do
+    describe "Predicate specification parser" $ do
         it "can parse predicate specifications" $
-            tryParse parsePredicateSpec "(a x y)" `shouldBe` Just ("a", ["x", "y"])
+            tryParse parsePredicateSpec "(a ?x ?y)" `shouldBe` Just ("a", ["x", "y"])
+        it "can parse predicate specs with no parameters" $ do
+            tryParse parsePredicateSpec "(a)"  `shouldBe` Just ("a", [])
+            tryParse parsePredicateSpec "(a )" `shouldBe` Just ("a", [])
+    describe "Argument reference parser" $ do
+        it "requires a '?' prefix" $
+            tryParse parseArgRef "a" `shouldBe` Nothing
+        it "throws away the prefix" $
+            tryParse parseArgRef "?a" `shouldBe` Just "a"
 
 
 

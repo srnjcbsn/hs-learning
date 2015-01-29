@@ -16,21 +16,21 @@ parseIdentifier p =
 parseName :: Parser String
 parseName = parseIdentifier lower
 
-parseConstant = parseIdentifier upper >>= return . Const
+parseConstant = parseIdentifier upper
 
-parseArgRef = char '?' >> parseName >>= return . Ref
+parseArgRef = char '?' >> parseName
 
 parseArgument :: Parser Argument
-parseArgument = parseConstant <|> parseArgRef
-    --     (parseConstant >>= return . Const)
-    -- <|> (parseArgRef   >>= return . Ref)
+parseArgument = -- parseConstant <|> parseArgRef
+        (parseConstant >>= return . Const)
+    <|> (parseArgRef   >>= return . Ref)
 
 parsePredicateSpec :: Parser PredicateSpec
 parsePredicateSpec =
     do char '('
        name <- parseName
-       space
-       params <- sepBy parseName space
+       spaces
+       params <- sepBy parseArgRef space
        char ')'
        return (name, params)
 
