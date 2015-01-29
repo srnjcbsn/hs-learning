@@ -19,9 +19,7 @@ data Formula = Predicate FluentPredicate
              | Con [Formula]
              deriving (Ord, Eq, Show)
 
-
 type PredicateSpec = (Name, [Name])
-
 
 data ActionSpec = ActionSpec
     { asName   :: String
@@ -37,7 +35,6 @@ type GroundedPredicate = (Name, [Object])
 type GroundedChanges = (Set GroundedPredicate, Set GroundedPredicate)
 
 type GroundedAction = (GroundedChanges, GroundedChanges)
-
 
 data Domain = Domain
     { dmPredicates   :: [PredicateSpec]
@@ -90,9 +87,6 @@ dom =
                                   }
 
 type Planner = Domain -> Problem -> Maybe [Action]
-
-
-
 
 updateAction :: ActionSpec -> State -> State -> State -> ActionSpec
 updateAction action oldState internalState actualState = undefined

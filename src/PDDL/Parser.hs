@@ -4,9 +4,6 @@ import Text.ParserCombinators.Parsec
 import PDDL.Type
 import Control.Monad (liftM2)
 
-parsePredicate :: Parser FluentPredicate
-parsePredicate = undefined --between (char "(") (char ")") parseParameters >>
-
 parseIdentifier :: Parser Char -> Parser String
 parseIdentifier p =
     do first <- p
@@ -26,17 +23,43 @@ parseArgument = -- parseConstant <|> parseArgRef
     <|> (parseArgRef   >>= return . Ref)
 
 parsePredicateSpec :: Parser PredicateSpec
-parsePredicateSpec =
-    do char '('
-       name <- parseName
-       spaces
-       params <- sepBy parseArgRef space
-       char ')'
-       return (name, params)
+parsePredicateSpec = do
+    char '('
+    name <- parseName
+    spaces
+    params <- sepBy parseArgRef space
+    char ')'
+    return (name, params)
+
+
+parseFluent :: Parser FluentPredicate
+parseFluent = do
+    char '('
+    name <- parseName
+    spaces
+    args <- sepBy parseArgument space
+    char ')'
+    return (name, args)
+
+parseConjunction = do
+    string "(and"
+    spaces
+    fluents <- parseFormula `sepBy` spaces
+    char ')'
+    return $ Con fluents
+
+parseNegation = do
+    string "(not"
+    spaces
+    f <- parseFormula
+    char ')'
+    return $ Neg f
 
 parseFormula :: Parser Formula
-parseFormula = undefined --(sepBy (char " ") char)
-
+parseFormula =
+        try parseConjunction
+    <|> try parseNegation
+    <|> (parseFluent >>= return . Predicate)
 
 parseDomain :: String -> Parser Domain
 parseDomain = undefined
@@ -59,4 +82,4 @@ tryParse ps str =
         Left _  -> Nothing
         Right a -> Just a
 
-p = parse parsePredicateSpec "unknown"
+p = parse parseFormula "unknown"
