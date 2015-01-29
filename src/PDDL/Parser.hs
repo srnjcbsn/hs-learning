@@ -2,7 +2,6 @@ module PDDL.Parser where
 
 import Text.ParserCombinators.Parsec
 import PDDL.Type
--- import Control.Applicative hiding (many)
 import Control.Monad (liftM2)
 
 parsePredicate :: Parser Predicate
@@ -30,7 +29,8 @@ parsePredicateSpec :: Parser PredicateSpec
 parsePredicateSpec =
     do char '('
        name <- parseName
-       params <- many parseName
+       space
+       params <- sepBy parseName space
        char ')'
        return (name, params)
 
@@ -49,5 +49,14 @@ parseSmth = sepBy parseDigit (char ',')
 
 parseDigit :: Parser Int
 parseDigit = many digit >>= return . read
+
+-- doParse :: Parser a -> String -> Either ParserError a
+doParse ps str = parse ps "" str
+
+tryParse :: Parser a -> String -> Maybe a
+tryParse ps str =
+    case parse ps "" str of
+        Left _  -> Nothing
+        Right a -> Just a
 
 p = parse parsePredicateSpec "unknown"
