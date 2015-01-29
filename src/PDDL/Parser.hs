@@ -1,7 +1,7 @@
 module PDDL.Parser where
 
 import Text.ParserCombinators.Parsec
-import PDDL.PDDL
+import PDDL.Type
 -- import Control.Applicative hiding (many)
 import Control.Monad (liftM2)
 

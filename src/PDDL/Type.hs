@@ -1,55 +1,78 @@
-module PDDL.PDDL where
+module PDDL.Type where
 
-import           Data.List (intercalate)
+import qualified Data.List as List
 import           Data.Set  (Set)
 import qualified Data.Set  as Set
 
 type Name = String
 type Type = String
+type Object  = String
 
 data Argument = Const Name
               | Ref Name
               deriving (Show, Eq, Ord)
 
-type Predicate = (Name, [Argument])
+type FluentPredicate = (Name, [Argument])
 
-data Formula = Predicate Predicate
-             | Neg Formula
+data Formula = Predicate FluentPredicate
+             | Neg (Formula)
              | Con [Formula]
              deriving (Ord, Eq, Show)
 
+
 type PredicateSpec = (Name, [Name])
 
+
 data ActionSpec = ActionSpec
-    { aName   :: String
-    , aParas  :: [Name]
-    , precond :: Formula
-    , effect  :: Formula
+    { asName   :: String
+    , asParas  :: [Name]
+    , asPrecond :: Formula
+    , asEffect  :: Formula
     } deriving Show
 
-type Action = (Name, [Name])
+type Action = (Name, [Object])
+
+type GroundedPredicate = (Name, [Object])
+
+type GroundedChanges = (Set GroundedPredicate, Set GroundedPredicate)
+
+type GroundedAction = (GroundedChanges, GroundedChanges)
+
 
 data Domain = Domain
-    { predicates   :: [PredicateSpec]
-    , actionsSpecs :: [ActionSpec]
-    , constants    :: Set Name
+    { dmPredicates   :: [PredicateSpec]
+    , dmActionsSpecs :: [ActionSpec]
+    , dmConstants    :: [Name]
     } deriving Show
 
-type State = Set Predicate
+type State = Set GroundedPredicate
 
 data Problem = Problem
     { initialState :: State
     , goalState    :: State
     }
 
+pName :: FluentPredicate -> Name
+pName = fst
+
+pArgs :: FluentPredicate -> [Argument]
+pArgs = snd
+
+
+aArgs :: Action -> [Object]
+aArgs = snd
+
+aName :: Action -> Name
+aName = fst
+
 paramNames :: PredicateSpec -> [Name]
 paramNames = snd
 
 dom :: Domain
 dom =
-    Domain { predicates = preds
-           , actionsSpecs = [suck]
-           , constants = Set.empty
+    Domain { dmPredicates = preds
+           , dmActionsSpecs = [suck]
+           , dmConstants = []
            } where
                 preds = [ ("at", ["l"])
                         , ("clean", ["l"])
@@ -60,16 +83,16 @@ dom =
                               ]
 
                 effects l = Predicate ("clean", [l])
-                suck = ActionSpec { aName = "suck"
-                                  , aParas = ["l"]
-                                  , precond = precs (Ref "l")
-                                  , effect = effects (Ref "l")
+                suck = ActionSpec { asName = "suck"
+                                  , asParas = ["l"]
+                                  , asPrecond = precs (Ref "l")
+                                  , asEffect = effects (Ref "l")
                                   }
 
 type Planner = Domain -> Problem -> Maybe [Action]
 
-apply :: Domain -> State -> Action -> State
-apply = undefined
+
+
 
 updateAction :: ActionSpec -> State -> State -> State -> ActionSpec
 updateAction action oldState internalState actualState = undefined
