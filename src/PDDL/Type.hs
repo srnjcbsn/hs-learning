@@ -26,7 +26,7 @@ data ActionSpec = ActionSpec
     , asParas  :: [Name]
     , asPrecond :: Formula
     , asEffect  :: Formula
-    } deriving Show
+    } deriving (Show, Eq)
 
 type Action = (Name, [Object])
 

@@ -4,6 +4,12 @@ import Text.ParserCombinators.Parsec
 import PDDL.Type
 import Control.Monad (liftM2)
 
+parens :: Parser a -> Parser a
+parens p = between (char '(') (char ')') p
+
+eol :: Parser Char
+eol = char '\n'
+
 parseIdentifier :: Parser Char -> Parser String
 parseIdentifier p =
     do first <- p
@@ -31,35 +37,53 @@ parsePredicateSpec = do
     char ')'
     return (name, params)
 
+parseFluent =
+    parens $ do
+        name <- parseName
+        spaces
+        args <- parseArgument `sepBy` spaces
+        return (name, args)
 
-parseFluent :: Parser FluentPredicate
-parseFluent = do
-    char '('
-    name <- parseName
-    spaces
-    args <- sepBy parseArgument space
-    char ')'
-    return (name, args)
+parseConjunction =
+    parens $ do
+        string "and"
+        spaces
+        fluents <- parseFormula `sepBy` spaces
+        return $ Con fluents
 
-parseConjunction = do
-    string "(and"
-    spaces
-    fluents <- parseFormula `sepBy` spaces
-    char ')'
-    return $ Con fluents
-
-parseNegation = do
-    string "(not"
-    spaces
-    f <- parseFormula
-    char ')'
-    return $ Neg f
+parseNegation =
+    parens $ do
+        string "not"
+        spaces
+        f <- parseFormula
+        return $ Neg f
 
 parseFormula :: Parser Formula
 parseFormula =
         try parseConjunction
     <|> try parseNegation
     <|> (parseFluent >>= return . Predicate)
+
+parseActionSpec :: Parser ActionSpec
+parseActionSpec =
+    parens $ do
+        string ":action "
+        name <- parseName
+        spaces
+        string ":parameters "
+        params <- parens (parseArgRef `sepBy` spaces)
+        spaces
+        string ":precondition "
+        precond <- parseFormula
+        spaces
+        string ":effect "
+        eff <- parseFormula
+        spaces
+        return ActionSpec { asName = name
+                          , asParas = params
+                          , asPrecond = precond
+                          , asEffect = eff
+                          }
 
 parseDomain :: String -> Parser Domain
 parseDomain = undefined
@@ -82,4 +106,10 @@ tryParse ps str =
         Left _  -> Nothing
         Right a -> Just a
 
-p = parse parseFormula "unknown"
+-- actionSpecStr = unlines [ "(:action act"
+--                         , ":parameters (?a)"
+--                         , ":precondition (p ?a)"
+--                         , ":effect (not (p ?a)) )"
+--                         ]
+
+p = parse parseActionSpec "unknown"

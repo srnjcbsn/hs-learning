@@ -1,10 +1,10 @@
 module PDDL.ParserSpec (main, spec) where
 
-import PDDL.Parser
-import PDDL.Type
-import Test.Hspec
-import Test.Hspec.QuickCheck
-import Test.QuickCheck
+import           PDDL.Parser
+import           PDDL.Type
+import           Test.Hspec
+import           Test.Hspec.QuickCheck
+import           Test.QuickCheck
 
 predStrA = "(a ?x Y)"
 predResA = ("a", [Ref "x", Const "Y"])
@@ -12,8 +12,31 @@ predResA = ("a", [Ref "x", Const "Y"])
 predStrB = "(b ?z V)"
 predResB = ("b", [Ref "z", Const "V"])
 
+actionSpecStr = unlines [ "(:action act"
+                        , ":parameters (?a)"
+                        , ":precondition (p ?a)"
+                        , ":effect (not (p ?a)) )"
+                        ]
+
+actionSpecRes = ActionSpec { asName = "act"
+                           , asParas = ["a"]
+                           , asPrecond = Predicate ("p", [Ref "a"])
+                           , asEffect = Neg (Predicate ("p", [Ref "a"]))
+                           }
+
 testParsePredicateSpec :: Spec
 testParsePredicateSpec = do
+    describe "Identifier parser" $ do
+        it "can contain '-', '_', and numbers" $ do
+            tryParse parseName "a-" `shouldBe` Just "a-"
+            tryParse parseName "a_" `shouldBe` Just "a_"
+            tryParse parseName "a1" `shouldBe` Just "a1"
+            tryParse parseName "a1A-_" `shouldBe` Just "a1A-_"
+        it "can only start with a lowercase letter" $ do
+            tryParse parseName "-a" `shouldBe` Nothing
+            tryParse parseName "_a" `shouldBe` Nothing
+            tryParse parseName "1a" `shouldBe` Nothing
+            tryParse parseName "Aa" `shouldBe` Nothing
     describe "Predicate specification parser" $ do
         it "can parse predicate specifications" $
             tryParse parsePredicateSpec "(a ?x ?y)" `shouldBe` Just ("a", ["x", "y"])
@@ -58,6 +81,9 @@ testParsePredicateSpec = do
             tryParse parseFormula ("(and " ++ predStrA ++ " " ++ predStrB ++ ")")
                 `shouldBe` Just (Con [Predicate predResA, Predicate predResB])
 
+    describe "Action specification parser" $ do
+        it "can parse basic action specifications" $
+            tryParse parseActionSpec actionSpecStr `shouldBe` Just actionSpecRes
 spec :: Spec
 spec = testParsePredicateSpec
 
