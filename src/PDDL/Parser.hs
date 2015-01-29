@@ -1,10 +1,10 @@
 module PDDL.Parser where
 
 import Text.ParserCombinators.Parsec
-import PDDL.PDDL
+import PDDL.Type
 import Control.Monad (liftM2)
 
-parsePredicate :: Parser Predicate
+parsePredicate :: Parser FluentPredicate
 parsePredicate = undefined --between (char "(") (char ")") parseParameters >>
 
 parseIdentifier :: Parser Char -> Parser String
