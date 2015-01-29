@@ -1,8 +1,8 @@
 module PDDL.Parser where
 
-import Text.ParserCombinators.Parsec
-import PDDL.Type
-import Control.Monad (liftM2)
+import           Control.Monad                 (liftM2)
+import           PDDL.Type
+import           Text.ParserCombinators.Parsec
 
 parens :: Parser a -> Parser a
 parens p = between (char '(') (char ')') p
@@ -45,18 +45,16 @@ parseFluent =
         return (name, args)
 
 parseConjunction =
-    parens $ do
-        string "and"
-        spaces
-        fluents <- parseFormula `sepBy` spaces
-        return $ Con fluents
+    parens $ string "and"
+             >> spaces
+             >> parseFormula `sepBy` spaces
+             >>= return . Con
 
 parseNegation =
-    parens $ do
-        string "not"
-        spaces
-        f <- parseFormula
-        return $ Neg f
+    parens $ string "not"
+             >> spaces
+             >> parseFormula
+             >>= return . Neg
 
 parseFormula :: Parser Formula
 parseFormula =
@@ -85,8 +83,21 @@ parseActionSpec =
                           , asEffect = eff
                           }
 
-parseDomain :: String -> Parser Domain
-parseDomain = undefined
+parseDomain :: Parser Domain
+parseDomain =
+    parens $ do
+        string "define "
+        name <- parens $ string "domain " >> parseName
+        spaces
+        consts <- parens $ string ":constants " >> parens (parseConstant `sepBy` spaces)
+        spaces
+        preds <- parens $ string ":predicates " >> parsePredicateSpec `sepBy` spaces
+        spaces
+        actions <- parseActionSpec `sepEndBy1` spaces
+        return Domain { dmPredicates   = preds
+                      , dmActionsSpecs = actions
+                      , dmConstants    = consts
+                      }
 
 parseProblem :: String -> Parser Problem
 parseProblem = undefined
@@ -111,5 +122,13 @@ tryParse ps str =
 --                         , ":precondition (p ?a)"
 --                         , ":effect (not (p ?a)) )"
 --                         ]
+--
+-- domainSpecStr =
+--     unlines [ "(define (domain dom)"
+--             , "(:constants (A B))"
+--             , "(:predicates (a ?x ?y))"
+--             , actionSpecStr
+--             , ")"
+--             ]
 
-p = parse parseActionSpec "unknown"
+p = parse parseDomain "unknown"

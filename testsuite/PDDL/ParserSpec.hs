@@ -24,6 +24,20 @@ actionSpecRes = ActionSpec { asName = "act"
                            , asEffect = Neg (Predicate ("p", [Ref "a"]))
                            }
 
+domainSpecStr =
+    unlines [ "(define (domain dom)"
+            , "(:constants (A B))"
+            , "(:predicates (a ?x ?y))"
+            , actionSpecStr
+            , ")"
+            ]
+
+domainSpecRes =
+    Domain { dmPredicates = [("a", ["x", "y"])]
+           , dmActionsSpecs = [actionSpecRes]
+           , dmConstants = ["A", "B"]
+           }
+
 testParsePredicateSpec :: Spec
 testParsePredicateSpec = do
     describe "Identifier parser" $ do
@@ -84,6 +98,10 @@ testParsePredicateSpec = do
     describe "Action specification parser" $ do
         it "can parse basic action specifications" $
             tryParse parseActionSpec actionSpecStr `shouldBe` Just actionSpecRes
+
+    describe "Domain definition parser" $ do
+        it "can parse simple domains" $
+            tryParse parseDomain domainSpecStr `shouldBe` Just domainSpecRes
 spec :: Spec
 spec = testParsePredicateSpec
 

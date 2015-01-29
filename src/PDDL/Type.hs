@@ -40,7 +40,7 @@ data Domain = Domain
     { dmPredicates   :: [PredicateSpec]
     , dmActionsSpecs :: [ActionSpec]
     , dmConstants    :: [Name]
-    } deriving Show
+    } deriving (Show, Eq)
 
 type State = Set GroundedPredicate
 
