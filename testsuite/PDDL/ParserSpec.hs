@@ -5,6 +5,7 @@ import           PDDL.Type
 import           Test.Hspec
 import           Test.Hspec.QuickCheck
 import           Test.QuickCheck
+import Data.Char
 
 predStrA = "(a ?x Y)"
 predResA = ("a", [Ref "x", Const "Y"])
@@ -46,11 +47,11 @@ testParsePredicateSpec = do
             tryParse parseName "a_" `shouldBe` Just "a_"
             tryParse parseName "a1" `shouldBe` Just "a1"
             tryParse parseName "a1A-_" `shouldBe` Just "a1A-_"
-        it "can only start with a lowercase letter" $ do
-            tryParse parseName "-a" `shouldBe` Nothing
-            tryParse parseName "_a" `shouldBe` Nothing
-            tryParse parseName "1a" `shouldBe` Nothing
-            tryParse parseName "Aa" `shouldBe` Nothing
+        it "can only start with a lowercase letter" $ property $
+            \c -> let parsed = tryParse parseName (c : "a")
+                  in  if isLower c then parsed == Just (c : "a")
+                      else parsed == Nothing
+                      
     describe "Predicate specification parser" $ do
         it "can parse predicate specifications" $
             tryParse parsePredicateSpec "(a ?x ?y)" `shouldBe` Just ("a", ["x", "y"])
