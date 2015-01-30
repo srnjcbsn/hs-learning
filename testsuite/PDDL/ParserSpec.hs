@@ -6,6 +6,7 @@ import           Test.Hspec
 import           Test.Hspec.QuickCheck
 import           Test.QuickCheck
 import Data.Char
+import qualified Data.Set as Set
 
 predStrA = "(a ?x Y)"
 predResA = ("a", [Ref "x", Const "Y"])
@@ -39,6 +40,20 @@ domainSpecRes =
            , dmConstants = ["A", "B"]
            }
 
+problemSpecStr =
+    unlines [ "(define (problem prob)"
+            , "(:domain dom)"
+            , "(:objects x y) )"
+            , "(:init (test1 x y))"
+            , "(:goal (test2 x y))"
+            ]
+
+problemSpecRes =
+    Problem { probName = "prob"
+            , probInitialState = Set.singleton ("test1", ["x", "y"])
+            , probGoalState = Set.singleton ("test2", ["x", "y"])
+            }
+
 testParsePredicateSpec :: Spec
 testParsePredicateSpec = do
     describe "Identifier parser" $ do
@@ -51,7 +66,7 @@ testParsePredicateSpec = do
             \c -> let parsed = tryParse parseName (c : "a")
                   in  if isLower c then parsed == Just (c : "a")
                       else parsed == Nothing
-                      
+
     describe "Predicate specification parser" $ do
         it "can parse predicate specifications" $
             tryParse parsePredicateSpec "(a ?x ?y)" `shouldBe` Just ("a", ["x", "y"])
@@ -103,6 +118,12 @@ testParsePredicateSpec = do
     describe "Domain definition parser" $ do
         it "can parse simple domains" $
             tryParse parseDomain domainSpecStr `shouldBe` Just domainSpecRes
+
+    describe "Problem specification parser" $ do
+        it "can parse simple problems" $ do
+            tryParse parseProblem problemSpecStr `shouldBe` Just problemSpecRes
+
+
 spec :: Spec
 spec = testParsePredicateSpec
 

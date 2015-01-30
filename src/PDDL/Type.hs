@@ -45,9 +45,10 @@ data Domain = Domain
 type State = Set GroundedPredicate
 
 data Problem = Problem
-    { initialState :: State
-    , goalState    :: State
-    }
+    { probName         :: String
+    , probInitialState :: State
+    , probGoalState    :: State
+    } deriving (Show, Eq)
 
 pName :: FluentPredicate -> Name
 pName = fst
