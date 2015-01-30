@@ -45,8 +45,13 @@ data Domain = Domain
 type State = Set GroundedPredicate
 
 data Problem = Problem
-    { initialState :: State
-    , goalState    :: State
+    { pInitialState :: State
+    , pGoalState    :: State
+    }
+
+data Environment = Enviroment
+    {
+
     }
 
 pName :: FluentPredicate -> Name

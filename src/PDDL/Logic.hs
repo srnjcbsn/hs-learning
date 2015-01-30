@@ -8,6 +8,7 @@ import           Data.Set  (Set)
 import qualified Data.Set as Set
 import           Data.Tuple (swap)
 
+
 findActionSpec :: Domain -> Action -> Maybe ActionSpec
 findActionSpec domain action = actionsSpec
   where
@@ -35,19 +36,24 @@ instantiateAction m as act = ga
 isActionValid :: State -> GroundedAction -> Bool
 isActionValid s ((posCond,negCond),(posEff,negEff)) =
   Set.isSubsetOf posCond s &&
-  Set.null (Set.intersection negCond s) &&
-  Set.null (Set.intersection posEff negEff)
+  Set.null (Set.intersection negCond s)
 
 applyAction :: State -> GroundedAction -> Maybe State
 applyAction s act@(_,(posEff,negEff)) =
-  if isActionValid s act then
-    Just $ Set.union (Set.difference s negEff) posEff
-  else Nothing
+    if isActionValid s act then
+      Just $ Set.union (Set.difference s negEff) posEff
+    else Nothing
+
 
 apply :: Domain -> State -> Action -> Maybe State
 apply domain curState action = newState
   where
     mapDomain = Map.fromAscList $ List.map (\n -> (Const n, n)) (dmConstants domain)
     newState = case findActionSpec domain action of
-                Just actSpec -> applyAction curState $ instantiateAction mapDomain actSpec action
+                Just actSpec -> out
+                  where
+                    gact@(_,(pos,neg)) = instantiateAction mapDomain actSpec action
+                    out = if Set.null (Set.intersection pos neg)
+                          then applyAction curState gact
+                          else error ("ambiguous effects in action " ++ aName action)
                 Nothing      -> Nothing
