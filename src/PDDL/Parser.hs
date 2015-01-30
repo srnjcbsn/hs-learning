@@ -3,6 +3,7 @@ module PDDL.Parser where
 import           Control.Monad                 (liftM2)
 import           PDDL.Type
 import           Text.ParserCombinators.Parsec
+import qualified Data.Set as Set
 
 parens :: Parser a -> Parser a
 parens p = between (char '(') (char ')') p
@@ -99,14 +100,23 @@ parseDomain =
                       , dmConstants    = consts
                       }
 
-parseProblem :: String -> Parser Problem
-parseProblem = undefined
-
-parseSmth :: Parser [Int]
-parseSmth = sepBy parseDigit (char ',')
-
-parseDigit :: Parser Int
-parseDigit = many digit >>= return . read
+parseProblem :: Parser Problem
+parseProblem =
+    parens $ do
+        string "define "
+        name <- parens $ string "problem " >> parseName
+        spaces
+        dom <- parens $ string ":domain " >> parseName
+        spaces
+        objs <- parens $ string ":objects " >> parseName `sepBy` spaces
+        spaces
+        ini <- parens $ string ":init " >> parsePredicateSpec `sepBy` spaces
+        spaces
+        g <- parens $ string ":goal " >> parsePredicateSpec `sepEndBy` spaces
+        return Problem { probName = name
+                       , probInitialState = Set.fromList ini
+                       , probGoalState = Set.fromList g
+                       }
 
 -- doParse :: Parser a -> String -> Either ParserError a
 doParse ps str = parse ps "" str
