@@ -64,7 +64,7 @@ testLogicSpec = do
             action = getAction testObj in
           evaluate (apply domain initState action) `shouldThrow` errorCall ("ambiguous effects in " ++ aName action ++ ": " ++ show [truePred])
 
-      it "gives nothing when the action is invalid" $
+      it "gives nothing when the action's preconditions are not satisfied" $
         let actSpec = getActSpec [actionCondionA] []
             domain = getDomain [actSpec]
             action = getAction testObj in
