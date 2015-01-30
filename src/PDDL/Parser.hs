@@ -29,6 +29,12 @@ parseArgument = -- parseConstant <|> parseArgRef
         (parseConstant >>= return . Const)
     <|> (parseArgRef   >>= return . Ref)
 
+parseGroundedFluent = parens $ do
+    name <- parseName
+    spaces
+    params <- sepBy parseName spaces
+    return (name, params)
+
 parsePredicateSpec :: Parser PredicateSpec
 parsePredicateSpec = do
     char '('
@@ -110,9 +116,10 @@ parseProblem =
         spaces
         objs <- parens $ string ":objects " >> parseName `sepBy` spaces
         spaces
-        ini <- parens $ string ":init " >> parsePredicateSpec `sepBy` spaces
+        ini <- parens $ string ":init " >> parseGroundedFluent `sepBy` spaces
         spaces
-        g <- parens $ string ":goal " >> parsePredicateSpec `sepEndBy` spaces
+        g <- parens $ string ":goal " >> parseGroundedFluent `sepEndBy` spaces
+        spaces
         return Problem { probName = name
                        , probInitialState = Set.fromList ini
                        , probGoalState = Set.fromList g
@@ -141,4 +148,12 @@ tryParse ps str =
 --             , ")"
 --             ]
 
-p = parse parseDomain "unknown"
+-- problemSpecStr =
+--     unlines [ "(define (problem prob)"
+--             , "(:domain dom)"
+--             , "(:objects x y)"
+--             , "(:init (test1 x y))"
+--             , "(:goal (test2 x y)) )"
+--             ]
+
+p = parse parseProblem "unknown"

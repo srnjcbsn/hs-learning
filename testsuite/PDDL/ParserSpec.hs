@@ -43,9 +43,9 @@ domainSpecRes =
 problemSpecStr =
     unlines [ "(define (problem prob)"
             , "(:domain dom)"
-            , "(:objects x y) )"
+            , "(:objects x y)"
             , "(:init (test1 x y))"
-            , "(:goal (test2 x y))"
+            , "(:goal (test2 x y)) )"
             ]
 
 problemSpecRes =
