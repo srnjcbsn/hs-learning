@@ -5,11 +5,17 @@ import           PDDL.Type
 import           Text.ParserCombinators.Parsec
 import qualified Data.Set as Set
 
+acceptableRequirements :: [String]
+acceptableRequirements = [":strips"]
+
 parens :: Parser a -> Parser a
 parens p = between (char '(') (char ')') p
 
 eol :: Parser Char
 eol = char '\n'
+
+parseRequirement :: Parser String
+parseRequirement = choice $ map string acceptableRequirements
 
 parseIdentifier :: Parser Char -> Parser String
 parseIdentifier p =
@@ -96,6 +102,8 @@ parseDomain =
         string "define "
         name <- parens $ string "domain " >> parseName
         spaces
+        parens $ string ":requirements " >> many parseRequirement
+        spaces
         consts <- parens $ string ":constants " >> parens (parseConstant `sepBy` spaces)
         spaces
         preds <- parens $ string ":predicates " >> parsePredicateSpec `sepBy` spaces
@@ -142,6 +150,7 @@ tryParse ps str =
 --
 -- domainSpecStr =
 --     unlines [ "(define (domain dom)"
+--             , "(:requirements strips)"
 --             , "(:constants (A B))"
 --             , "(:predicates (a ?x ?y))"
 --             , actionSpecStr
@@ -156,4 +165,4 @@ tryParse ps str =
 --             , "(:goal (test2 x y)) )"
 --             ]
 
-p = parse parseProblem "unknown"
+p = parse parseDomain "unknown"

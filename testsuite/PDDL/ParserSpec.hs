@@ -28,6 +28,7 @@ actionSpecRes = ActionSpec { asName = "act"
 
 domainSpecStr =
     unlines [ "(define (domain dom)"
+            , "(:requirements :strips)"
             , "(:constants (A B))"
             , "(:predicates (a ?x ?y))"
             , actionSpecStr
