@@ -1,6 +1,6 @@
 module PDDL.Type where
 
-import qualified Data.List as List
+import Data.List (intercalate)
 import           Data.Set  (Set)
 import qualified Data.Set  as Set
 
@@ -92,11 +92,48 @@ type Planner = Domain -> Problem -> Maybe [Action]
 updateAction :: ActionSpec -> State -> State -> State -> ActionSpec
 updateAction action oldState internalState actualState = undefined
 
-showParameters :: [String] -> String
-showParameters ls = unwords $ map ("?" ++) ls
+-- showParameters :: [String] -> String
+-- showParameters ls = unwords $ map ("?" ++) ls
 
-class PDDL p where
-    toPddl :: p -> String
+writeArgument :: Argument -> String
+writeArgument (Ref r)   = "?" ++ r
+writeArgument (Const c) = c
+
+writeArgumentList :: [Argument] -> String
+writeArgumentList as = intercalate ", " (map writeArgument as)
+
+writeParameterList :: [String] -> String
+writeParameterList ps = writeArgumentList $ map Ref ps
+
+writeFluentPredicate :: FluentPredicate -> String
+writeFluentPredicate (name, as) =
+    "(" ++ name ++ " " ++ writeArgumentList as ++ ")"
+
+writePredicateSpec :: PredicateSpec -> String
+writePredicateSpec (name, ps) =
+    "(" ++ name ++ " " ++ writeArgumentList (map Ref ps) ++ ")"
+
+writeActionSpec :: ActionSpec -> String
+writeActionSpec as =
+    "(:action " ++ asName as
+    ++ "\t:parameters (" ++ writeParameterList (asParas as) ++ ")\n"
+    ++ "\t:precondition (" ++ writeFormula (asPrecond as) ++ ")\n"
+    ++ "\t:effect (" ++ writeFormula (asEffect as) ++ ")\n"
+    ++ ")"
+
+writeFormula :: Formula -> String
+writeFormula (Predicate f) = writeFluentPredicate f
+writeFormula (Neg f) = "(not " ++ writeFormula f ++ ")"
+writeFormula (Con fs) = "(and " ++ unwords (map writeFormula fs) ++ ")"
+
+writeDomain :: Domain -> String
+writeDomain domain =
+    let consts = dmConstants domain
+        constsStr = "(:constants" ++ unwords consts ++ ")"
+        preds = dmPredicates domain
+        predsStr = "(:predicates " ++ unwords (map writePredicateSpec preds) ++ ")"
+        actions = unwords $ map writeActionSpec $ dmActionsSpecs domain
+    in intercalate "\n\t" [constsStr, predsStr, actions]
 
 -- instance PDDL ActionSpec where
 --     toPDDL as =
