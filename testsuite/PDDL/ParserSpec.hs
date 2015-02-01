@@ -20,25 +20,26 @@ actionSpecStr = unlines [ "(:action act"
                         , ":effect (not (p ?a)) )"
                         ]
 
-actionSpecRes = ActionSpec { asName = "act"
-                           , asParas = ["a"]
+actionSpecRes = ActionSpec { asName    = "act"
+                           , asParas   = ["a"]
                            , asPrecond = Predicate ("p", [Ref "a"])
-                           , asEffect = Neg (Predicate ("p", [Ref "a"]))
+                           , asEffect  = Neg (Predicate ("p", [Ref "a"]))
                            }
 
 domainSpecStr =
-    unlines [ "(define (domain dom)"
+    unlines [ "(define (domain test)"
             , "(:requirements :strips)"
-            , "(:constants (A B))"
+            , "(:constants A B)"
             , "(:predicates (a ?x ?y))"
             , actionSpecStr
             , ")"
             ]
 
 domainSpecRes =
-    Domain { dmPredicates = [("a", ["x", "y"])]
+    Domain { dmName         = "test"
+           , dmPredicates   = [("a", ["x", "y"])]
            , dmActionsSpecs = [actionSpecRes]
-           , dmConstants = ["A", "B"]
+           , dmConstants    = ["A", "B"]
            }
 
 problemSpecStr =
@@ -119,6 +120,8 @@ testParsePredicateSpec = do
     describe "Domain definition parser" $ do
         it "can parse simple domains" $
             tryParse parseDomain domainSpecStr `shouldBe` Just domainSpecRes
+        it "parses a domain D converted to a string as D" $
+            tryParse parseDomain (writeDomain domainSpecRes) `shouldBe` Just domainSpecRes
 
     describe "Problem specification parser" $ do
         it "can parse simple problems" $ do

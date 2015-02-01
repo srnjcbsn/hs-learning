@@ -19,7 +19,7 @@ getState = Set.fromList
 
 getPred = Predicate ("testPred1", [Ref "x"])
 
-getActSpec conds effects  = ActionSpec { asName = "testAction"
+getActSpec conds effects = ActionSpec { asName = "testAction"
                          , asParas = ["x"]
                          , asPrecond = Con conds
                          , asEffect = Con effects
@@ -29,10 +29,11 @@ getGroundPred objs = ("testPred1", objs)
 
 getGroundAct posCond negCond posEff negEff = ((getState posCond,getState negCond),(getState posEff,getState negEff))
 
-getDomain as = Domain { dmPredicates = []
-                    , dmActionsSpecs = as
-                    , dmConstants = []
-                    }
+getDomain as = Domain { dmName = "testDomain"
+                      , dmPredicates = []
+                      , dmActionsSpecs = as
+                      , dmConstants = []
+                      }
 
 emptyState = getState []
 testObj = "testObj1"

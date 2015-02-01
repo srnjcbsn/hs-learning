@@ -37,7 +37,8 @@ type GroundedChanges = (Set GroundedPredicate, Set GroundedPredicate)
 type GroundedAction = (GroundedChanges, GroundedChanges)
 
 data Domain = Domain
-    { dmPredicates   :: [PredicateSpec]
+    { dmName         :: Name
+    , dmPredicates   :: [PredicateSpec]
     , dmActionsSpecs :: [ActionSpec]
     , dmConstants    :: [Name]
     } deriving (Show, Eq)
@@ -68,9 +69,10 @@ paramNames = snd
 
 dom :: Domain
 dom =
-    Domain { dmPredicates = preds
+    Domain { dmName         = "vacuum"
+           , dmPredicates   = preds
            , dmActionsSpecs = [suck]
-           , dmConstants = []
+           , dmConstants    = []
            } where
                 preds = [ ("at", ["l"])
                         , ("clean", ["l"])
@@ -100,7 +102,7 @@ writeArgument (Ref r)   = "?" ++ r
 writeArgument (Const c) = c
 
 writeArgumentList :: [Argument] -> String
-writeArgumentList as = intercalate ", " (map writeArgument as)
+writeArgumentList as = intercalate " " (map writeArgument as)
 
 writeParameterList :: [String] -> String
 writeParameterList ps = writeArgumentList $ map Ref ps
@@ -117,8 +119,8 @@ writeActionSpec :: ActionSpec -> String
 writeActionSpec as =
     "(:action " ++ asName as
     ++ "\t:parameters (" ++ writeParameterList (asParas as) ++ ")\n"
-    ++ "\t:precondition (" ++ writeFormula (asPrecond as) ++ ")\n"
-    ++ "\t:effect (" ++ writeFormula (asEffect as) ++ ")\n"
+    ++ "\t:precondition " ++ writeFormula (asPrecond as) ++ "\n"
+    ++ "\t:effect " ++ writeFormula (asEffect as) ++ "\n"
     ++ ")"
 
 writeFormula :: Formula -> String
@@ -128,12 +130,14 @@ writeFormula (Con fs) = "(and " ++ unwords (map writeFormula fs) ++ ")"
 
 writeDomain :: Domain -> String
 writeDomain domain =
-    let consts = dmConstants domain
-        constsStr = "(:constants" ++ unwords consts ++ ")"
+    let defineStr = "(define (domain " ++ dmName domain ++ ")"
+        reqsStr = "(:requirements :strips)"
+        consts = dmConstants domain
+        constsStr = "(:constants " ++ unwords consts ++ ")"
         preds = dmPredicates domain
         predsStr = "(:predicates " ++ unwords (map writePredicateSpec preds) ++ ")"
         actions = unwords $ map writeActionSpec $ dmActionsSpecs domain
-    in intercalate "\n\t" [constsStr, predsStr, actions]
+    in intercalate "\n\t" [defineStr, reqsStr, constsStr, predsStr, actions] ++ ")"
 
 -- instance PDDL ActionSpec where
 --     toPDDL as =

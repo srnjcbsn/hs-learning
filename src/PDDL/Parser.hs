@@ -104,12 +104,13 @@ parseDomain =
         spaces
         parens $ string ":requirements " >> many parseRequirement
         spaces
-        consts <- parens $ string ":constants " >> parens (parseConstant `sepBy` spaces)
+        consts <- parens $ string ":constants " >> parseConstant `sepBy` spaces
         spaces
         preds <- parens $ string ":predicates " >> parsePredicateSpec `sepBy` spaces
         spaces
         actions <- parseActionSpec `sepEndBy1` spaces
-        return Domain { dmPredicates   = preds
+        return Domain { dmName         = name
+                      , dmPredicates   = preds
                       , dmActionsSpecs = actions
                       , dmConstants    = consts
                       }
@@ -149,8 +150,8 @@ tryParse ps str =
 --                         ]
 --
 -- domainSpecStr =
---     unlines [ "(define (domain dom)"
---             , "(:requirements strips)"
+--     unlines [ "(define (domain test)"
+--             , "(:requirements :strips)"
 --             , "(:constants (A B))"
 --             , "(:predicates (a ?x ?y))"
 --             , actionSpecStr
@@ -164,5 +165,16 @@ tryParse ps str =
 --             , "(:init (test1 x y))"
 --             , "(:goal (test2 x y)) )"
 --             ]
+-- actionSpecRes = ActionSpec { asName    = "act"
+--                            , asParas   = ["a"]
+--                            , asPrecond = Predicate ("p", [Ref "a"])
+--                            , asEffect  = Neg (Predicate ("p", [Ref "a"]))
+--                            }
+-- domainSpecRes =
+--     Domain { dmName         = "test"
+--            , dmPredicates   = [("a", ["x", "y"])]
+--            , dmActionsSpecs = [actionSpecRes]
+--            , dmConstants    = ["A", "B"]
+--            }
 
 p = parse parseDomain "unknown"
