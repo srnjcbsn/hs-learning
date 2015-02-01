@@ -17,23 +17,24 @@ eol = char '\n'
 parseRequirement :: Parser String
 parseRequirement = choice $ map string acceptableRequirements
 
-parseIdentifier :: Parser Char -> Parser String
-parseIdentifier p =
-    do first <- p
-       rest  <- many alphaNum
-       return (first : rest)
+-- parseIdentifier :: Parser Char -> Parser String
+-- parseIdentifier p =
+--     do first <- p
+--        rest  <- many alphaNum
+--        return (first : rest)
 
 parseName :: Parser String
-parseName = parseIdentifier lower
-
-parseConstant = parseIdentifier upper
+parseName = do
+    first <- letter
+    rest <- many (alphaNum <|> oneOf "-_")
+    return $ first : rest
 
 parseArgRef = char '?' >> parseName
 
 parseArgument :: Parser Argument
 parseArgument = -- parseConstant <|> parseArgRef
-        (parseConstant >>= return . Const)
-    <|> (parseArgRef   >>= return . Ref)
+        (parseName   >>= return . Const)
+    <|> (parseArgRef >>= return . Ref)
 
 parseGroundedFluent = parens $ do
     name <- parseName
@@ -104,7 +105,7 @@ parseDomain =
         spaces
         parens $ string ":requirements " >> many parseRequirement
         spaces
-        consts <- parens $ string ":constants " >> parseConstant `sepBy` spaces
+        consts <- parens $ string ":constants " >> parseName `sepBy` spaces
         spaces
         preds <- parens $ string ":predicates " >> parsePredicateSpec `sepBy` spaces
         spaces
@@ -134,8 +135,8 @@ parseProblem =
                        , probGoalState = Set.fromList g
                        }
 
--- doParse :: Parser a -> String -> Either ParserError a
-doParse ps str = parse ps "" str
+doParse :: Parser a -> String -> Either ParseError a
+doParse ps = parse ps "pddl"
 
 tryParse :: Parser a -> String -> Maybe a
 tryParse ps str =

@@ -1,3 +1,5 @@
-main                    :: IO ()
-main                    =  do c <- getChar
-                              putChar c
+import PDDL.Type
+import FastDownward
+
+main :: IO ()
+main = domainToFile dom "dom.pddl"

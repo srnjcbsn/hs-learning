@@ -64,9 +64,9 @@ testParsePredicateSpec = do
             tryParse parseName "a_" `shouldBe` Just "a_"
             tryParse parseName "a1" `shouldBe` Just "a1"
             tryParse parseName "a1A-_" `shouldBe` Just "a1A-_"
-        it "can only start with a lowercase letter" $ property $
+        it "can only start with a letter" $ property $
             \c -> let parsed = tryParse parseName (c : "a")
-                  in  if isLower c then parsed == Just (c : "a")
+                  in  if isLetter c then parsed == Just (c : "a")
                       else parsed == Nothing
 
     describe "Predicate specification parser" $ do
@@ -81,23 +81,14 @@ testParsePredicateSpec = do
             tryParse parseArgRef "a" `shouldBe` Nothing
         it "throws away the prefix" $
             tryParse parseArgRef "?a" `shouldBe` Just "a"
-        it "requires a lowercase letter after the '?'" $ do
+        it "requires a letter after the '?'" $ do
             tryParse parseArgRef "?" `shouldBe` Nothing
-            tryParse parseArgRef "?A" `shouldBe` Nothing
-
-    describe "Constant parser" $ do
-        it "requires the first letter to be uppercase" $
-            tryParse parseConstant "a" `shouldBe` Nothing
-        it "correctly parses proper constants" $
-            tryParse parseConstant "A" `shouldBe` Just "A"
 
     describe "Argument parser" $ do
         it "parses a '?'-prefixed string as a reference" $
             tryParse parseArgument "?a" `shouldBe` Just (Ref "a")
         it "parses a string starting with a capital letter as a constant" $
             tryParse parseArgument "A" `shouldBe` Just (Const "A")
-        it "fails to parse strings that are not prefixed by '?' or a capital letter" $
-            tryParse parseArgument "a" `shouldBe` Nothing
 
     describe "Fluent parser" $ do
         it "can parse fluents with 'Argument's" $
