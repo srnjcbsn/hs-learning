@@ -1,4 +1,4 @@
-module PDDL.Logic (isActionValid, apply, findActionSpec, unionChanges) where
+module PDDL.Logic (isActionValid, apply, findActionSpec) where
 
 import PDDL.Type
 import qualified Data.List as List
@@ -9,6 +9,7 @@ import qualified Data.Set as Set
 import           Data.Tuple (swap)
 
 
+
 findActionSpec :: Domain -> Action -> Maybe ActionSpec
 findActionSpec domain action = actionsSpec
   where
@@ -16,13 +17,14 @@ findActionSpec domain action = actionsSpec
     actname = aName action
     actionsSpec = List.find (\as -> asName as == actname) specs
 
-unionChanges :: GroundedChanges -> GroundedChanges -> GroundedChanges
-unionChanges (pos,neg) (pos2,neg2) = (Set.union pos pos2, Set.union neg neg2)
+unionTuple :: Ord a => (Set a, Set a) -> (Set a, Set a) -> (Set a, Set a)
+unionTuple (pos,neg) (pos2,neg2) = (Set.union pos pos2, Set.union neg neg2)
 
 instantiateFormula :: State -> Map Argument Object -> Formula -> GroundedChanges
 instantiateFormula s m (Predicate p) = (Set.singleton (pName p, List.map (m Map.!) $ pArgs p), Set.empty)
 instantiateFormula s m (Neg f) = swap $ instantiateFormula s m f
-instantiateFormula s m (Con fs) = List.foldl (\changes f -> unionChanges changes $ instantiateFormula s m f ) (Set.empty,Set.empty) fs
+instantiateFormula s m (Con fs) = List.foldl (\changes f -> unionTuple changes $ instantiateFormula s m f ) (Set.empty,Set.empty) fs
+
 
 
 instantiateAction :: State -> Map Argument Object -> ActionSpec -> Action -> GroundedAction
