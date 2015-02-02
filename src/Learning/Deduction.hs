@@ -23,7 +23,7 @@ mapfluents mapper (obj:rest) = Set.fromList []
         Nothing ->  Set.empty -- [Const o]
 
 
-unground :: ActionSpec -> [Name] -> Action -> GroundedPredicate -> [FluentPredicate]
+unground :: ActionSpec -> [Name] -> Action -> GroundedPredicate -> Set FluentPredicate
 unground as consts (_, objs) gp = undefined
   where
     paras = asParas as

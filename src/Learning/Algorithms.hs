@@ -1,5 +1,6 @@
 module Learning.Algorithms where
 
+import Data.List (unionBy)
 import Data.Map (Map, (!))
 import Data.Set (Set, (\\))
 import qualified Data.Map as Map
@@ -17,26 +18,35 @@ extract (Unknown a) = a
 
 known :: Knowledge a -> Maybe a
 known (Known a)   = Just a
-known (Unknown a) = Nothing
+known (Unknown _) = Nothing
 
 unknown :: Knowledge a -> Maybe a
-unknown (Known a)   = Nothing
+unknown (Known _)   = Nothing
 unknown (Unknown a) = Just a
 
 type KnownEffects = ([Knowledge FluentPredicate], [Knowledge FluentPredicate])
 
 type ActionKnowledge = Map Name KnownEffects
 
-updateKnowledge :: Action -> ActionSpec -> State -> State -> KnownEffects
-updateKnowledge action aSpec oldState newState = undefined
-    -- let del = oldState \\ newState
-    --     add = newState \\ oldState
-    --
-    --     Set.unions $ map unground (asParas aSpec) action
+-- fix 'knownPos' name, misleading
+updateKnowledge :: Domain -> KnownEffects -> Action -> ActionSpec -> State -> State -> KnownEffects
+updateKnowledge domain (knownPos, knownNeg) action aSpec oldState newState =
+    let del = Set.toList $ oldState \\ newState
+        add = Set.toList $ newState \\ oldState
 
--- updateKnowledge :: [FluentPredicate] -> KnownEffects -> KnownEffects
--- updateKnowledge fluents effects =
---     undefined
+        -- rewrite this
+        unground' :: [GroundedPredicate] -> [Knowledge FluentPredicate]
+        unground' = map Known
+                  . Set.toList
+                  . Set.unions
+                  . (map $ unground aSpec (dmConstants domain) action)
+
+        shouldUpdateKnowledge (Known a) (Unknown b) = a == b
+        shouldUpdateKnowledge _ _ = False
+
+        knownPos' = unionBy shouldUpdateKnowledge (unground' add) knownPos
+
+    in (knownPos', knownNeg ++ unground' del)
 
 constructSchema :: KnownEffects -> ActionSpec -> ActionSpec
 constructSchema (posKnowledge, negKnowledge) action =
