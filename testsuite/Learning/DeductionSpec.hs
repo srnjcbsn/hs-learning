@@ -49,14 +49,14 @@ testLogicSpec = do
             actual = Set.fromList $ variants argumentOptions in
             actual `shouldBe` expected
 
-    describe "collectDeduction" $ do
+    describe "collectDeducts" $ do
       it "can combine two deductions" $
         let deduction1 = [ Set.fromList ["x", "y"], Set.singleton "y", Set.singleton "z" ]
             deduction2 = [ Set.singleton "x", Set.fromList ["x", "y"], Set.singleton "z" ]
             expected = [Set.singleton "x", Set.singleton "y", Set.singleton "z" ] in
-            collectDeduction deduction1 deduction2 `shouldBe` expected
+            collectDeducts deduction1 deduction2 `shouldBe` expected
 
-    describe "collectManyDeduct" $ do
+    describe "collectManyDeducts" $ do
       it "can combine multiple deductions" $
         let deduction1 = [ Set.fromList ["x", "y"]]
             deduction2 = [ Set.singleton "x"]
