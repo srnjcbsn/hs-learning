@@ -1,13 +1,15 @@
 module Learning.Algorithms where
 
-import Data.List (unionBy)
+import Data.List (unionBy, find)
 import Data.Map (Map, (!))
-import Data.Set (Set, (\\))
 import qualified Data.Map as Map
+import Data.Set (Set, (\\))
 import qualified Data.Set as Set
+import Data.Maybe (mapMaybe, fromJust)
+
+import PDDL.Logic
 import PDDL.Type
 import Learning.Deduction
-import Data.Maybe (mapMaybe)
 
 data Knowledge a = Known a
                  | Unknown a
@@ -26,6 +28,7 @@ unknown (Unknown a) = Just a
 
 type KnownEffects = ([Knowledge FluentPredicate], [Knowledge FluentPredicate])
 
+-- Refactor into zipped list?
 type ActionKnowledge = Map Name KnownEffects
 
 -- fix 'knownPos' name, misleading
@@ -63,7 +66,25 @@ constructAllSchemas :: [ActionSpec] -> ActionKnowledge -> [ActionSpec]
 constructAllSchemas aSpecs knowledge =
     let knowledgeForAction a = knowledge ! (asName a)
         act a = constructSchema (knowledgeForAction a) a
-    in map act $ aSpecs
+    in  map act $ aSpecs
+
+analyzePlan :: Domain
+            -> [Action]
+            -> (State -> Action -> Maybe State)
+            -> State
+            -> ActionKnowledge
+            -> (ActionKnowledge, Maybe State)
+
+analyzePlan _ [] _ _ knowledge = (knowledge, Nothing)
+analyzePlan domain (action : rest) evalAction oldState knowledge =
+    if planState == actualState
+    then analyzePlan domain rest evalAction actualState knowledge
+    else (Map.insert (fst action) newKnowledge knowledge, Just actualState)
+        where newKnowledge = updateKnowledge domain actionKnowledge action aSpec oldState actualState
+              planState    = fromJust $ apply domain oldState action -- verify that this can never be Nothing
+              actualState  = fromJust $ evalAction oldState action -- same as above
+              aSpec = fromJust $ find (\a -> (asName a == fst action)) $ dmActionsSpecs domain
+              actionKnowledge = (knowledge ! (fst action))
 
 effectLearn :: Planner -> [Problem] -> Domain -> ()
 effectLearn planner episodes domain = undefined
