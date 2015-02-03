@@ -25,7 +25,6 @@ testLogicSpec =
 
       it "can deduct the exact parameters when two arguments are different" $
         let actArgs = ["1", "2"]
-            paraMap = mapMany actArgs paras
             groundPref = ("testPred", ["1", "2"])
             expected = [ [Ref "x", Ref "y"] ]
             actual = getArgs $ deduct paras actArgs groundPref   in
