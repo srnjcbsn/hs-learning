@@ -39,6 +39,10 @@ collectDeducts d1 d2 = combined
 collectManyDeduct :: Ord a => [ [ Set a ] ] -> [ Set a  ]
 collectManyDeduct = List.foldl1 collectDeducts
 
+
+combineDeductions :: Ord a => [ [ Set a ] ] -> [ [ Set a ] ] -> [ [ Set a ] ]
+combineDeductions = undefined
+
 variants :: [ Set a ] -> [ [a] ]
 variants [] = [ [] ]
 variants (args:rest) = allmapped
