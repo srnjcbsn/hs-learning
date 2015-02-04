@@ -1,6 +1,6 @@
 module PDDL.Type where
 
-import Data.List (intercalate)
+import Data.List (intercalate, find)
 import           Data.Set  (Set)
 import qualified Data.Set  as Set
 
@@ -70,6 +70,10 @@ aName = fst
 
 paramNames :: PredicateSpec -> [Name]
 paramNames = snd
+
+actionSpec :: Domain -> Name -> Maybe ActionSpec
+actionSpec domain name = find ((== name) . asName) (dmActionsSpecs domain)
+
 
 dom :: Domain
 dom =

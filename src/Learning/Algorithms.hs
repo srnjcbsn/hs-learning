@@ -26,35 +26,18 @@ unknown :: Knowledge a -> Maybe a
 unknown (Known _)   = Nothing
 unknown (Unknown a) = Just a
 
-type KnownEffects = ([Knowledge FluentPredicate], [Knowledge FluentPredicate])
+type ActionKnowledge = ([Knowledge FluentPredicate], [Knowledge FluentPredicate])
+type ActionHypothesis = (ActionSpec, ActionKnowledge)
 
--- Refactor into zipped list?
-type ActionKnowledge = Map Name KnownEffects
+type DomainKnowledge = Map Name ActionKnowledge
+type DomainHypothesis = (Domain, DomainKnowledge)
 
--- fix 'knownPos' name, misleading
-updateKnowledge :: Domain -> KnownEffects -> Action -> ActionSpec -> State -> State -> KnownEffects
-updateKnowledge domain (knownPos, knownNeg) action aSpec oldState newState =
-    let del = Set.toList $ oldState \\ newState
-        add = Set.toList $ newState \\ oldState
+type Transition = (State, State, Action)
 
-        -- rewrite this
-        unground' :: [GroundedPredicate] -> [Knowledge FluentPredicate]
-        unground' = map Known
-                  . Set.toList
-                  . Set.unions
-                  . (map $ unground aSpec (dmConstants domain) action)
-
-        shouldUpdateKnowledge (Known a) (Unknown b) = a == b
-        shouldUpdateKnowledge _ _ = False
-
-        knownPos' = unionBy shouldUpdateKnowledge (unground' add) knownPos
-
-    in (knownPos', knownNeg ++ unground' del)
-
-constructSchema :: KnownEffects -> ActionSpec -> ActionSpec
-constructSchema (posKnowledge, negKnowledge) action =
-    let posEffects = map (Predicate . extract) posKnowledge
-        negEffects = map (Neg . Predicate) (mapMaybe known negKnowledge)
+constructSchema :: ActionHypothesis -> ActionSpec
+constructSchema (action, (posEff, negEff)) =
+    let posEffects = map (Predicate . extract) posEff
+        negEffects = map (Neg . Predicate) (mapMaybe known negEff)
         effect     = Con $ posEffects ++ negEffects
     in ActionSpec { asName    = asName action
                   , asParas   = asParas action
@@ -62,29 +45,69 @@ constructSchema (posKnowledge, negKnowledge) action =
                   , asEffect  = effect
                   }
 
-constructAllSchemas :: [ActionSpec] -> ActionKnowledge -> [ActionSpec]
-constructAllSchemas aSpecs knowledge =
-    let knowledgeForAction a = knowledge ! (asName a)
-        act a = constructSchema (knowledgeForAction a) a
-    in  map act $ aSpecs
+updateActionHyp :: Domain -> ActionHypothesis -> Transition -> ActionHypothesis
+updateActionHyp domain (aSpec, ak) transition =
+    let (oldState, newState, action) = transition
+        (posEffects, negEffects) = ak
+
+        del = Set.toList $ oldState \\ newState
+        add = Set.toList $ newState \\ oldState
+
+        -- rewrite this
+        unground' :: [GroundedPredicate] -> [Knowledge FluentPredicate]
+        unground' = undefined
+        -- unground' = map Known
+        --           . Set.toList
+        --           . Set.unions
+        --           . (map $ (unground (asParas aSpec) (snd action) (dmConstants domain)))
+
+        shouldUpdateKnowledge (Known a) (Unknown b) = a == b
+        shouldUpdateKnowledge _ _ = False
+
+        posEffects' = unionBy shouldUpdateKnowledge (unground' add) posEffects
+        newKnowledge = (posEffects', negEffects ++ unground' del)
+
+    in (constructSchema (aSpec, newKnowledge), newKnowledge)
+
+updateDomainHyp :: DomainHypothesis -> Transition -> DomainHypothesis
+updateDomainHyp hyp transition =
+    let (_, _, action) = transition
+        aHyp = actionHypothesis hyp action
+        aHyp' = updateActionHyp (fst hyp) aHyp transition
+    in  (fst hyp, Map.insert (fst action) (snd aHyp') (snd hyp))
+
+-- constructAllSchemas :: [ActionSpec] -> DomainKnowledge -> [ActionSpec]
+-- constructAllSchemas aSpecs knowledge =
+--     let knowledgeForAction a = knowledge ! (asName a)
+--         act a = constructSchema (knowledgeForAction a) a
+--     in  map act $ aSpecs
+
+actionHypothesis :: DomainHypothesis -> Action -> ActionHypothesis
+actionHypothesis (domain, dmKnowledge) action =
+    (fromJust $ actionSpec domain (fst action), dmKnowledge ! (fst action))
+
+-- reqrite to using this
+-- analyzePlan :: DomainHypothesis
+--             -> [Action]
+--             -> Transition
+--             -> (State -> Action -> State)
+--             -> (DomainHypothesis, Maybe State)
 
 analyzePlan :: Domain
             -> [Action]
             -> (State -> Action -> Maybe State)
             -> State
-            -> ActionKnowledge
-            -> (ActionKnowledge, Maybe State)
+            -> DomainHypothesis
+            -> (DomainHypothesis, Maybe State)
 
-analyzePlan _ [] _ _ knowledge = (knowledge, Nothing)
-analyzePlan domain (action : rest) evalAction oldState knowledge =
+analyzePlan _ [] _ _ dHyp = (dHyp, Nothing)
+analyzePlan domain (action : rest) evalAction oldState dHyp =
     if planState == actualState
-    then analyzePlan domain rest evalAction actualState knowledge
-    else (Map.insert (fst action) newKnowledge knowledge, Just actualState)
-        where newKnowledge = updateKnowledge domain actionKnowledge action aSpec oldState actualState
-              planState    = fromJust $ apply domain oldState action -- verify that this can never be Nothing
+    then analyzePlan domain rest evalAction actualState dHyp
+    else (updateDomainHyp dHyp transition, Just actualState)
+        where planState    = fromJust $ apply domain oldState action -- verify that this can never be Nothing
               actualState  = fromJust $ evalAction oldState action -- same as above
-              aSpec = fromJust $ find (\a -> (asName a == fst action)) $ dmActionsSpecs domain
-              actionKnowledge = (knowledge ! (fst action))
+              transition   = (oldState, actualState, action)
 
 effectLearn :: Planner -> [Problem] -> Domain -> ()
 effectLearn planner episodes domain = undefined
