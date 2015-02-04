@@ -45,8 +45,8 @@ constructSchema (action, (posEff, negEff)) =
                   , asEffect  = effect
                   }
 
-updateActionHyp :: ActionHypothesis -> Transition -> ActionHypothesis
-updateActionHyp (aSpec, ak) transition =
+updateActionHyp :: Domain -> ActionHypothesis -> Transition -> ActionHypothesis
+updateActionHyp domain (aSpec, ak) transition =
     let (oldState, newState, action) = transition
         (posEffects, negEffects) = ak
 
@@ -55,23 +55,25 @@ updateActionHyp (aSpec, ak) transition =
 
         -- rewrite this
         unground' :: [GroundedPredicate] -> [Knowledge FluentPredicate]
-        unground' = map Known
-                  . Set.toList
-                  . Set.unions
-                  . (map $ Set.fromList . (deduct (asParas aSpec) (snd action)))
+        unground' = undefined
+        -- unground' = map Known
+        --           . Set.toList
+        --           . Set.unions
+        --           . (map $ (unground (asParas aSpec) (snd action) (dmConstants domain)))
 
         shouldUpdateKnowledge (Known a) (Unknown b) = a == b
         shouldUpdateKnowledge _ _ = False
 
         posEffects' = unionBy shouldUpdateKnowledge (unground' add) posEffects
+        newKnowledge = (posEffects', negEffects ++ unground' del)
 
-    in (constructSchema (aSpec, ak), (posEffects', negEffects ++ unground' del))
+    in (constructSchema (aSpec, newKnowledge), newKnowledge)
 
 updateDomainHyp :: DomainHypothesis -> Transition -> DomainHypothesis
 updateDomainHyp hyp transition =
     let (_, _, action) = transition
         aHyp = actionHypothesis hyp action
-        aHyp' = updateActionHyp aHyp transition
+        aHyp' = updateActionHyp (fst hyp) aHyp transition
     in  (fst hyp, Map.insert (fst action) (snd aHyp') (snd hyp))
 
 -- constructAllSchemas :: [ActionSpec] -> DomainKnowledge -> [ActionSpec]
@@ -83,6 +85,13 @@ updateDomainHyp hyp transition =
 actionHypothesis :: DomainHypothesis -> Action -> ActionHypothesis
 actionHypothesis (domain, dmKnowledge) action =
     (fromJust $ actionSpec domain (fst action), dmKnowledge ! (fst action))
+
+-- reqrite to using this
+-- analyzePlan :: DomainHypothesis
+--             -> [Action]
+--             -> Transition
+--             -> (State -> Action -> State)
+--             -> (DomainHypothesis, Maybe State)
 
 analyzePlan :: Domain
             -> [Action]
