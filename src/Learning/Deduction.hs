@@ -1,4 +1,4 @@
-module Learning.Deduction(expandFluents, deduct, collectDeducts, collectManyDeduct, combineDeductions, variants, asPDDL, unground) where
+module Learning.Deduction where
 
 import qualified Data.List as List
 import           Data.Map  (Map)
@@ -6,6 +6,17 @@ import qualified Data.Map  as Map
 import           Data.Set  (Set)
 import qualified Data.Set  as Set
 import           PDDL.Type
+
+-- | returns an unambiguous predicate, if any
+unambiguate :: Set FluentPredicate   -- ^ possible predicates
+            -> Set FluentPredicate   -- ^ ungrounded predicates
+            -> Maybe FluentPredicate -- ^ an unambiguous predicate, if it can be found
+unambiguate = undefined
+
+reducePossibilities :: Set FluentPredicate
+                    -> [Set FluentPredicate]
+                    -> Set FluentPredicate
+reducePossibilities = undefined
 
 appendToAll :: [[a]] -> a -> [[a]]
 appendToAll ll ele = List.map ((:) ele)  ll
