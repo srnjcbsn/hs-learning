@@ -49,39 +49,27 @@ testLogicSpec = do
             actual = Set.fromList $ variants argumentOptions in
             actual `shouldBe` expected
 
-    describe "collectDeducts" $ do
-      it "can combine two deductions" $
-        let deduction1 = [ Set.fromList ["x", "y"], Set.singleton "y", Set.singleton "z" ]
-            deduction2 = [ Set.singleton "x", Set.fromList ["x", "y"], Set.singleton "z" ]
-            expected = [Set.singleton "x", Set.singleton "y", Set.singleton "z" ] in
-            collectDeducts deduction1 deduction2 `shouldBe` expected
+    describe "unambiguate" $ do
+      it "can find that a predicate is unambigous" $
+        let allPreds = Set.fromList [("p",[Ref "x", Ref "y"]), ("p",[Ref "y", Ref "y"])]
+            checkingPreds = Set.fromList [("p",[Ref "x", Ref "y"]), ("p",[Ref "x", Ref "x"])]
+            actual = unambiguate allPreds checkingPreds in
+            actual `shouldBe` Just ("p",[Ref "x", Ref "y"])
 
-    describe "combineDeductions" $ do
-      it "can combine the same deduction and return the deduction without changes" $
-        let checker = [[ Set.fromList ["x", "y", "z"], Set.fromList["x", "y", "z"]]] in
-            Set.fromList ( combineDeductions checker checker ) `shouldBe` Set.fromList checker
+      it "can find that a predicate is not unambigous" $
+        let allPreds = Set.fromList [("p",[Ref "x", Ref "y"]), ("p",[Ref "y", Ref "y"])]
+            checkingPreds = Set.fromList [("p",[Ref "x", Ref "y"]), ("p",[Ref "y", Ref "y"])]
+            actual = unambiguate allPreds checkingPreds in
+            actual `shouldBe` Nothing
 
-    describe "collectManyDeducts" $ do
-      it "can combine multiple deductions" $
-        let deduction1 = [ Set.fromList ["x", "y"]]
-            deduction2 = [ Set.singleton "x"]
-            expected = [Set.singleton "x" ] in
-            collectManyDeduct [deduction1, deduction2] `shouldBe` expected
+    describe "reducePossibilities" $ do
+      it "can reduce the set of possibilities using a list all the ungrounded predicates" $
+        let allPreds = Set.fromList [("p",[Ref "x", Ref "y"]), ("p",[Ref "y", Ref "y"]),  ("p",[Ref "x", Ref "x"])]
+            ungroundedPreds = [Set.fromList [("p",[Ref "x", Ref "y"])], Set.fromList [("p",[Ref "y", Ref "y"])]]
+            expected = Set.fromList [("p",[Ref "x", Ref "y"]), ("p",[Ref "y", Ref "y"])]
+            actual = reducePossibilities allPreds ungroundedPreds in
+            actual `shouldBe` expected
 
-      it "can unpack single deduction" $
-        let deduction = [Set.fromList ["x", "y"]]
-            expected = [Set.fromList ["x", "y"]] in
-            collectManyDeduct [deduction] `shouldBe` expected
-
-      it "can handle deduction with no results" $
-        let deduction = [Set.empty] :: [Set String]
-            expected = [Set.empty] in
-            collectManyDeduct [deduction] `shouldBe` expected
-
-      it "can handle deduction with no arguments" $
-        let deduction = [] :: [Set String]
-            expected = [] in
-            collectManyDeduct [deduction] `shouldBe` expected
 spec :: Spec
 spec = testLogicSpec
 
