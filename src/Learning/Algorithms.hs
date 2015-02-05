@@ -46,6 +46,10 @@ type Transition = (State, State, Action)
 addList :: ActionSpec -> Action -> Domain -> Set GroundedPredicate
 addList = undefined
 
+isAmbiguous :: Knowledge Combination -> Bool
+isAmbiguous (Known _) = False
+isAmbiguous (Unknown (_, args)) = not $ all (((==) 1) . Set.size) args
+
 constructSchema :: ActionHypothesis -> ActionSpec
 constructSchema (action, (posEff, negEff)) =
     let posEffects = concatMap ( map Predicate . predicates . extract) posEff
