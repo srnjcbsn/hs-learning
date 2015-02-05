@@ -46,8 +46,8 @@ eitherLookup mapAB a =
 
 -- | Deducts all combinations of arguments which could be used in a function
 --   Returns a Set for each pos [Arg1, Arg2... ArgN] that contains the possible paramters,
---   if the argument used was not part of arguments passed then that argument will be used
---   F(x,y) called with [1,2] which produces [2,1] will make the deduct return [{y}, {x}]
+--   if the argument used was not part of arguments passed then that argument(as Left) will be used
+--   F(x,y) called with [1,2] which produces [2,1] will make the deduct return [{y}, {x}] as x = 2 and y = 1
 deduct :: (Ord arg, Ord para) => [para] -> [arg] -> [arg] -> [Set (Either arg para)]
 deduct paras args res =  deduction
   where
