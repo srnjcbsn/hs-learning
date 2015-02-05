@@ -1,4 +1,4 @@
-module Learning.Deduction(expandFluents, deduct, collectDeducts, collectManyDeduct, variants, asPDDL, unground) where
+module Learning.Deduction(expandFluents, deduct, collectDeducts, collectManyDeduct, combineDeductions, variants, asPDDL, unground) where
 
 import qualified Data.List as List
 import           Data.Map  (Map)
@@ -38,6 +38,29 @@ collectDeducts d1 d2 = combined
 
 collectManyDeduct :: Ord a => [ [ Set a ] ] -> [ Set a  ]
 collectManyDeduct = List.foldl1 collectDeducts
+
+combine :: Ord a => [Set a] -> [Set a] -> [Set a] -> [[Set a]]
+combine _ _ [] = []
+combine fl1 (h1:rest1) (h2:rest2) = (fl1 ++ [Set.union h1 h2] ++ rest1) : combine (fl1 ++ [h1]) rest1 rest2
+
+merge :: Ord a => Set [Set a] -> [Set a] -> Set [Set a]
+merge full single = mapped
+  where
+    combiner a = Set.fromList $ combine [] single a
+    mapped = Set.foldl Set.union Set.empty $ Set.map combiner full
+
+combineDeductions :: Ord a => [ [ Set a ] ] -> [ [ Set a ] ] -> [ [ Set a ] ]
+combineDeductions old new  = asList
+  where
+    setFunc l = List.foldl1 Set.union ( List.map (Set.fromList . variants) l )
+    oldSet = setFunc old
+    newSet = setFunc new
+    difs = Set.intersection oldSet newSet
+    (h:newForm) = Set.toList $ Set.map (List.map Set.singleton) difs
+    folded = List.foldl merge (Set.singleton h) newForm
+    asList = Set.toList folded
+
+
 
 variants :: [ Set a ] -> [ [a] ]
 variants [] = [ [] ]

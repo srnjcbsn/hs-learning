@@ -56,6 +56,11 @@ testLogicSpec = do
             expected = [Set.singleton "x", Set.singleton "y", Set.singleton "z" ] in
             collectDeducts deduction1 deduction2 `shouldBe` expected
 
+    describe "combineDeductions" $ do
+      it "can combine the same deduction and return the deduction without changes" $
+        let checker = [[ Set.fromList ["x", "y", "z"], Set.fromList["x", "y", "z"]]] in
+            Set.fromList ( combineDeductions checker checker ) `shouldBe` Set.fromList checker
+
     describe "collectManyDeducts" $ do
       it "can combine multiple deductions" $
         let deduction1 = [ Set.fromList ["x", "y"]]
