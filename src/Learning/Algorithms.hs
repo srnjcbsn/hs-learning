@@ -1,6 +1,6 @@
 module Learning.Algorithms where
 
-import Data.List (unionBy, find)
+import Data.List (unionBy, find, permutations)
 import Data.Map (Map, (!))
 import qualified Data.Map as Map
 import Data.Set (Set, (\\))
@@ -14,6 +14,15 @@ import Learning.Deduction
 data Knowledge a = Known a
                  | Unknown a
 
+-- come up with better name
+type Combination = (Name, [Set Argument])
+
+predicates :: Combination -> [FluentPredicate]
+predicates (name, args) = expandFluents args name
+
+combineDeductions :: Ord a => [ [ Set a ] ] -> [ [ Set a ] ] -> [ [ Set a ] ]
+combineDeductions = undefined
+
 extract :: Knowledge a -> a
 extract (Known a)   = a
 extract (Unknown a) = a
@@ -26,7 +35,7 @@ unknown :: Knowledge a -> Maybe a
 unknown (Known _)   = Nothing
 unknown (Unknown a) = Just a
 
-type ActionKnowledge = ([Knowledge FluentPredicate], [Knowledge FluentPredicate])
+type ActionKnowledge = ([Knowledge Combination], [Knowledge Combination])
 type ActionHypothesis = (ActionSpec, ActionKnowledge)
 
 type DomainKnowledge = Map Name ActionKnowledge
@@ -34,11 +43,15 @@ type DomainHypothesis = (Domain, DomainKnowledge)
 
 type Transition = (State, State, Action)
 
+addList :: ActionSpec -> Action -> Domain -> Set GroundedPredicate
+addList = undefined
+
 constructSchema :: ActionHypothesis -> ActionSpec
 constructSchema (action, (posEff, negEff)) =
-    let posEffects = map (Predicate . extract) posEff
-        negEffects = map (Neg . Predicate) (mapMaybe known negEff)
+    let posEffects = concatMap ( map Predicate . predicates . extract) posEff
+        negEffects = concatMap (map (Neg . Predicate) . predicates) (mapMaybe known negEff)
         effect     = Con $ posEffects ++ negEffects
+
     in ActionSpec { asName    = asName action
                   , asParas   = asParas action
                   , asPrecond = asPrecond action
@@ -50,24 +63,42 @@ updateActionHyp domain (aSpec, ak) transition =
     let (oldState, newState, action) = transition
         (posEffects, negEffects) = ak
 
-        del = Set.toList $ oldState \\ newState
-        add = Set.toList $ newState \\ oldState
+        unground' :: GroundedPredicate -> [Knowledge Combination]
+        unground' = unground (asParas aSpec) (aArgs action)
+                  . snd
+
+        -- predicates to be removed from the add list
+        remAdd = Set.map unground' $ addList aSpec action domain \\ newState
+        -- predicates that are now known to be in the add list
+        addAdd = Set.map unground' $ newState \\ oldState
+        -- predicates to be added to the delete list
+        deltaDel = Set.map unground' $ oldState \\ newState
+
+        negEffects' = negEffects ++ (Set.toList deltaDel)
+
+        -- (flip expandFluents $ fst action)
+        in undefined
+
+        -- del = Set.toList $ oldState \\ newState
+        -- add = Set.toList $ newState \\ oldState
 
         -- rewrite this
-        unground' :: [GroundedPredicate] -> [Knowledge FluentPredicate]
-        unground' = undefined
+        -- unground' :: [GroundedPredicate] -> [Knowledge FluentPredicate]
+        -- unground' = map $ unground (asParas aSpec) (snd action) (dmConstants domain)
         -- unground' = map Known
         --           . Set.toList
         --           . Set.unions
         --           . (map $ (unground (asParas aSpec) (snd action) (dmConstants domain)))
 
-        shouldUpdateKnowledge (Known a) (Unknown b) = a == b
-        shouldUpdateKnowledge _ _ = False
+        -- shouldUpdateKnowledge (Known a) (Unknown b) = a == b
+        -- shouldUpdateKnowledge _ _ = False
 
-        posEffects' = unionBy shouldUpdateKnowledge (unground' add) posEffects
-        newKnowledge = (posEffects', negEffects ++ unground' del)
+        -- posEffects' =
+        --
+        -- posEffects' = unionBy shouldUpdateKnowledge (unground' add) posEffects
+        -- newKnowledge = (posEffects', negEffects ++ unground' del)
 
-    in (constructSchema (aSpec, newKnowledge), newKnowledge)
+    -- in undefined -- (constructSchema (aSpec, newKnowledge), newKnowledge)
 
 updateDomainHyp :: DomainHypothesis -> Transition -> DomainHypothesis
 updateDomainHyp hyp transition =
