@@ -13,15 +13,13 @@ import Learning.Deduction
 
 data Knowledge a = Known a
                  | Unknown a
+                 deriving (Ord, Eq)
 
 -- come up with better name
-type Combination = (Name, [Set Argument])
+-- type Combination = (Name, [Set Argument])
 
-predicates :: Combination -> [FluentPredicate]
-predicates (name, args) = expandFluents args name
-
-combineDeductions :: Ord a => [ [ Set a ] ] -> [ [ Set a ] ] -> [ [ Set a ] ]
-combineDeductions = undefined
+-- predicates :: Combination -> [FluentPredicate]
+-- predicates (name, args) = expandFluents args name
 
 extract :: Knowledge a -> a
 extract (Known a)   = a
@@ -35,7 +33,14 @@ unknown :: Knowledge a -> Maybe a
 unknown (Known _)   = Nothing
 unknown (Unknown a) = Just a
 
-type ActionKnowledge = ([Knowledge Combination], [Knowledge Combination])
+isKnown :: Knowledge a -> Bool
+isKnown (Known _)   = True
+isKnown (Unknown _) = False
+
+type PredicateKnowledge = Set (Knowledge FluentPredicate)
+type EffectKnowledge = Map Name PredicateKnowledge
+type ActionKnowledge = (EffectKnowledge, EffectKnowledge)
+
 type ActionHypothesis = (ActionSpec, ActionKnowledge)
 
 type DomainKnowledge = Map Name ActionKnowledge
@@ -46,15 +51,28 @@ type Transition = (State, State, Action)
 addList :: ActionSpec -> Action -> Domain -> Set GroundedPredicate
 addList = undefined
 
-isAmbiguous :: Knowledge Combination -> Bool
-isAmbiguous (Known _) = False
-isAmbiguous (Unknown (_, args)) = not $ all (((==) 1) . Set.size) args
+knowns :: PredicateKnowledge -> Set FluentPredicate
+knowns = Set.map extract . Set.filter isKnown
+
+unknowns :: PredicateKnowledge -> Set FluentPredicate
+unknowns = Set.map extract . Set.filter (not . isKnown)
+
+allKnowledge :: PredicateKnowledge -> Set FluentPredicate
+allKnowledge = Set.map extract
+
+addKnown :: FluentPredicate -> EffectKnowledge -> EffectKnowledge
+addKnown fp m = Map.adjust (Set.insert $ Known fp) m
+
+-- come up with better name
+allPredicates :: EffectKnowledge -> PredicateKnowledge
+allPredicates m = Set.unions $ Map.elems m
 
 constructSchema :: ActionHypothesis -> ActionSpec
 constructSchema (action, (posEff, negEff)) =
-    let posEffects = concatMap ( map Predicate . predicates . extract) posEff
-        negEffects = concatMap (map (Neg . Predicate) . predicates) (mapMaybe known negEff)
-        effect     = Con $ posEffects ++ negEffects
+    let posEffects = Set.map (Predicate . extract) $ allPredicates posEff
+        -- this should not use extract, but we only insert known
+        negEffects = Set.map (Neg . Predicate . extract) $ allPredicates negEff
+        effect     = Con $ Set.toList $ posEffects `Set.union` negEffects
 
     in ActionSpec { asName    = asName action
                   , asParas   = asParas action
@@ -67,9 +85,9 @@ updateActionHyp domain (aSpec, ak) transition =
     let (oldState, newState, action) = transition
         (posEffects, negEffects) = ak
 
-        unground' :: GroundedPredicate -> [Knowledge Combination]
-        unground' = unground (asParas aSpec) (aArgs action)
-                  . snd
+        unground' :: GroundedPredicate -> [FluentPredicate]
+        unground' gp = (flip expandFluents $ (fst gp))
+                     $ unground (asParas aSpec) (aArgs action) (snd gp)
 
         -- predicates to be removed from the add list
         remAdd = Set.map unground' $ addList aSpec action domain \\ newState
@@ -78,9 +96,8 @@ updateActionHyp domain (aSpec, ak) transition =
         -- predicates to be added to the delete list
         deltaDel = Set.map unground' $ oldState \\ newState
 
-        negEffects' = negEffects ++ (Set.toList deltaDel)
+        negEffects' = negEffects ++ deltaDel
 
-        -- (flip expandFluents $ fst action)
         in undefined
 
         -- del = Set.toList $ oldState \\ newState
@@ -129,8 +146,8 @@ actionHypothesis (domain, dmKnowledge) action =
 --             -> (DomainHypothesis, Maybe State)
 
 analyzePlan :: Domain
-            -> [Action]
-            -> (State -> Action -> Maybe State)
+            -> [Action] -- plan
+            -> (State -> Action -> Maybe State) -- environment evaluator
             -> State
             -> DomainHypothesis
             -> (DomainHypothesis, Maybe State)

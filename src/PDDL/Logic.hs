@@ -24,20 +24,18 @@ findActionSpec domain action = actionsSpec
 unionTuple :: Ord a => (Set a, Set a) -> (Set a, Set a) -> (Set a, Set a)
 unionTuple (pos,neg) (pos2,neg2) = (Set.union pos pos2, Set.union neg neg2)
 
-instantiateFormula :: State -> Map Argument Object -> Formula -> GroundedChanges
-instantiateFormula s m (Predicate p) = (Set.singleton (pName p, List.map (m Map.!) $ pArgs p), Set.empty)
-instantiateFormula s m (Neg f) = swap $ instantiateFormula s m f
-instantiateFormula s m (Con fs) = List.foldl (\changes f -> unionTuple changes $ instantiateFormula s m f ) (Set.empty,Set.empty) fs
+instantiateFormula :: Map Argument Object -> Formula -> GroundedChanges
+instantiateFormula m (Predicate p) = (Set.singleton (pName p, List.map (m Map.!) $ pArgs p), Set.empty)
+instantiateFormula m (Neg f) = swap $ instantiateFormula m f
+instantiateFormula m (Con fs) = List.foldl (\changes f -> unionTuple changes $ instantiateFormula m f ) (Set.empty,Set.empty) fs
 
-
-
-instantiateAction :: State -> Map Argument Object -> ActionSpec -> Action -> GroundedAction
-instantiateAction s m as act = ga
+instantiateAction :: Map Argument Object -> ActionSpec -> Action -> GroundedAction
+instantiateAction  m as act = ga
   where
     pairs = List.zip (List.map Ref $ asParas as) (aArgs act)
     paraMap = Map.fromAscList pairs
     fullMap = Map.union paraMap m
-    ga = (instantiateFormula s fullMap (asPrecond as), instantiateFormula s fullMap (asEffect as))
+    ga = (instantiateFormula fullMap (asPrecond as), instantiateFormula fullMap (asEffect as))
 
 isActionValid :: State -> GroundedAction -> Bool
 isActionValid s ((posCond,negCond),(posEff,negEff)) =
@@ -58,7 +56,7 @@ apply domain curState action = newState
     newState = case findActionSpec domain action of
                 Just actSpec -> out
                   where
-                    gact@(_,(pos,neg)) = instantiateAction curState mapDomain actSpec action
+                    gact@(_,(pos,neg)) = instantiateAction mapDomain actSpec action
                     ambiguousEffects = Set.intersection pos neg
                     out = if Set.null ambiguousEffects
                           then applyAction curState gact
