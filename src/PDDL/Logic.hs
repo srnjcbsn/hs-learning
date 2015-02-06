@@ -1,9 +1,4 @@
-module PDDL.Logic ( isActionValid
-                  , apply
-                  , findActionSpec
-                  , instantiateFormula
-                  , applyAction
-                  ) where
+module PDDL.Logic (isActionValid, apply, findActionSpec, instantiateFormula, instantiateAction) where
 
 import PDDL.Type
 import qualified Data.List as List
@@ -12,6 +7,7 @@ import qualified Data.Map as Map
 import           Data.Set  (Set)
 import qualified Data.Set as Set
 import           Data.Tuple (swap)
+
 
 
 -- | Finds the action spec of an action in a domain
@@ -26,18 +22,20 @@ findActionSpec domain action = actionsSpec
 unionTuple :: Ord a => (Set a, Set a) -> (Set a, Set a) -> (Set a, Set a)
 unionTuple (pos,neg) (pos2,neg2) = (Set.union pos pos2, Set.union neg neg2)
 
-instantiateFormula :: Map Argument Object -> Formula -> GroundedChanges
-instantiateFormula m (Predicate p) = (Set.singleton (pName p, List.map (m Map.!) $ pArgs p), Set.empty)
-instantiateFormula m (Neg f) = swap $ instantiateFormula m f
-instantiateFormula m (Con fs) = List.foldl (\changes f -> unionTuple changes $ instantiateFormula m f ) (Set.empty,Set.empty) fs
+-- | Instantiates a formula into the actual positive and negative changes
+insForm :: Map Argument Object -> Formula -> GroundedChanges
+insForm m (Predicate p) = (Set.singleton (pName p, List.map (m Map.!) $ pArgs p), Set.empty)
+insForm m (Neg f) = swap $ insForm m f
+insForm m (Con fs) = List.foldl (\changes f -> unionTuple changes $ insForm m f ) (Set.empty,Set.empty) fs
 
-instantiateAction :: Map Argument Object -> ActionSpec -> Action -> GroundedAction
-instantiateAction  m as act = ga
+-- | instantiates an Action into the actual precondions and the actual effect
+insAct :: Map Argument Object -> ActionSpec -> Action -> GroundedAction
+insAct m as act = ga
   where
     pairs = List.zip (List.map Ref $ asParas as) (aArgs act)
     paraMap = Map.fromAscList pairs
     fullMap = Map.union paraMap m
-    ga = (instantiateFormula fullMap (asPrecond as), instantiateFormula fullMap (asEffect as))
+    ga = (insForm fullMap (asPrecond as), insForm fullMap (asEffect as))
 
 -- | Checks if the preconditions of a grounded action are satisfied
 isActionValid :: State -> GroundedAction -> Bool
@@ -52,16 +50,31 @@ applyAction s act@(_,(posEff,negEff)) =
       Just $ Set.union (Set.difference s negEff) posEff
     else Nothing
 
+domainMap :: Domain -> Map Argument Object
+domainMap domain = Map.fromList $ List.map (\n -> (Const n, n)) (dmConstants domain)
+
+-- | Instantiates a formula into the actual positive and negative changes
+instantiateFormula :: Domain -> Formula -> GroundedChanges
+instantiateFormula domain form =
+  let mapDomain = domainMap domain in
+    insForm mapDomain form
+
+-- | Instantiates a formula into the actual positive and negative changes
+instantiateAction :: Domain -> ActionSpec -> Action  -> GroundedAction
+instantiateAction domain as a =
+  let mapDomain = domainMap domain in
+    insAct mapDomain as a
+
 -- | Takes an action, grounds it and then if the precondions are satisfied applies it to a state
 --   If there are ambiguous effect an error is thrown
 apply :: Domain -> State -> Action -> Maybe State
 apply domain curState action = newState
   where
-    mapDomain = Map.fromList $ List.map (\n -> (Const n, n)) (dmConstants domain)
+    mapDomain = domainMap domain
     newState = case findActionSpec domain action of
                 Just actSpec -> out
                   where
-                    gact@(_,(pos,neg)) = instantiateAction mapDomain actSpec action
+                    gact@(_,(pos,neg)) = insAct mapDomain actSpec action
                     ambiguousEffects = Set.intersection pos neg
                     out = if Set.null ambiguousEffects
                           then applyAction curState gact
