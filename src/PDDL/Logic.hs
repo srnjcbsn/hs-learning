@@ -54,14 +54,14 @@ domainMap :: Domain -> Map Argument Object
 domainMap domain = Map.fromList $ List.map (\n -> (Const n, n)) (dmConstants domain)
 
 -- | Instantiates a formula into the actual positive and negative changes
-instantiateFormula :: Domain -> State -> Formula -> GroundedChanges
-instantiateFormula domain state form =
+instantiateFormula :: Domain -> Formula -> GroundedChanges
+instantiateFormula domain form =
   let mapDomain = domainMap domain in
     insForm mapDomain form
 
 -- | Instantiates a formula into the actual positive and negative changes
-instantiateAction :: Domain -> State -> ActionSpec -> Action  -> GroundedAction
-instantiateAction domain state as a =
+instantiateAction :: Domain -> ActionSpec -> Action  -> GroundedAction
+instantiateAction domain as a =
   let mapDomain = domainMap domain in
     insAct mapDomain as a
 
