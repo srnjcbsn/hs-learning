@@ -2,6 +2,7 @@ module PDDL.Logic ( isActionValid
                   , apply
                   , findActionSpec
                   , instantiateFormula
+                  , applyAction
                   ) where
 
 import PDDL.Type

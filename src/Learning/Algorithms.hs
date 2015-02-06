@@ -5,40 +5,13 @@ import Data.Map (Map, (!))
 import qualified Data.Map as Map
 import Data.Set (Set, (\\))
 import qualified Data.Set as Set
-import Data.Maybe (mapMaybe, fromJust)
+import Data.Maybe (catMaybes, fromJust)
 
 import PDDL.Logic
 import PDDL.Type
 import Learning.Deduction
 
-data Knowledge a = Known a
-                 | Unknown a
-                 deriving (Ord, Eq)
-
--- come up with better name
--- type Combination = (Name, [Set Argument])
-
--- predicates :: Combination -> [FluentPredicate]
--- predicates (name, args) = expandFluents args name
-
-extract :: Knowledge a -> a
-extract (Known a)   = a
-extract (Unknown a) = a
-
-known :: Knowledge a -> Maybe a
-known (Known a)   = Just a
-known (Unknown _) = Nothing
-
-unknown :: Knowledge a -> Maybe a
-unknown (Known _)   = Nothing
-unknown (Unknown a) = Just a
-
-isKnown :: Knowledge a -> Bool
-isKnown (Known _)   = True
-isKnown (Unknown _) = False
-
-type PredicateKnowledge = Set (Knowledge FluentPredicate)
-type EffectKnowledge = Map Name PredicateKnowledge
+type EffectKnowledge = (Set FluentPredicate, Set FluentPredicate)
 type ActionKnowledge = (EffectKnowledge, EffectKnowledge)
 
 type ActionHypothesis = (ActionSpec, ActionKnowledge)
@@ -49,31 +22,14 @@ type DomainHypothesis = (Domain, DomainKnowledge)
 type Transition = (State, State, Action)
 
 addList :: ActionSpec -> Action -> Domain -> Set GroundedPredicate
-addList = undefined
+addList aSpec action dom = undefined
 
-knowns :: PredicateKnowledge -> Set FluentPredicate
-knowns = Set.map extract . Set.filter isKnown
-
-unknowns :: PredicateKnowledge -> Set FluentPredicate
-unknowns = Set.map extract . Set.filter (not . isKnown)
-
-allKnowledge :: PredicateKnowledge -> Set FluentPredicate
-allKnowledge = Set.map extract
-
-addKnown :: FluentPredicate -> EffectKnowledge -> EffectKnowledge
-addKnown fp m = Map.adjust (Set.insert $ Known fp) m
-
--- come up with better name
-allPredicates :: EffectKnowledge -> PredicateKnowledge
-allPredicates m = Set.unions $ Map.elems m
-
-constructSchema :: ActionHypothesis -> ActionSpec
-constructSchema (action, (posEff, negEff)) =
-    let posEffects = Set.map (Predicate . extract) $ allPredicates posEff
-        -- this should not use extract, but we only insert known
-        negEffects = Set.map (Neg . Predicate . extract) $ allPredicates negEff
-        effect     = Con $ Set.toList $ posEffects `Set.union` negEffects
-
+constructSchema :: ActionSpec -> ActionKnowledge -> ActionSpec
+constructSchema action ak =
+    let ((unkPosEff, knPosEff), (_, knNegEff)) = ak
+        addL = Set.map Predicate $ unkPosEff `Set.union` knPosEff
+        delL = Set.map (Neg . Predicate) knNegEff
+        effect = Con $ Set.toList $ addL `Set.union` delL
     in ActionSpec { asName    = asName action
                   , asParas   = asParas action
                   , asPrecond = asPrecond action
@@ -84,82 +40,62 @@ updateActionHyp :: Domain -> ActionHypothesis -> Transition -> ActionHypothesis
 updateActionHyp domain (aSpec, ak) transition =
     let (oldState, newState, action) = transition
         (posEffects, negEffects) = ak
+        (posUnkEff, posKnEff) = posEffects
+        (negUnkEff, negKnEff) = negEffects
 
-        unground' :: GroundedPredicate -> [FluentPredicate]
-        unground' gp = (flip expandFluents $ (fst gp))
+        unground' :: GroundedPredicate -> Set FluentPredicate
+        unground' gp = Set.fromList $ (flip expandFluents $ (fst gp))
                      $ unground (asParas aSpec) (aArgs action) (snd gp)
 
-        -- predicates to be removed from the add list
-        remAdd = Set.map unground' $ addList aSpec action domain \\ newState
+         -- predicates to be removed from the add list
+        remAdd = addList aSpec action domain
+               \\ newState `Set.union` oldState
+
         -- predicates that are now known to be in the add list
-        addAdd = Set.map unground' $ newState \\ oldState
-        -- predicates to be added to the delete list
-        deltaDel = Set.map unground' $ oldState \\ newState
+        addAdd = newState \\ oldState
 
-        negEffects' = negEffects ++ deltaDel
+        remDel = oldState `Set.intersection` newState
+         -- predicates to be added to the delete list
+        addDel = oldState \\ newState
 
-        in undefined
+        unkEff :: Set FluentPredicate
+               -> Set GroundedPredicate
+               -> Set FluentPredicate
 
-        -- del = Set.toList $ oldState \\ newState
-        -- add = Set.toList $ newState \\ oldState
+        unkEff fps gps = reducePossibilities fps
+                       $ Set.toList
+                       $ Set.map unground' gps
 
-        -- rewrite this
-        -- unground' :: [GroundedPredicate] -> [Knowledge FluentPredicate]
-        -- unground' = map $ unground (asParas aSpec) (snd action) (dmConstants domain)
-        -- unground' = map Known
-        --           . Set.toList
-        --           . Set.unions
-        --           . (map $ (unground (asParas aSpec) (snd action) (dmConstants domain)))
+        knEff :: Set FluentPredicate
+              -> Set GroundedPredicate
+              -> Set FluentPredicate
 
-        -- shouldUpdateKnowledge (Known a) (Unknown b) = a == b
-        -- shouldUpdateKnowledge _ _ = False
+        knEff fps gps = Set.fromList
+                      $ catMaybes
+                      $ Set.toList
+                      $ Set.map (unambiguate fps)
+                      $ Set.map unground' gps
 
-        -- posEffects' =
-        --
-        -- posEffects' = unionBy shouldUpdateKnowledge (unground' add) posEffects
-        -- newKnowledge = (posEffects', negEffects ++ unground' del)
+        posUnkEff' = unkEff posUnkEff remAdd
+        negUnkEff' = unkEff negUnkEff remDel
+        posKnEff' = knEff posUnkEff addAdd
+        negKnEff' = knEff negUnkEff addDel
 
-    -- in undefined -- (constructSchema (aSpec, newKnowledge), newKnowledge)
+        posEff' = (posUnkEff', posKnEff `Set.union` posKnEff')
+        negEff' = (negUnkEff', negKnEff `Set.union` negKnEff')
+        ak' = (posEff', negEff')
 
-updateDomainHyp :: DomainHypothesis -> Transition -> DomainHypothesis
-updateDomainHyp hyp transition =
-    let (_, _, action) = transition
-        aHyp = actionHypothesis hyp action
-        aHyp' = updateActionHyp (fst hyp) aHyp transition
-    in  (fst hyp, Map.insert (fst action) (snd aHyp') (snd hyp))
-
--- constructAllSchemas :: [ActionSpec] -> DomainKnowledge -> [ActionSpec]
--- constructAllSchemas aSpecs knowledge =
---     let knowledgeForAction a = knowledge ! (asName a)
---         act a = constructSchema (knowledgeForAction a) a
---     in  map act $ aSpecs
+        in (constructSchema aSpec ak', ak')
 
 actionHypothesis :: DomainHypothesis -> Action -> ActionHypothesis
 actionHypothesis (domain, dmKnowledge) action =
     (fromJust $ actionSpec domain (fst action), dmKnowledge ! (fst action))
 
--- reqrite to using this
--- analyzePlan :: DomainHypothesis
---             -> [Action]
---             -> Transition
---             -> (State -> Action -> State)
---             -> (DomainHypothesis, Maybe State)
-
-analyzePlan :: Domain
-            -> [Action] -- plan
-            -> (State -> Action -> Maybe State) -- environment evaluator
-            -> State
-            -> DomainHypothesis
-            -> (DomainHypothesis, Maybe State)
-
-analyzePlan _ [] _ _ dHyp = (dHyp, Nothing)
-analyzePlan domain (action : rest) evalAction oldState dHyp =
-    if planState == actualState
-    then analyzePlan domain rest evalAction actualState dHyp
-    else (updateDomainHyp dHyp transition, Just actualState)
-        where planState    = fromJust $ apply domain oldState action -- verify that this can never be Nothing
-              actualState  = fromJust $ evalAction oldState action -- same as above
-              transition   = (oldState, actualState, action)
-
-effectLearn :: Planner -> [Problem] -> Domain -> ()
-effectLearn planner episodes domain = undefined
+updateDomainHyp :: DomainHypothesis -> Transition -> DomainHypothesis
+updateDomainHyp hyp transition
+    | planState == newState = hyp
+    | otherwise = (fst hyp, Map.insert (fst action) (snd aHyp') (snd hyp))
+    where planState = fromJust $ apply (fst hyp) oldState action
+          (oldState, newState, action) = transition
+          aHyp = actionHypothesis hyp action
+          aHyp' = updateActionHyp (fst hyp) aHyp transition

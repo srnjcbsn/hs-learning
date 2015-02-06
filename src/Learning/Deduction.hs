@@ -1,4 +1,4 @@
-module Learning.Deduction(expandFluents, deduct, collectDeducts, collectManyDeduct, combineDeductions, variants, asPDDL, unground) where
+module Learning.Deduction where
 
 import qualified Data.List as List
 import           Data.Map  (Map)
