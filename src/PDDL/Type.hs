@@ -15,7 +15,7 @@ data Argument = Const Name
 type FluentPredicate = (Name, [Argument])
 
 data Formula = Predicate FluentPredicate
-             | Neg (Formula)
+             | Neg Formula
              | Con [Formula]
              deriving (Ord, Eq, Show)
 
@@ -73,7 +73,6 @@ paramNames = snd
 
 actionSpec :: Domain -> Name -> Maybe ActionSpec
 actionSpec domain name = find ((== name) . asName) (dmActionsSpecs domain)
-
 
 dom :: Domain
 dom =
