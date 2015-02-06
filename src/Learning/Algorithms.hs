@@ -91,7 +91,12 @@ actionHypothesis :: DomainHypothesis -> Action -> ActionHypothesis
 actionHypothesis (domain, dmKnowledge) action =
     (fromJust $ actionSpec domain (fst action), dmKnowledge ! (fst action))
 
-updateDomainHyp :: DomainHypothesis -> Transition -> DomainHypothesis
+-- | If application of the action in the provided transition would yield the
+-- | same new state as the environment, the old actin hypothesis is returned
+-- | unchanged. Otherwise, the hypothesis is updated with the new information.
+updateDomainHyp :: DomainHypothesis
+                -> Transition
+                -> DomainHypothesis
 updateDomainHyp hyp transition
     | planState == newState = hyp
     | otherwise = (fst hyp, Map.insert (fst action) (snd aHyp') (snd hyp))
