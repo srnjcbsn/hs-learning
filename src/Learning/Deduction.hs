@@ -75,8 +75,8 @@ asPDDL res = pddl
     pddl = List.map (Set.map toPDDL) res
 
 -- | Takes a grounded predicate and produces all ungrounded possibilities
-unground :: Parameters -- ^ the paramters of the action spec
-          -> Arguments -- ^ the arguments the action was executed with
+unground ::  [Name] -- ^ the paramters of the action spec
+          -> [Object] -- ^ the arguments the action was executed with
           -> [Object]  -- ^ the predicate it produced
           -> [Set Argument] -- ^ a list of possibilities [Arg1, Arg2,..., ArgN ] where the Args are sets of options
 unground paras args objs = deduction

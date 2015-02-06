@@ -21,20 +21,18 @@ data Formula = Predicate FluentPredicate
 
 type PredicateSpec = (Name, [Name])
 
-type Parameters = [Name]
 
 data ActionSpec = ActionSpec
     { asName   :: String
-    , asParas  :: Parameters
+    , asParas  :: [Name]
     , asPrecond :: Formula
     , asEffect  :: Formula
     } deriving (Show, Eq)
 
-type Arguments = [Object]
 
-type Action = (Name, Arguments)
+type Action = (Name, [Object])
 
-type GroundedPredicate = (Name, Arguments)
+type GroundedPredicate = (Name, [Object])
 
 type GroundedChanges = (Set GroundedPredicate, Set GroundedPredicate)
 
