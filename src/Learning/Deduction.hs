@@ -19,9 +19,9 @@ unambiguate unknowns ungrounds = mUnamp
 
 -- | Reduces possibilities of ungrounded predicates
 reducePossibilities :: Set FluentPredicate    -- ^ the current set of all possibilities
-                    -> [Set FluentPredicate]  -- ^ all sets of ungrounded predicates
+                    -> [Set FluentPredicate]  -- ^ all sets of ungrounded predicates to remove
                     -> Set FluentPredicate    -- ^ the new set of all possibilities
-reducePossibilities unknown others = Set.intersection unknown $ List.foldl1 Set.union others
+reducePossibilities unknown others = unknown `Set.difference` Set.unions others
 
 -- | Append an element to all lists in the list
 appendToAll :: [[a]] -> a -> [[a]]
