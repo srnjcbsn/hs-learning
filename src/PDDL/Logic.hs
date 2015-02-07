@@ -1,4 +1,9 @@
-module PDDL.Logic (isActionValid, apply, findActionSpec, instantiateFormula, instantiateAction) where
+module PDDL.Logic (isActionValid
+                  , apply
+                  , findActionSpec
+                  , instantiateFormula
+                  , instantiateAction
+                  ) where
 
 import PDDL.Type
 import qualified Data.List as List

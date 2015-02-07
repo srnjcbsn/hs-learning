@@ -24,8 +24,8 @@ type PredicateSpec = (Name, [Name])
 type Parameters = [Name]
 
 data ActionSpec = ActionSpec
-    { asName   :: String
-    , asParas  :: Parameters
+    { asName    :: String
+    , asParas   :: Parameters
     , asPrecond :: Formula
     , asEffect  :: Formula
     } deriving (Show, Eq)
@@ -73,28 +73,6 @@ paramNames = snd
 
 actionSpec :: Domain -> Name -> Maybe ActionSpec
 actionSpec domain name = find ((== name) . asName) (dmActionsSpecs domain)
-
-dom :: Domain
-dom =
-    Domain { dmName         = "vacuum"
-           , dmPredicates   = preds
-           , dmActionsSpecs = [suck]
-           , dmConstants    = []
-           } where
-                preds = [ ("at", ["l"])
-                        , ("clean", ["l"])
-                        ]
-
-                precs l = Con [ Predicate ("at", [l])
-                              , Neg (Predicate ("clean", [l]))
-                              ]
-
-                effects l = Predicate ("clean", [l])
-                suck = ActionSpec { asName = "suck"
-                                  , asParas = ["l"]
-                                  , asPrecond = precs (Ref "l")
-                                  , asEffect = effects (Ref "l")
-                                  }
 
 type Planner = Domain -> Problem -> Maybe [Action]
 
@@ -145,40 +123,3 @@ writeDomain domain =
         predsStr = "(:predicates " ++ unwords (map writePredicateSpec preds) ++ ")"
         actions = unwords $ map writeActionSpec $ dmActionsSpecs domain
     in intercalate "\n\t" [defineStr, reqsStr, constsStr, predsStr, actions] ++ ")"
-
--- instance PDDL ActionSpec where
---     toPDDL as =
---         "(" ++ name as
---         ++ "\t:parameters (" ++ showParameters (variables as) ++ ")\n"
---         ++ "\t:precondition (" ++ toPddl (precond as) ++ ")\n"
---         ++ "\t:effect (" ++ toPddl (effect as) ++ ")\n"
---         ++ ")"
-
--- instance PDDL Fluent where
---     toPddl (Fluent (name, vs)) =
---         "(" ++ name ++ " " ++ showParameters vs ++ ")"
---
--- instance PDDL Formula where
---     toPddl (Predicate f) = toPddl f
---     toPddl (Neg f) = "(not " ++ toPddl f ++ ")"
---     toPddl (Con fs) = "(and " ++ unwords (map toPddl (Set.toList fs)) ++ ")"
---
--- instance PDDL Domain where
---     toPddl domain =
---         let consts = Set.toList (constants domain)
---             constsStr = "(:constants" ++ unwords consts ++ ")"
---             preds = Set.toList (predicates domain)
---             predsStr = "(:predicates " ++ unwords (map toPddl preds) ++ ")"
---             showActionS (n, vs, p, e) =
---                 "(:action " ++ n ++ "\n\t"
---                 ++ ":parameters (" ++ showParameters vs ++ ")\n\t"
---                 ++ ":precondition (" ++ toPddl p ++ ")\n\t"
---                 ++ ":effect (" ++ toPddl e ++ ")\n\t"
---                 ++ ")"
---             actions = unwords $ map showActionS $ (Set.toList . actionsSpecs) domain
---         in intercalate "\n\t" [constsStr, predsStr, actions]
---
--- domainToPdll :: String -> Domain -> String
--- domainToPdll name domain =
---     "(define (domain " ++ name ++ ")\n\t(:requirements :strips)\n\t"
---     ++ toPddl domain ++ "\n\t)"

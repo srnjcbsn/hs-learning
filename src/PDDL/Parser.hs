@@ -80,15 +80,19 @@ parseActionSpec :: Parser ActionSpec
 parseActionSpec =
     parens $ do
         string ":action "
+        spaces
         name <- parseName
         spaces
         string ":parameters "
+        spaces
         params <- parens (parseArgRef `sepBy` spaces)
         spaces
         string ":precondition "
+        spaces
         precond <- parseFormula
         spaces
         string ":effect "
+        spaces
         eff <- parseFormula
         spaces
         return ActionSpec { asName = name
