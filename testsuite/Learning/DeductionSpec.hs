@@ -64,10 +64,10 @@ testLogicSpec = do
 
     describe "reducePossibilities" $ do
       it "can reduce the set of possibilities using a list all the ungrounded predicates" $
-        let allPreds = Set.fromList [("p",[Ref "x", Ref "y"]), ("p",[Ref "y", Ref "y"]),  ("p",[Ref "x", Ref "x"])]
-            ungroundedPreds = [Set.fromList [("p",[Ref "x", Ref "y"])], Set.fromList [("p",[Ref "y", Ref "y"])]]
-            expected = Set.fromList [("p",[Ref "x", Ref "y"]), ("p",[Ref "y", Ref "y"])]
-            actual = reducePossibilities allPreds ungroundedPreds in
+        let allPreds = Set.fromList [("p",[Ref "x", Ref "y"]), ("q",[Ref "y", Ref "y"]),  ("p",[Ref "x", Ref "x"])]
+            predsToRemove = [Set.fromList [("p",[Ref "x", Ref "y"])], Set.fromList [("q",[Ref "y", Ref "y"])]]
+            expected = Set.fromList [("p",[Ref "x", Ref "x"])]
+            actual = reducePossibilities allPreds predsToRemove in
             actual `shouldBe` expected
 
 spec :: Spec

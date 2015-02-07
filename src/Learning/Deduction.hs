@@ -32,7 +32,7 @@ listify :: [a] -> [[a]]
 listify = List.map (:[])
 
 -- | Maps list a to list b,
---   if two elements in the a list is equal then it appends the two b's together
+--   if two elements in the a list is equal then it appends the two b's together.
 mapMany :: Ord a => [a] -> [b] -> Map a [b]
 mapMany a b = Map.fromListWith (++) $ List.zip a (listify b)
 
@@ -44,10 +44,12 @@ eitherLookup mapAB a =
     Just b -> Set.fromList $ List.map Right b
     Nothing -> Set.singleton $ Left a
 
--- | Deducts all combinations of arguments which could be used in a function
---   Returns a Set for each pos [Arg1, Arg2... ArgN] that contains the possible paramters,
---   if the argument used was not part of arguments passed then that argument(as Left) will be used
---   F(x,y) called with [1,2] which produces [2,1] will make the deduct return [{y}, {x}] as x = 2 and y = 1
+
+-- | Deducts all combinations of arguments which could be used in a function.
+--   Returns a Set as arg for each position IE. [Arg1, Arg2... ArgN] that contains the possible paramters,
+--   if the argument used was not part of arguments passed then that argument(as Left) will be used.
+--   f(x,y) was called with f(1,2) which produced p(2,1)
+--   in that case deducts returns [{y}, {x}] since its obvious that x = 2 and y = 1
 deduct :: (Ord arg, Ord para) => [para] -> [arg] -> [arg] -> [Set (Either arg para)]
 deduct paras args res =  deduction
   where
@@ -75,8 +77,8 @@ asPDDL res = pddl
     pddl = List.map (Set.map toPDDL) res
 
 -- | Takes a grounded predicate and produces all ungrounded possibilities
-unground :: Parameters -- ^ the paramters of the action spec
-          -> Arguments -- ^ the arguments the action was executed with
+unground ::  [Name] -- ^ the paramters of the action spec
+          -> [Object] -- ^ the arguments the action was executed with
           -> [Object]  -- ^ the predicate it produced
           -> [Set Argument] -- ^ a list of possibilities [Arg1, Arg2,..., ArgN ] where the Args are sets of options
 unground paras args objs = deduction
