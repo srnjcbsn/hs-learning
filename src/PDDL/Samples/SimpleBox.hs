@@ -10,7 +10,6 @@ pOutside = Predicate . outside
 
 
 a = "?a"
-b = "?b"
 ar = Ref a
 
 putIn = ActionSpec
@@ -25,4 +24,11 @@ takeOut = ActionSpec
     , asParas = [a]
     , asPrecond = pInside ar
     , asEffect = Con [Neg $ pInside ar, pOutside ar]
+    }
+
+sBDomain = Domain
+    { dmName = "SimpleBox"
+    , dmPredicates = [inside a, outside a]
+    , dmActionsSpecs = [putIn, takeOut]
+    , dmConstants = []
     }

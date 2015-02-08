@@ -19,6 +19,8 @@ library
   exposed-modules: PDDL.Type
                  , PDDL.Parser
                  , PDDL.Logic
+                 , PDDL.Samples.SimpleBox
+                 , PDDL.Samples.BlocksWorld
                  , Learning.Deduction
                  , Learning.Algorithms
 

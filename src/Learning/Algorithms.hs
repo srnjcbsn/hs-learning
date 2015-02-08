@@ -1,6 +1,4 @@
-module Learning.Algorithms ( initialHypothesis
-                           , updateDomainHyp
-                           ) where
+module Learning.Algorithms where
 
 import Data.List (unionBy, deleteBy, permutations)
 import Data.Map (Map, (!))
@@ -102,7 +100,8 @@ updateDomain dom as =
 domainFromKnowledge :: Domain -> DomainKnowledge -> Domain
 domainFromKnowledge dom kn =
     dom { dmActionsSpecs = map (\as -> constructSchema as $ kn ! asName as)
-                         $ dmActionsSpecs dom}
+                         $ dmActionsSpecs dom
+        }
 
 initialHypothesis :: Domain -> DomainHypothesis
 initialHypothesis dom = (dom', knowledge)
