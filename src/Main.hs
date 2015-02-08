@@ -1,5 +1,6 @@
 import PDDL.Type
 import FastDownward
+import PDDL.Samples.SimpleBox
 
 main :: IO ()
-main = domainToFile dom "dom.pddl"
+main = domainToFile sBDomain "dom.pddl"

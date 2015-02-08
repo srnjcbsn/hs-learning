@@ -1,6 +1,6 @@
 module Learning.Algorithms where
 
-import Data.List (unionBy, deleteBy, permutations)
+import Data.List (unionBy, deleteBy)
 import Data.Map (Map, (!))
 import qualified Data.Map as Map
 import Data.Set (Set, (\\))
@@ -32,11 +32,12 @@ constructSchema action ak =
         addL = Set.map Predicate $ unkPosEff `Set.union` knPosEff
         delL = Set.map (Neg . Predicate) knNegEff
         effect = Con $ Set.toList $ addL `Set.union` delL
-    in ActionSpec { asName    = asName action
-                  , asParas   = asParas action
-                  , asPrecond = asPrecond action
-                  , asEffect  = effect
-                  }
+    in action { asEffect = effect }
+    -- in ActionSpec { asName    = asName action
+    --               , asParas   = asParas action
+    --               , asPrecond = asPrecond action
+    --               , asEffect  = effect
+    --               }
 
 updateActionHyp :: Domain -> ActionHypothesis -> Transition -> ActionHypothesis
 updateActionHyp domain (aSpec, ak) transition =
