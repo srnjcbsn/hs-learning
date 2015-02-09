@@ -10,12 +10,12 @@ import           PDDL.Type
 -- | Returns an unambiguous predicate, if any
 unambiguate :: Set FluentPredicate   -- ^ possible predicates
             -> Set FluentPredicate   -- ^ ungrounded predicates
-            -> Maybe FluentPredicate -- ^ an unambiguous predicate, if it can be found
+            -> Either FluentPredicate (Set FluentPredicate) -- ^ an unambiguous predicate, if it can be found
 unambiguate unknowns ungrounds = mUnamp
   where
     comb = Set.intersection unknowns ungrounds
-    mUnamp | Set.size comb == 1 = Just (List.head $ Set.toList comb)
-           | otherwise = Nothing
+    mUnamp | Set.size comb == 1 = Left (List.head $ Set.toList comb)
+           | otherwise = Right comb
 
 -- | Reduces possibilities of ungrounded predicates
 reducePossibilities :: Set FluentPredicate    -- ^ the current set of all possibilities

@@ -54,13 +54,13 @@ testLogicSpec = do
         let allPreds = Set.fromList [("p",[Ref "x", Ref "y"]), ("p",[Ref "y", Ref "y"])]
             checkingPreds = Set.fromList [("p",[Ref "x", Ref "y"]), ("p",[Ref "x", Ref "x"])]
             actual = unambiguate allPreds checkingPreds in
-            actual `shouldBe` Just ("p",[Ref "x", Ref "y"])
+            actual `shouldBe` Left ("p",[Ref "x", Ref "y"])
 
       it "can find that a predicate is not unambigous" $
         let allPreds = Set.fromList [("p",[Ref "x", Ref "y"]), ("p",[Ref "y", Ref "y"])]
             checkingPreds = Set.fromList [("p",[Ref "x", Ref "y"]), ("p",[Ref "y", Ref "y"])]
             actual = unambiguate allPreds checkingPreds in
-            actual `shouldBe` Nothing
+            actual `shouldBe` Right checkingPreds
 
     describe "reducePossibilities" $ do
       it "can reduce the set of possibilities using a list all the ungrounded predicates" $

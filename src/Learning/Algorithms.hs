@@ -22,6 +22,21 @@ type DomainHypothesis = (Domain, DomainKnowledge)
 
 type Transition = (State, State, Action)
 
+ambiguous :: Set (Set FluentPredicate) -> Set FluentPredicate
+ambiguous = undefined
+
+unAmbiguous :: Set (Set FluentPredicate) -> Set FluentPredicate
+unAmbiguous = undefined
+
+folder :: Set FluentPredicate
+       -> (Set FluentPredicate, Set FluentPredicate)
+       -> Set FluentPredicate
+       -> (Set FluentPredicate, Set FluentPredicate)
+folder unk (uAmb,amb) test =
+    case unambiguate unk test of
+        Left uap  -> (Set.insert uap uAmb, amb)
+        Right aps -> (uAmb, Set.union amb aps)
+
 
 addList :: ActionSpec -> Action -> Domain -> Set GroundedPredicate
 addList aSpec action dom = fst $ snd $ instantiateAction dom aSpec action
@@ -50,34 +65,36 @@ updateActionHyp domain (aSpec, ak) transition =
         unground' gp = Set.fromList $ (flip expandFluents $ (fst gp))
                      $ unground (asParas aSpec) (aArgs action) (snd gp)
 
-         -- predicates to be removed from the add list
-        remAdd = addList aSpec action domain
-               \\ newState `Set.union` oldState
-
+        unchanged = oldState `Set.intersection` newState
         -- predicates that are now known to be in the add list
         addAdd = newState \\ oldState
 
-        remDel = oldState `Set.intersection` newState
          -- predicates to be added to the delete list
         addDel = oldState \\ newState
 
-        unkEff fps gps = reducePossibilities fps
-                       $ Set.toList
-                       $ Set.map unground' gps
+        uUnchanged = Set.unions
+                   $ Set.toList
+                   $ Set.map unground' unchanged
 
-        knEff fps gps = Set.fromList
-                      $ catMaybes
-                      $ Set.toList
-                      $ Set.map (unambiguate fps)
-                      $ Set.map unground' gps
+        uAddAdd = Set.map unground' addAdd
+        uAddDel = Set.map unground' addDel
 
-        posUnkEff' = unkEff posUnkEff remAdd
-        negUnkEff' = unkEff negUnkEff remDel
-        posKnEff' = knEff posUnkEff addAdd
-        negKnEff' = knEff negUnkEff addDel
+        (posUamb, posAmb) =
+            Set.foldl (folder posUnkEff) (Set.empty, Set.empty) uAddAdd
 
-        posEff' = (posUnkEff', posKnEff `Set.union` posKnEff')
-        negEff' = (negUnkEff', negKnEff `Set.union` negKnEff')
+        (negUamb, negAmb) =
+            Set.foldl (folder negUnkEff) (Set.empty, Set.empty) uAddDel
+
+        negKn' = negUamb `Set.union` negKnEff
+        posKn' = posUamb `Set.union` posKnEff
+
+        uUnchanged' = (uUnchanged \\ negKn') \\ posKn'
+
+        posUnk' = posAmb `Set.union` uUnchanged'
+        negUnk' = negAmb `Set.union` uUnchanged'
+
+        posEff' = (posUnk', posKn')
+        negEff' = (negUnk', negKn')
         ak' = (posEff', negEff')
 
         in (constructSchema aSpec ak', ak')
