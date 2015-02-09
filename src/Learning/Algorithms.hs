@@ -22,11 +22,11 @@ type DomainHypothesis = (Domain, DomainKnowledge)
 
 type Transition = (State, State, Action)
 
-ambiguous :: Set (Set FluentPredicate) -> Set FluentPredicate
-ambiguous = undefined
+domain :: DomainHypothesis -> Domain
+domain = fst
 
-unAmbiguous :: Set (Set FluentPredicate) -> Set FluentPredicate
-unAmbiguous = undefined
+knowledge :: DomainHypothesis -> DomainKnowledge
+knowledge = snd
 
 folder :: Set FluentPredicate
        -> (Set FluentPredicate, Set FluentPredicate)
@@ -65,19 +65,23 @@ updateActionHyp domain (aSpec, ak) transition =
         unground' gp = Set.fromList $ (flip expandFluents $ (fst gp))
                      $ unground (asParas aSpec) (aArgs action) (snd gp)
 
-        unchanged = oldState `Set.intersection` newState
+        -- unchanged = oldState `Set.intersection` newState
         -- predicates that are now known to be in the add list
         addAdd = newState \\ oldState
 
          -- predicates to be added to the delete list
         addDel = oldState \\ newState
 
-        uUnchanged = Set.unions
-                   $ Set.toList
-                   $ Set.map unground' unchanged
+
+        --     Set.unions
+        --    $ Set.toList
+        --    $ Set.map unground' unchanged
 
         uAddAdd = Set.map unground' addAdd
         uAddDel = Set.map unground' addDel
+
+        uUnchangedPos = posUnkEff \\ (Set.unions $ Set.toList uAddAdd)
+        uUnchangedNeg = negUnkEff \\ (Set.unions $ Set.toList uAddDel)
 
         (posUamb, posAmb) =
             Set.foldl (folder posUnkEff) (Set.empty, Set.empty) uAddAdd
@@ -88,10 +92,12 @@ updateActionHyp domain (aSpec, ak) transition =
         negKn' = negUamb `Set.union` negKnEff
         posKn' = posUamb `Set.union` posKnEff
 
-        uUnchanged' = (uUnchanged \\ negKn') \\ posKn'
+        -- uUnchanged' = (uUnchanged \\ negKn') \\ posKn'
+        uUnchangedPos' = uUnchangedPos \\ posKn'
+        uUnchangedNeg' = uUnchangedNeg \\ negKn'
 
-        posUnk' = posAmb `Set.union` uUnchanged'
-        negUnk' = negAmb `Set.union` uUnchanged'
+        posUnk' = posAmb `Set.union` uUnchangedPos'
+        negUnk' = negAmb `Set.union` uUnchangedNeg'
 
         posEff' = (posUnk', posKn')
         negEff' = (negUnk', negKn')
