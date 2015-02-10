@@ -7,6 +7,7 @@ import Data.Set (Set, (\\))
 import qualified Data.Set as Set
 import Data.Maybe (catMaybes, fromJust)
 import Control.Monad (replicateM)
+import Debug.Trace
 
 import PDDL.Logic
 import PDDL.Type
@@ -58,13 +59,69 @@ updateActionHyp :: Domain -> ActionHypothesis -> Transition -> ActionHypothesis
 updateActionHyp domain (aSpec, ak) transition =
     let (oldState, newState, action) = transition
         (posEffects, negEffects) = ak
-        (posUnkEff, posKnEff) = posEffects
+        (posUnkEff''', posKnEff) = posEffects
         (negUnkEff, negKnEff) = negEffects
+
+        posUnkEff = trace ("posUnkEff: " ++ (show posUnkEff''')) posUnkEff'''
 
         unground' :: GroundedPredicate -> Set FluentPredicate
         unground' gp = Set.fromList $ (flip expandFluents $ (fst gp))
                      $ unground (asParas aSpec) (aArgs action) (snd gp)
 
+        -- ungroundMany :: Set GroundedPredicate -> Set FluentPredicate
+        -- ungroundMany = Set.map unground'
+        unions :: Ord a => Set (Set a) -> Set a
+        unions = Set.unions . Set.toList
+
+        gAdd :: Set GroundedPredicate
+        gAdd = fst . snd $ instantiateAction domain aSpec action
+        kAdd = newState \\ oldState
+        uAdd' = newState `Set.intersection` oldState `Set.intersection` gAdd
+
+        uAdd = trace ("uAdd: " ++ (show uAdd')) uAdd'
+
+        kDel = oldState \\ newState
+
+        kAddUg' = Set.map unground' kAdd
+        uAddUg' = Set.map unground' uAdd
+
+        uAddUg = trace ("uAddUg: " ++ (show uAddUg')) uAddUg'
+        kAddUg = trace ("kAddUg: " ++ (show kAddUg')) kAddUg'
+
+        kDelUg = Set.map unground' kDel
+
+        alphaAdd' = unions kAddUg `Set.intersection` posUnkEff
+        alphaAdd = trace ("alphaAdd: " ++ (show alphaAdd')) alphaAdd'
+        betaAdd'  = unions uAddUg `Set.intersection` posUnkEff
+        betaAdd = trace ("betaAdd: " ++ (show betaAdd')) betaAdd'
+
+        alphaDel = unions kDelUg `Set.intersection` negUnkEff
+
+        tmpUnkAdd' = alphaAdd `Set.union` betaAdd
+
+        tmpUnkAdd = trace ("tmpUnkAdd: " ++ (show tmpUnkAdd')) tmpUnkAdd'
+
+        (posUamb', posAmb') =
+            Set.foldl (folder tmpUnkAdd) (Set.empty, Set.empty) kAddUg
+        posAmb = trace ("posAmb: " ++ (show posAmb')) posAmb'
+        posUamb = trace ("posUamb: " ++ (show posUamb')) posUamb'
+        (negUamb, negAmb) =
+            Set.foldl (folder alphaDel) (Set.empty, Set.empty) kDelUg
+
+        posUnkEff'' = betaAdd `Set.union` posAmb
+        posUnkEff' = trace ("posUnkEff': " ++ (show posUnkEff'')) posUnkEff''
+        posKnEff' = posKnEff `Set.union` posUamb
+
+        negUnkEff' = negAmb
+        negKnEff' = negKnEff `Set.union` negUamb
+
+        posEff' = (posUnkEff', posKnEff')
+        negEff' = (negUnkEff', negKnEff')
+
+        ak' = (posEff', negEff')
+
+        in (constructSchema aSpec ak', ak')
+        {-
         -- unchanged = oldState `Set.intersection` newState
         -- predicates that are now known to be in the add list
         addAdd = newState \\ oldState
@@ -104,6 +161,7 @@ updateActionHyp domain (aSpec, ak) transition =
         ak' = (posEff', negEff')
 
         in (constructSchema aSpec ak', ak')
+        -}
 
 actionHypothesis :: DomainHypothesis -> Action -> ActionHypothesis
 actionHypothesis (domain, dmKnowledge) (an, _) =
@@ -138,6 +196,15 @@ initialHypothesis dom = (dom', knowledge)
                     $ dmPredicates dom
           dom' = domainFromKnowledge dom knowledge
 
+updateActionHypHelper :: DomainHypothesis
+                      -> Transition
+                      -> DomainHypothesis
+updateActionHypHelper (dom, know) transition =
+    (dom', Map.insert (fst action) (snd aHyp') know)
+    where (oldState, newState, action) = transition
+          aHyp = actionHypothesis (dom, know) action
+          aHyp' = updateActionHyp dom aHyp transition
+          dom' = updateDomain dom (fst aHyp')
 
 -- | If application of the action in the provided transition would yield the
 --   same new state as the environment, the old actin hypothesis is returned
@@ -147,9 +214,10 @@ updateDomainHyp :: DomainHypothesis
                 -> DomainHypothesis
 updateDomainHyp (dom, know) transition
     | planState == newState = (dom, know)
-    | otherwise = (dom', Map.insert (fst action) (snd aHyp') know)
+    | otherwise = updateActionHypHelper (dom, know) transition
+    --(dom', Map.insert (fst action) (snd aHyp') know)
     where planState = fromJust $ apply dom oldState action
           (oldState, newState, action) = transition
-          aHyp = actionHypothesis (dom, know) action
-          aHyp' = updateActionHyp dom aHyp transition
-          dom' = updateDomain dom (fst aHyp')
+        --   aHyp = actionHypothesis (dom, know) action
+        --   aHyp' = updateActionHyp dom aHyp transition
+        --   dom' = updateDomain dom (fst aHyp')
