@@ -1,19 +1,19 @@
 module Learning.AlgorithmsSpec where
 
+import           Data.List              (sort)
+import           Data.Map               (Map)
+import qualified Data.Map               as Map
+import           Data.Maybe             (fromJust)
+import           Data.Set               (Set)
+import qualified Data.Set               as Set
 import           Test.Hspec
 import           Test.Hspec.QuickCheck
 import           Test.QuickCheck
-import Data.Map (Map)
-import qualified Data.Map as Map
-import Data.Set (Set)
-import qualified Data.Set as Set
-import Data.List (sort)
-import Data.Maybe (fromJust)
 
-import PDDL.Samples.SimpleBox
-import Learning.Algorithms
-import PDDL.Type
-import PDDL.Logic
+import           Learning.Algorithms
+import           PDDL.Logic
+import           PDDL.Samples.SimpleBox
+import           PDDL.Type
 
 p f x y = ("p", [f x,f y])
 pP x y = Predicate $ p Ref x y
@@ -134,7 +134,14 @@ testEffectLearnSpec = do
 
               ambiDomain = initDomain actSpec
 
-              s0 = Set.fromList [p id "a" "a", p id "a" "b", p id "c" "d", p id "d" "d", p id "e" "f", p id "f" "e" ]
+              s0 = Set.fromList [ p id "a" "a"
+                                , p id "a" "b"
+                                , p id "c" "d"
+                                , p id "d" "d"
+                                , p id "e" "f"
+                                , p id "f" "e"
+                                ]
+
               s1 = fromJust $ apply ambiDomain s0 a1
               s2 = fromJust $ apply ambiDomain s1 a2
               s3 = fromJust $ apply ambiDomain s2 a3

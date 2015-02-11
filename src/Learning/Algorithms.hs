@@ -1,17 +1,18 @@
 module Learning.Algorithms where
 
-import Data.List (unionBy, deleteBy)
-import Data.Map (Map, (!))
-import qualified Data.Map as Map
-import Data.Set (Set, (\\))
-import qualified Data.Set as Set
-import Data.Maybe (catMaybes, fromJust)
-import Control.Monad (replicateM)
-import Debug.Trace
+import           Control.Monad      (replicateM)
+import           Data.Function      (on)
+import           Data.List          (deleteBy, unionBy)
+import           Data.Map           (Map, (!))
+import qualified Data.Map           as Map
+import           Data.Maybe         (catMaybes, fromJust)
+import           Data.Set           (Set, (\\))
+import qualified Data.Set           as Set
+import           Debug.Trace
 
-import PDDL.Logic
-import PDDL.Type
-import Learning.Deduction
+import           Learning.Deduction
+import           PDDL.Logic
+import           PDDL.Type
 
 type EffectKnowledge = (Set FluentPredicate, Set FluentPredicate)
 type ActionKnowledge = (EffectKnowledge, EffectKnowledge)
@@ -49,67 +50,46 @@ constructSchema action ak =
         delL = Set.map (Neg . Predicate) knNegEff
         effect = Con $ Set.toList $ addL `Set.union` delL
     in action { asEffect = effect }
-    -- in ActionSpec { asName    = asName action
-    --               , asParas   = asParas action
-    --               , asPrecond = asPrecond action
-    --               , asEffect  = effect
-    --               }
 
 updateActionHyp :: Domain -> ActionHypothesis -> Transition -> ActionHypothesis
 updateActionHyp domain (aSpec, ak) transition =
     let (oldState, newState, action) = transition
         (posEffects, negEffects) = ak
-        (posUnkEff''', posKnEff) = posEffects
+        (posUnkEff, posKnEff) = posEffects
         (negUnkEff, negKnEff) = negEffects
-
-        posUnkEff = trace ("posUnkEff: " ++ (show posUnkEff''')) posUnkEff'''
 
         unground' :: GroundedPredicate -> Set FluentPredicate
         unground' gp = Set.fromList $ (flip expandFluents $ (fst gp))
                      $ unground (asParas aSpec) (aArgs action) (snd gp)
 
-        -- ungroundMany :: Set GroundedPredicate -> Set FluentPredicate
-        -- ungroundMany = Set.map unground'
         unions :: Ord a => Set (Set a) -> Set a
         unions = Set.unions . Set.toList
 
         gAdd :: Set GroundedPredicate
         gAdd = fst . snd $ instantiateAction domain aSpec action
         kAdd = newState \\ oldState
-        uAdd' = newState `Set.intersection` oldState `Set.intersection` gAdd
-
-        uAdd = trace ("uAdd: " ++ (show uAdd')) uAdd'
+        uAdd = newState `Set.intersection` oldState `Set.intersection` gAdd
 
         kDel = oldState \\ newState
 
-        kAddUg' = Set.map unground' kAdd
-        uAddUg' = Set.map unground' uAdd
-
-        uAddUg = trace ("uAddUg: " ++ (show uAddUg')) uAddUg'
-        kAddUg = trace ("kAddUg: " ++ (show kAddUg')) kAddUg'
+        kAddUg = Set.map unground' kAdd
+        uAddUg = Set.map unground' uAdd
 
         kDelUg = Set.map unground' kDel
 
-        alphaAdd' = unions kAddUg `Set.intersection` posUnkEff
-        alphaAdd = trace ("alphaAdd: " ++ (show alphaAdd')) alphaAdd'
-        betaAdd'  = unions uAddUg `Set.intersection` posUnkEff
-        betaAdd = trace ("betaAdd: " ++ (show betaAdd')) betaAdd'
+        alphaAdd = unions kAddUg `Set.intersection` posUnkEff
+        betaAdd  = unions uAddUg `Set.intersection` posUnkEff
 
         alphaDel = unions kDelUg `Set.intersection` negUnkEff
 
-        tmpUnkAdd' = alphaAdd `Set.union` betaAdd
+        tmpUnkAdd = alphaAdd `Set.union` betaAdd
 
-        tmpUnkAdd = trace ("tmpUnkAdd: " ++ (show tmpUnkAdd')) tmpUnkAdd'
-
-        (posUamb', posAmb') =
+        (posUamb, posAmb) =
             Set.foldl (folder tmpUnkAdd) (Set.empty, Set.empty) kAddUg
-        posAmb = trace ("posAmb: " ++ (show posAmb')) posAmb'
-        posUamb = trace ("posUamb: " ++ (show posUamb')) posUamb'
         (negUamb, negAmb) =
             Set.foldl (folder alphaDel) (Set.empty, Set.empty) kDelUg
 
-        posUnkEff'' = betaAdd `Set.union` posAmb
-        posUnkEff' = trace ("posUnkEff': " ++ (show posUnkEff'')) posUnkEff''
+        posUnkEff' = betaAdd `Set.union` posAmb
         posKnEff' = posKnEff `Set.union` posUamb
 
         negUnkEff' = negAmb
@@ -121,47 +101,6 @@ updateActionHyp domain (aSpec, ak) transition =
         ak' = (posEff', negEff')
 
         in (constructSchema aSpec ak', ak')
-        {-
-        -- unchanged = oldState `Set.intersection` newState
-        -- predicates that are now known to be in the add list
-        addAdd = newState \\ oldState
-
-         -- predicates to be added to the delete list
-        addDel = oldState \\ newState
-
-
-        --     Set.unions
-        --    $ Set.toList
-        --    $ Set.map unground' unchanged
-
-        uAddAdd = Set.map unground' addAdd
-        uAddDel = Set.map unground' addDel
-
-        uUnchangedPos = posUnkEff \\ (Set.unions $ Set.toList uAddAdd)
-        uUnchangedNeg = negUnkEff \\ (Set.unions $ Set.toList uAddDel)
-
-        (posUamb, posAmb) =
-            Set.foldl (folder posUnkEff) (Set.empty, Set.empty) uAddAdd
-
-        (negUamb, negAmb) =
-            Set.foldl (folder negUnkEff) (Set.empty, Set.empty) uAddDel
-
-        negKn' = negUamb `Set.union` negKnEff
-        posKn' = posUamb `Set.union` posKnEff
-
-        -- uUnchanged' = (uUnchanged \\ negKn') \\ posKn'
-        uUnchangedPos' = uUnchangedPos \\ posKn'
-        uUnchangedNeg' = uUnchangedNeg \\ negKn'
-
-        posUnk' = posAmb `Set.union` uUnchangedPos'
-        negUnk' = negAmb `Set.union` uUnchangedNeg'
-
-        posEff' = (posUnk', posKn')
-        negEff' = (negUnk', negKn')
-        ak' = (posEff', negEff')
-
-        in (constructSchema aSpec ak', ak')
-        -}
 
 actionHypothesis :: DomainHypothesis -> Action -> ActionHypothesis
 actionHypothesis (domain, dmKnowledge) (an, _) =
@@ -176,7 +115,7 @@ allFluents paras (name, args) = Set.fromList
 updateDomain :: Domain -> ActionSpec -> Domain
 updateDomain dom as =
     dom { dmActionsSpecs =
-            as : deleteBy (\a1 a2 -> asName a1 == asName a2) as (dmActionsSpecs dom)
+            as : deleteBy ((==) `on` asName) as (dmActionsSpecs dom)
         }
 
 domainFromKnowledge :: Domain -> DomainKnowledge -> Domain
@@ -190,7 +129,7 @@ initialHypothesis dom = (dom', knowledge)
     where knowledge = foldl ins Map.empty $ dmActionsSpecs dom
           ins m as  = Map.insert (asName as) (aKn as) m
           aKn as    = ((eff as, Set.empty), (eff as, Set.empty))
-          paras as  = (map Ref $ asParas as) ++ (map Const $ dmConstants dom)
+          paras as  = map Ref (asParas as) ++ map Const (dmConstants dom)
           eff as    = Set.unions
                     $ map (allFluents $ paras as)
                     $ dmPredicates dom
