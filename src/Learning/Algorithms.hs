@@ -14,6 +14,14 @@ import           Learning.Deduction
 import           PDDL.Logic
 import           PDDL.Type
 
+-- class ActionHypothesis a where
+--     hypothesizeAction  :: a -> Transition -> a
+--     initialAHypothesis :: ActionSpec -> a
+--
+-- class DomainHypothesis d where
+--     initialDHypothesis :: Domain -> d
+--     hypothesizeDomain  :: d -> Transition -> d
+
 type EffectKnowledge = (Set FluentPredicate, Set FluentPredicate)
 type ActionKnowledge = (EffectKnowledge, EffectKnowledge)
 
@@ -23,6 +31,8 @@ type DomainKnowledge = Map Name ActionKnowledge
 type DomainHypothesis = (Domain, DomainKnowledge)
 
 type Transition = (State, State, Action)
+
+
 
 domain :: DomainHypothesis -> Domain
 domain = fst
