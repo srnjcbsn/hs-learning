@@ -10,7 +10,7 @@ import           Data.Set           (Set, (\\))
 import qualified Data.Set           as Set
 import           Debug.Trace
 
-import           Learning.Deduction
+import           Learning.Induction
 import           PDDL.Logic
 import           PDDL.Type
 

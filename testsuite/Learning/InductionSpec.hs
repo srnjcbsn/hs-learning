@@ -1,6 +1,6 @@
-module Learning.DeductionSpec (main, spec) where
+module Learning.InductionSpec (main, spec) where
 
-import           Learning.Deduction
+import           Learning.Induction
 import           PDDL.Type
 import           Test.Hspec
 import           Test.Hspec.QuickCheck
@@ -21,21 +21,21 @@ testLogicSpec = do
             actArgs = ["1", "1"]
             objs = ["1", "1"]
             expected = [ Set.fromList [Right "x", Right "y"], Set.fromList [Right "x", Right "y"] ] in
-            deduct paras actArgs objs `shouldBe` expected
+            induct paras actArgs objs `shouldBe` expected
 
       it "can deduct the exact parameters when two arguments are different" $
         let paras = ["x", "y"]
             actArgs = ["1", "2"]
             objs = ["1", "2"]
             expected = [ Set.fromList [Right "x"], Set.fromList [ Right "y"] ] in
-            deduct paras actArgs objs `shouldBe` expected
+            induct paras actArgs objs `shouldBe` expected
 
       it "ignores when object is not a parameter" $
         let paras = ["x"]
             actArgs = ["x"]
             objs = ["1"]
             expected = [ Set.fromList [Left "1"] ] in
-            deduct paras actArgs objs `shouldBe` expected
+            induct paras actArgs objs `shouldBe` expected
 
     describe "asPDDL" $ do
       it "can turn deduct output into pddl format" $

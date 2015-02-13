@@ -14,6 +14,8 @@ import           Data.Set  (Set)
 import qualified Data.Set as Set
 import           Data.Tuple (swap)
 
+import qualified Data.TupleSet as Set2
+
 
 
 -- | Finds the action spec of an action in a domain
@@ -24,15 +26,12 @@ findActionSpec domain action = actionsSpec
     actname = aName action
     actionsSpec = List.find (\as -> asName as == actname) specs
 
--- | Gets two unions of a tuples with sets
-unionTuple :: Ord a => (Set a, Set a) -> (Set a, Set a) -> (Set a, Set a)
-unionTuple (pos,neg) (pos2,neg2) = (Set.union pos pos2, Set.union neg neg2)
 
 -- | Instantiates a formula into the actual positive and negative changes
 insForm :: Map Argument Object -> Formula -> GroundedChanges
 insForm m (Predicate p) = (Set.singleton (pName p, List.map (m Map.!) $ pArgs p), Set.empty)
 insForm m (Neg f) = swap $ insForm m f
-insForm m (Con fs) = List.foldl (\changes f -> unionTuple changes $ insForm m f ) (Set.empty,Set.empty) fs
+insForm m (Con fs) = List.foldl (\changes f -> Set2.union changes $ insForm m f ) (Set.empty,Set.empty) fs
 
 -- | instantiates an Action into the actual precondions and the actual effect
 insAct :: Map Argument Object -> ActionSpec -> Action -> GroundedAction

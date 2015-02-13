@@ -1,4 +1,4 @@
-module Learning.Deduction where
+module Learning.Induction where
 
 import qualified Data.List as List
 import           Data.Map  (Map)
@@ -45,16 +45,16 @@ eitherLookup mapAB a =
     Nothing -> Set.singleton $ Left a
 
 
--- | Deducts all combinations of arguments which could be used in a function.
+-- | Inducts all combinations of arguments which could be used in a function.
 --   Returns a Set as arg for each position IE. [Arg1, Arg2... ArgN] that contains the possible paramters,
 --   if the argument used was not part of arguments passed then that argument(as Left) will be used.
 --   f(x,y) was called with f(1,2) which produced p(2,1)
 --   in that case deducts returns [{y}, {x}] since its obvious that x = 2 and y = 1
-deduct :: (Ord arg, Ord para) => [para] -> [arg] -> [arg] -> [Set (Either arg para)]
-deduct paras args res =  deduction
+induct :: (Ord arg, Ord para) => [para] -> [arg] -> [arg] -> [Set (Either arg para)]
+induct paras args res =  induction
   where
     objsMap = mapMany args paras
-    deduction = List.map (eitherLookup objsMap) res
+    induction = List.map (eitherLookup objsMap) res
 
 -- | Provides all variants of argument combinations
 --   given [{x,y},{z,v}] variants will produce [x,z], [x,v], [y,z] [y,v]
@@ -81,9 +81,9 @@ unground ::  [Name] -- ^ the paramters of the action spec
           -> [Object] -- ^ the arguments the action was executed with
           -> [Object]  -- ^ the predicate it produced
           -> [Set Argument] -- ^ a list of possibilities [Arg1, Arg2,..., ArgN ] where the Args are sets of options
-unground paras args objs = deduction
+unground paras args objs = induction
   where
-    deduction = asPDDL $ deduct paras args objs
+    induction = asPDDL $ induct paras args objs
 
 -- | Expands the output of unground and provides all the ungrounded predicates that could be produced
 --   given [{x,y}, {x}] and "p" produces p(x,x) p(y,x)

@@ -21,7 +21,7 @@ library
                  , PDDL.Logic
                  , PDDL.Samples.SimpleBox
                  , PDDL.Samples.BlocksWorld
-                 , Learning.Deduction
+                 , Learning.Induction
                  , Learning.Algorithms
 
   default-language: Haskell2010
