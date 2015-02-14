@@ -1,6 +1,5 @@
-module Learning.Algorithms where
+module Learning.OptEffectLearn where
 
-import           Control.Monad      (replicateM)
 import           Data.Function      (on)
 import           Data.List          (deleteBy, unionBy)
 import           Data.Map           (Map, (!))
@@ -14,37 +13,24 @@ import           Learning.Induction
 import           PDDL.Logic
 import           PDDL.Type
 
--- class ActionHypothesis a where
---     hypothesizeAction  :: a -> Transition -> a
---     initialAHypothesis :: ActionSpec -> a
---
--- class DomainHypothesis d where
---     initialDHypothesis :: Domain -> d
---     hypothesizeDomain  :: d -> Transition -> d
-
+-- | (unknown, known)
 type EffectKnowledge = (Set FluentPredicate, Set FluentPredicate)
-type ActionKnowledge = (EffectKnowledge, EffectKnowledge)
 
-type ActionHypothesis = (ActionSpec, ActionKnowledge)
+-- | (Positive, negative)
+type EffectHypothesis = (EffectKnowledge, EffectKnowledge)
 
-type DomainKnowledge = Map Name ActionKnowledge
-type DomainHypothesis = (Domain, DomainKnowledge)
-
-type Transition = (State, State, Action)
+type DomainHypothesis = Map Name EffectHypothesis
 
 
 
-domain :: DomainHypothesis -> Domain
-domain = fst
-
-knowledge :: DomainHypothesis -> DomainKnowledge
-knowledge = snd
-
-folder :: Set FluentPredicate
+-- | Takes a set of uknowns, a pair of unambiguous/ambiguous to add to,
+--   and a set of fluents which is suspected to be unambiguous.
+--   once determined they/it will be added to its respective set
+extractUnambiguous :: Set FluentPredicate
        -> (Set FluentPredicate, Set FluentPredicate)
        -> Set FluentPredicate
        -> (Set FluentPredicate, Set FluentPredicate)
-folder unk (uAmb,amb) test =
+extractUnambiguous unk (uAmb,amb) test =
     case unambiguate unk test of
         Left uap  -> (Set.insert uap uAmb, amb)
         Right aps -> (uAmb, Set.union amb aps)
@@ -53,24 +39,28 @@ folder unk (uAmb,amb) test =
 addList :: ActionSpec -> Action -> Domain -> Set GroundedPredicate
 addList aSpec action dom = fst $ snd $ instantiateAction dom aSpec action
 
-constructSchema :: ActionSpec -> ActionKnowledge -> ActionSpec
-constructSchema action ak =
+-- | Sets the effects of the provided ActionSpec to that of the effect hypothesis
+constructEffectSchema :: EffectHypothesis -> ActionSpec -> ActionSpec
+constructEffectSchema ak action  =
     let ((unkPosEff, knPosEff), (_, knNegEff)) = ak
         addL = Set.map Predicate $ unkPosEff `Set.union` knPosEff
         delL = Set.map (Neg . Predicate) knNegEff
         effect = Con $ Set.toList $ addL `Set.union` delL
     in action { asEffect = effect }
 
-updateActionHyp :: Domain -> ActionHypothesis -> Transition -> ActionHypothesis
-updateActionHyp domain (aSpec, ak) transition =
-    let (oldState, newState, action) = transition
+-- | Updates the effect hypothesis based on the transition
+updateEffectHyp :: Domain -> EffectHypothesis -> Transition -> EffectHypothesis
+updateEffectHyp domain ak transition =
+    let (oldState, action, mNewState) = transition
+        newState = fromJust mNewState
+        aSpec = fromJust $ findActionSpec domain action
+        aSpecParas = asParas aSpec
         (posEffects, negEffects) = ak
         (posUnkEff, posKnEff) = posEffects
         (negUnkEff, negKnEff) = negEffects
 
         unground' :: GroundedPredicate -> Set FluentPredicate
-        unground' gp = Set.fromList $ (flip expandFluents $ (fst gp))
-                     $ unground (asParas aSpec) (aArgs action) (snd gp)
+        unground' = ungroundNExpand aSpecParas (aArgs action)
 
         unions :: Ord a => Set (Set a) -> Set a
         unions = Set.unions . Set.toList
@@ -95,9 +85,9 @@ updateActionHyp domain (aSpec, ak) transition =
         tmpUnkAdd = alphaAdd `Set.union` betaAdd
 
         (posUamb, posAmb) =
-            Set.foldl (folder tmpUnkAdd) (Set.empty, Set.empty) kAddUg
+            Set.foldl (extractUnambiguous tmpUnkAdd) (Set.empty, Set.empty) kAddUg
         (negUamb, negAmb) =
-            Set.foldl (folder alphaDel) (Set.empty, Set.empty) kDelUg
+            Set.foldl (extractUnambiguous alphaDel) (Set.empty, Set.empty) kDelUg
 
         posUnkEff' = betaAdd `Set.union` posAmb
         posKnEff' = posKnEff `Set.union` posUamb
@@ -110,15 +100,11 @@ updateActionHyp domain (aSpec, ak) transition =
 
         ak' = (posEff', negEff')
 
-        in (constructSchema aSpec ak', ak')
+        in ak'
 
-actionHypothesis :: DomainHypothesis -> Action -> ActionHypothesis
-actionHypothesis (domain, dmKnowledge) (an, _) =
-    (fromJust $ actionSpec domain an, dmKnowledge ! an)
+effectHypothesis :: DomainHypothesis -> Action -> EffectHypothesis
+effectHypothesis dmKnowledge (actName, _) = dmKnowledge ! actName
 
-allFluents :: [Argument] -> PredicateSpec -> Set FluentPredicate
-allFluents paras (name, args) = Set.fromList
-                              $ map ((,) name) $ replicateM (length args) paras
 
 -- update the domain by inserting the given action specification
 -- in place of the existing one with the same name
@@ -127,46 +113,44 @@ updateDomain dom as =
     dom { dmActionsSpecs =
             as : deleteBy ((==) `on` asName) as (dmActionsSpecs dom)
         }
-
-domainFromKnowledge :: Domain -> DomainKnowledge -> Domain
-domainFromKnowledge dom kn =
-    dom { dmActionsSpecs = map (\as -> constructSchema as $ kn ! asName as)
+-- | Changes all the domain's action specs effect based on the hypothesis
+domainFromKnowledge :: Domain -> DomainHypothesis -> Domain
+domainFromKnowledge dom dHyp =
+    dom { dmActionsSpecs = map (\as -> constructEffectSchema (dHyp ! asName as) as)
                          $ dmActionsSpecs dom
         }
 
+-- | Constructs a hypothesis based on what is known about the domain
 initialHypothesis :: Domain -> DomainHypothesis
-initialHypothesis dom = (dom', knowledge)
-    where knowledge = foldl ins Map.empty $ dmActionsSpecs dom
+initialHypothesis dom = dHyp
+    where dHyp = foldl ins Map.empty $ dmActionsSpecs dom
           ins m as  = Map.insert (asName as) (aKn as) m
           aKn as    = ((eff as, Set.empty), (eff as, Set.empty))
           paras as  = map Ref (asParas as) ++ map Const (dmConstants dom)
           eff as    = Set.unions
                     $ map (allFluents $ paras as)
                     $ dmPredicates dom
-          dom' = domainFromKnowledge dom knowledge
 
-updateActionHypHelper :: DomainHypothesis
+
+-- | Updates the effects hypothesis based on the transition
+updateEffectHypHelper :: Domain
+                      -> DomainHypothesis
                       -> Transition
                       -> DomainHypothesis
-updateActionHypHelper (dom, know) transition =
-    (dom', Map.insert (fst action) (snd aHyp') know)
-    where (oldState, newState, action) = transition
-          aHyp = actionHypothesis (dom, know) action
-          aHyp' = updateActionHyp dom aHyp transition
-          dom' = updateDomain dom (fst aHyp')
+updateEffectHypHelper dom dHyp transition = Map.insert (aName action) aHyp' dHyp
+    where (oldState, action, newState) = transition
+          aHyp = effectHypothesis dHyp action
+          aHyp' = updateEffectHyp dom aHyp transition
 
 -- | If application of the action in the provided transition would yield the
 --   same new state as the environment, the old actin hypothesis is returned
 --   unchanged. Otherwise, the hypothesis is updated with the new information.
-updateDomainHyp :: DomainHypothesis
+updateDomainHyp :: Domain
+                -> DomainHypothesis
                 -> Transition
                 -> DomainHypothesis
-updateDomainHyp (dom, know) transition
-    | planState == newState = (dom, know)
-    | otherwise = updateActionHypHelper (dom, know) transition
-    --(dom', Map.insert (fst action) (snd aHyp') know)
-    where planState = fromJust $ apply dom oldState action
-          (oldState, newState, action) = transition
-        --   aHyp = actionHypothesis (dom, know) action
-        --   aHyp' = updateActionHyp dom aHyp transition
-        --   dom' = updateDomain dom (fst aHyp')
+updateDomainHyp dom dHyp transition
+    | Just planState == newState = dHyp
+    | otherwise = updateEffectHypHelper dom dHyp transition
+    where (oldState, action, newState) = transition
+          planState = fromJust $ apply dom oldState action

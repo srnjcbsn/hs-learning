@@ -1,9 +1,10 @@
-module PDDL.Logic (isActionValid
+module PDDL.Logic ( isActionValid
                   , apply
                   , findActionSpec
                   , instantiateFormula
                   , instantiateAction
                   , ground
+                  , applyAction
                   ) where
 
 import PDDL.Type
@@ -70,8 +71,10 @@ instantiateAction domain as a =
   let mapDomain = domainMap domain in
     insAct mapDomain as a
 
-ground :: Set FluentPredicate -> Set GroundedPredicate
-ground = undefined
+ground :: Domain -> Set FluentPredicate -> Set GroundedPredicate
+ground domain fluents = fst $ instantiateFormula domain (Con $ List.map Predicate $ Set.toList fluents)
+
+
 
 -- | Takes an action, grounds it and then if the precondions are satisfied applies it to a state
 --   If there are ambiguous effect an error is thrown

@@ -6,6 +6,7 @@ import qualified Data.Map  as Map
 import           Data.Set  (Set)
 import qualified Data.Set  as Set
 import           PDDL.Type
+import           Control.Monad      (replicateM)
 
 -- | Returns an unambiguous predicate, if any
 unambiguate :: Set FluentPredicate   -- ^ possible predicates
@@ -65,6 +66,12 @@ variants (args:rest) = allmapped
     restMapped = variants rest
     allmapped = List.concatMap (appendToAll restMapped) (Set.toList args)
 
+
+
+allFluents :: [Argument] -> PredicateSpec -> Set FluentPredicate
+allFluents paras (name, args) = Set.fromList
+                              $ map ((,) name) $ replicateM (length args) paras
+
 -- | Turns the output produce from Deducts into PDDL format
 --   it will assume objects are Constants
 asPDDL :: [Set (Either Object Name)] -> [Set Argument]
@@ -85,10 +92,13 @@ unground paras args objs = induction
   where
     induction = asPDDL $ induct paras args objs
 
+ungroundNExpand :: [Name] -> [Object] -> GroundedPredicate -> Set FluentPredicate
+ungroundNExpand paras args gp = Set.fromList $ expandFluents (fst gp) $ unground paras args (snd gp)
+
 -- | Expands the output of unground and provides all the ungrounded predicates that could be produced
 --   given [{x,y}, {x}] and "p" produces p(x,x) p(y,x)
-expandFluents :: [Set Argument] -> Name -> [FluentPredicate]
-expandFluents argOptions name = preds
+expandFluents :: Name -> [Set Argument] -> [FluentPredicate]
+expandFluents name argOptions = preds
   where
     predArgs = variants argOptions
     preds = List.map (\x -> (name, x)) predArgs

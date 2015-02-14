@@ -53,6 +53,8 @@ data Problem = Problem
     , probGoalState    :: State
     } deriving (Show, Eq)
 
+type Transition = (State, Action, Maybe State)
+
 pName :: FluentPredicate -> Name
 pName = fst
 
