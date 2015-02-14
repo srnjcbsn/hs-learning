@@ -22,7 +22,8 @@ library
                  , PDDL.Samples.SimpleBox
                  , PDDL.Samples.BlocksWorld
                  , Learning.Induction
-                 , Learning.Algorithms
+                 , Learning.OptEffectLearn
+                 , Learning.OptPrecondLearn
                  , FastDownward
 
   default-language: Haskell2010
@@ -47,6 +48,10 @@ executable hs-learning
                , hspec
                , QuickCheck
                , process
+               , directory
+               , temporary
+               , filepath
+               , process
   hs-source-dirs:      src
   default-language:    Haskell2010
 
@@ -58,6 +63,9 @@ test-suite tests
                  , containers
                  , pretty-show
                  , process
+                 , directory
+                 , temporary
+                 , filepath
 
     default-language: Haskell2010
     hs-source-dirs:   testsuite

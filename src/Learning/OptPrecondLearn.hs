@@ -1,7 +1,6 @@
 module Learning.OptPrecondLearn where
 
 import PDDL.Type
-import Learning.Algorithms
 import PDDL.Logic
 import Learning.Induction
 
@@ -42,7 +41,7 @@ removeSetsWithKnowns cnfs kns = Set.filter (not . Set2.isSubSetOf kns) cnfs
 extractKnowns :: CNF -> (Set FluentPredicate, Set FluentPredicate, CNF)
 extractKnowns cnfs = (posKns, negKns, newCnfs')
   where
-    singletons = Set.filter (isSingleton) cnfs
+    singletons = Set.filter isSingleton cnfs
     newCnfs = Set.filter ((> 1) . Set2.size ) cnfs -- remove empty sets and singletons
     kns@(posKns, negKns) = Set.foldl Set2.union (Set.empty, Set.empty) singletons
     newCnfs' = removeSetsWithKnowns newCnfs kns -- If a set of candidates suddenly contain knowns
@@ -50,18 +49,17 @@ extractKnowns cnfs = (posKns, negKns, newCnfs')
 
 
 
-updatePrecHypothesis :: [Name] -> PreKnowledge -> Transition' -> PreKnowledge
-updatePrecHypothesis aSpecParas pk@(posKnowledge, negKnowledge, cnfs) (s, action, s') =
+updatePrecHypothesis :: Domain -> [Name] -> PreKnowledge -> Transition' -> PreKnowledge
+updatePrecHypothesis domain aSpecParas pk@(posKnowledge, negKnowledge, cnfs) (s, action, s') =
     let unground' :: GroundedPredicate -> Set FluentPredicate
-        unground' gp = Set.fromList $ (flip expandFluents $ (fst gp))
-                 $ unground aSpecParas (aArgs action) (snd gp)
+        unground' = ungroundNExpand aSpecParas (aArgs action)
 
         (posUnkns, posKns) = posKnowledge
         (negUnkns, negKns) = negKnowledge
         rel unkns = Set.unions
                   $ Set.toList
                   $ Set.map unground'
-                  $ ground unkns `Set.intersection` s
+                  $ ground domain unkns `Set.intersection` s
 
         posRelevant = rel posUnkns
         negRelevant = rel negUnkns

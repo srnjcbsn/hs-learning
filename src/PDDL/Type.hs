@@ -54,6 +54,7 @@ data Problem = Problem
     } deriving (Show, Eq)
 
 type Plan = [Action]
+type Transition = (State, Action, Maybe State)
 
 pName :: FluentPredicate -> Name
 pName = fst
