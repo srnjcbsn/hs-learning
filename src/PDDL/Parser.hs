@@ -1,9 +1,13 @@
-module PDDL.Parser where
+module PDDL.Parser
+    ( module PDDL.Parser
+    , Text.ParserCombinators.Parsec.ParseError
+    ) where
 
+import           Control.Applicative           ((*>), (<*))
 import           Control.Monad                 (liftM2)
+import qualified Data.Set                      as Set
 import           PDDL.Type
 import           Text.ParserCombinators.Parsec
-import qualified Data.Set as Set
 
 acceptableRequirements :: [String]
 acceptableRequirements = [":strips"]
@@ -11,17 +15,18 @@ acceptableRequirements = [":strips"]
 parens :: Parser a -> Parser a
 parens p = between (char '(') (char ')') p
 
-eol :: Parser Char
-eol = char '\n'
+-- | Parses a string starting with a ';' character and ending with a newline.
+-- Returns the string without the leading ';' character and the trailing newline.
+comment :: Parser String
+comment = char ';' >> manyTill anyChar newline
+
+-- | Parses any number of comments surrounded by any amount of whitespace.
+-- returns the list of parsed comments
+comments :: Parser [String]
+comments = spaces *> endBy comment spaces
 
 parseRequirement :: Parser String
 parseRequirement = choice $ map string acceptableRequirements
-
--- parseIdentifier :: Parser Char -> Parser String
--- parseIdentifier p =
---     do first <- p
---        rest  <- many alphaNum
---        return (first : rest)
 
 parseName :: Parser String
 parseName = do
@@ -32,15 +37,25 @@ parseName = do
 parseArgRef = char '?' >> parseName
 
 parseArgument :: Parser Argument
-parseArgument = -- parseConstant <|> parseArgRef
+parseArgument =
         (parseName   >>= return . Const)
     <|> (parseArgRef >>= return . Ref)
 
-parseGroundedFluent = parens $ do
+groundedNamed :: Parser (Name, [String])
+groundedNamed = parens $ do
     name <- parseName
     spaces
     params <- sepBy parseName spaces
     return (name, params)
+
+-- | Parse a grounded predicate. This is an alias for 'groundedNamed'
+groundedPredicate :: Parser GroundedPredicate
+groundedPredicate = groundedNamed
+
+-- | Parse an action applied to a list of arguments.
+-- This is an alias for 'groundedNamed'
+action :: Parser Action
+action = groundedNamed
 
 parsePredicateSpec :: Parser PredicateSpec
 parsePredicateSpec = do
@@ -51,6 +66,7 @@ parsePredicateSpec = do
     char ')'
     return (name, params)
 
+parseFluent :: Parser FluentPredicate
 parseFluent =
     parens $ do
         name <- parseName
@@ -58,12 +74,14 @@ parseFluent =
         args <- parseArgument `sepBy` spaces
         return (name, args)
 
+parseConjunction :: Parser Formula
 parseConjunction =
     parens $ string "and"
              >> spaces
              >> parseFormula `sepBy` spaces
              >>= return . Con
 
+parseNegation :: Parser Formula
 parseNegation =
     parens $ string "not"
              >> spaces
@@ -75,6 +93,7 @@ parseFormula =
         try parseConjunction
     <|> try parseNegation
     <|> (parseFluent >>= return . Predicate)
+
 
 parseActionSpec :: Parser ActionSpec
 parseActionSpec =
@@ -130,14 +149,17 @@ parseProblem =
         spaces
         objs <- parens $ string ":objects " >> parseName `sepBy` spaces
         spaces
-        ini <- parens $ string ":init " >> parseGroundedFluent `sepBy` spaces
+        ini <- parens $ string ":init " >> groundedPredicate `sepBy` comments
         spaces
-        g <- parens $ string ":goal " >> parseGroundedFluent `sepEndBy` spaces
-        spaces
+        g <- parens $ string ":goal " >> groundedPredicate `sepEndBy` comments
+        _ <- comments
         return Problem { probName = name
                        , probInitialState = Set.fromList ini
                        , probGoalState = Set.fromList g
                        }
+
+plan :: Parser Plan
+plan = action `endBy` comments
 
 doParse :: Parser a -> String -> Either ParseError a
 doParse ps = parse ps "pddl"

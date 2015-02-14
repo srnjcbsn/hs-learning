@@ -23,12 +23,17 @@ library
                  , PDDL.Samples.BlocksWorld
                  , Learning.Induction
                  , Learning.Algorithms
+                 , FastDownward
 
   default-language: Haskell2010
   hs-source-dirs: src
   build-depends: base >=4.7 && <4.8
                , containers >=0.5 && <0.6
                , parsec >=3.1 && <3.2
+               , process
+               , directory
+               , temporary
+               , filepath
                , hspec
                , QuickCheck
 
@@ -41,6 +46,7 @@ executable hs-learning
                , parsec >=3.1 && <3.2
                , hspec
                , QuickCheck
+               , process
   hs-source-dirs:      src
   default-language:    Haskell2010
 
@@ -51,6 +57,7 @@ test-suite tests
                  , QuickCheck
                  , containers
                  , pretty-show
+                 , process
 
     default-language: Haskell2010
     hs-source-dirs:   testsuite
