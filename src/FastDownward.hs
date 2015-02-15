@@ -10,13 +10,30 @@ import System.FilePath.Posix
 import PDDL.Type
 import PDDL.Parser
 
-sasFilePath = "output.sas"
-outputFilePath = "output"
+-- | A record describing how the fast-downard program should be called.
+data FastDownward = FastDownWard
+    { fdPath     :: FilePath -- ^ The path to the fast-downward program
+    , domFile    :: FilePath -- ^ Path to a .pddl file desribing a domain
+    , probFile   :: FilePath -- ^ Path to a .pddl file describing a problem
+    , searchAlgo :: String   -- ^ The search algorithm to be used by the fast-
+                             --   downward program. See the fast-downward
+                             --   documentation for valid values.
+    , planName   :: String   -- ^ The name of the plan file to be produced
+                             --   by fast-downward
+    }
 
-searchArgs searchAlgo planFile =
-    [ "--internal-plan-file", planFile
-    , "--search", searchAlgo
+-- | Constructs a list of cammand line arguments to invoke fast-downward with.
+fdArgs :: FastDownward
+       -> FilePath -- ^ The directory in which the temporary files (and the
+                   --   plan file) should be kept.
+       -> [String]
+fdArgs fd tmp =
+    [ "--run-all"
+    , "--plan-file", tmp </> planName fd
+    , domFile fd, probFile fd
+    , "--search", searchAlgo fd
     ]
+
 
 domainToFile :: Domain -> String -> IO ()
 domainToFile domain path =
@@ -29,58 +46,21 @@ domainFromFile path = do
          Left err  -> error $ show err
          Right val -> return val
 
-fastDownWard :: FilePath        -- ^ The path to the fast-downward program
-             -> FilePath        -- ^ Path to a .pddl file desribing a domain
-             -> FilePath        -- ^ Path to a .pddl file describing a problem
+-- | Given a description of the fast downward invocation, creates a temporary
+--   directory (in the current directory) in which the output from fast-downard
+--   is stored.
+--   After the plan output by fd has been parsed, the temporary directory is
+--   removed (including the plan file).
+fastDownward :: FastDownward
              -> String          -- ^ a template for the name of the temp dir
              -> IO (Maybe Plan) -- ^ The plan constructed by fd,
                                 -- or 'Nothing' if no plan could be found
-fastDownWard fd dom prob temp =
+fastDownward fd temp =
     withTempDirectory "." temp mkPlan
-    where args tmp = [ "--run-all"
-                   , "--plan-file", tmp </> "plan"
-                   , dom, prob
-                   , "--search", "astar(blind())"
-                   ]
-          mkPlan tmp = do
-            _ <- callProcess fd $ args tmp
-            parsePlan $ tmp </> "plan"
+    where mkPlan tmp = do
+            _ <- callProcess (fdPath fd) $ fdArgs fd tmp
+            parsePlan $ tmp </> planName fd
 
-
--- | Invokes the fast-downward translator with the file paths given as arguments.
---   The first file path should point to a '.pddl' file containing a domain
---   description, and the second to a '.pddl' file describing a corresponding
---   problem. This will place a file called "output.sas" in the current
---   directory.
-translate :: FilePath -> FilePath -> IO ()
-translate domainFile problemFile =
-    callProcess "fd/translate" [domainFile, problemFile]
-
--- | Invoke the fast-downward preprocessor. This will look for the file
---   "output.sas" in the current directory (as produced by the fast-downward)
---   translation step). If this file cannot be found, an IOError is thrown.
---   If successfull, a file named "output" is placed in the current directory,
---   which can be fed to the fast-downward search program.
-preprocess :: IO ()
-preprocess = do
-    sas <- openFile sasFilePath ReadMode
-    _ <- createProcess (proc "fd/preprocess" []) {std_in = UseHandle sas}
-    return ()
-
--- | Invoke the fast-downward planner with the given search algorithm.
---
--- > search searchAlgo planFile
---
--- will invoke the planner with 'searchAlgo' and write the produced
--- plan (if any) to 'planFile'. This function will look for a file named
--- "output" in the current directory (as produced in the fast-downward
--- preprocessing step). If this file cannot be found, an 'IOError' is thrown.
-search :: String -> FilePath -> IO ()
-search searchAlgo planFile = do
-    outp <- openFile outputFilePath ReadMode
-    _ <- createProcess (proc "fd/search"  $ searchArgs searchAlgo planFile)
-         {std_in = UseHandle outp}
-    return ()
 
 -- | Parses a plan in a given file. Returns 'Nothing' if the file does not exists,
 --   and raises an 'IOError' if the file could not be parsed, propagating the
