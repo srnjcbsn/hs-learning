@@ -52,8 +52,10 @@ problemSpecStr =
 
 problemSpecRes =
     Problem { probName = "prob"
+            , probObjs = ["x", "y"]
+            , probDomain = "dom"
             , probInitialState = Set.singleton ("test1", ["x", "y"])
-            , probGoalState = Set.singleton ("test2", ["x", "y"])
+            , probGoal = Predicate ("test2", [Const "x", Const "y"])
             }
 
 testParsePredicateSpec :: Spec

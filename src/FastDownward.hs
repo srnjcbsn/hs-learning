@@ -34,6 +34,8 @@ fdArgs fd tmp =
     , "--search", searchAlgo fd
     ]
 
+-- makePlan :: Domain -> Problem -> IO (Maybe Plan)
+-- makePlan =
 
 domainToFile :: Domain -> String -> IO ()
 domainToFile domain path =
@@ -61,22 +63,22 @@ fastDownward fd temp =
             _ <- callProcess (fdPath fd) $ fdArgs fd tmp
             parsePlan $ tmp </> planName fd
 
-
+-- TODO: If the file can be read, but not parsed, print the contents
 -- | Parses a plan in a given file. Returns 'Nothing' if the file does not exists,
 --   and raises an 'IOError' if the file could not be parsed, propagating the
 --   parser error.
 parsePlan :: FilePath -> IO (Maybe Plan)
 parsePlan planFile =
     (readFile planFile >>= parsePlan') `catchIOError` errHandler
-      where parsePlan' str =
-              case doParse plan str of
-              Left perr   -> ioError $ parseErr perr
-              Right plan' -> return $ Just plan'
+    where parsePlan' str =
+            case doParse plan str of
+            Left perr   -> ioError $ parseErr perr
+            Right plan' -> return $ Just plan'
 
-            parseErr :: ParseError -> IOError
-            parseErr err = userError $ "Failed to parse plan: \n" ++ show err
+          parseErr :: ParseError -> IOError
+          parseErr err = userError $ "Failed to parse plan: \n" ++ show err
 
-            errHandler :: IOError -> IO (Maybe Plan)
-            errHandler e
+          errHandler :: IOError -> IO (Maybe Plan)
+          errHandler e
                 | isDoesNotExistError e = return Nothing
                 | otherwise = ioError e

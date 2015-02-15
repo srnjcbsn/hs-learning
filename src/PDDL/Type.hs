@@ -49,8 +49,10 @@ type State = Set GroundedPredicate
 
 data Problem = Problem
     { probName         :: String
+    , probObjs         :: [Object]
+    , probDomain       :: String
     , probInitialState :: State
-    , probGoalState    :: State
+    , probGoal         :: Formula
     } deriving (Show, Eq)
 
 type Plan = [Action]
@@ -77,18 +79,22 @@ actionSpec domain name = find ((== name) . asName) (dmActionsSpecs domain)
 
 type Planner = Domain -> Problem -> Maybe [Action]
 
-updateAction :: ActionSpec -> State -> State -> State -> ActionSpec
-updateAction action oldState internalState actualState = undefined
+-- updateAction :: ActionSpec -> State -> State -> State -> ActionSpec
+-- updateAction action oldState internalState actualState = undefined
 
 -- showParameters :: [String] -> String
 -- showParameters ls = unwords $ map ("?" ++) ls
+
+writeState :: State -> String
+writeState state =
+    unwords $ map writeGroundedPredicate $ Set.toList state
 
 writeArgument :: Argument -> String
 writeArgument (Ref r)   = "?" ++ r
 writeArgument (Const c) = c
 
 writeArgumentList :: [Argument] -> String
-writeArgumentList as = intercalate " " (map writeArgument as)
+writeArgumentList as = unwords (map writeArgument as)
 
 writeParameterList :: [String] -> String
 writeParameterList ps = writeArgumentList $ map Ref ps
@@ -96,6 +102,10 @@ writeParameterList ps = writeArgumentList $ map Ref ps
 writeFluentPredicate :: FluentPredicate -> String
 writeFluentPredicate (name, as) =
     "(" ++ name ++ " " ++ writeArgumentList as ++ ")"
+
+writeGroundedPredicate :: GroundedPredicate -> String
+writeGroundedPredicate (n, objs) =
+    "(" ++ n ++ " " ++ unwords objs  ++ ")"
 
 writePredicateSpec :: PredicateSpec -> String
 writePredicateSpec (name, ps) =
@@ -113,6 +123,16 @@ writeFormula :: Formula -> String
 writeFormula (Predicate f) = writeFluentPredicate f
 writeFormula (Neg f) = "(not " ++ writeFormula f ++ ")"
 writeFormula (Con fs) = "(and " ++ unwords (map writeFormula fs) ++ ")"
+
+writeProblem :: Problem -> String
+writeProblem prob =
+    let defineStr = "(define (problem " ++ probName prob ++ ")"
+        domStr    = "(:domain " ++ probDomain prob ++ ")"
+        objsStr   = "(:objects " ++ unwords (probObjs prob) ++ ")"
+        initStr   = "(:init " ++ writeState (probInitialState prob) ++ ")"
+        goalStr   = "(:goal " ++ writeFormula (probGoal prob) ++ ")"
+    in intercalate "\n\t" [defineStr, domStr, objsStr, initStr, goalStr] ++ ")"
+
 
 writeDomain :: Domain -> String
 writeDomain domain =

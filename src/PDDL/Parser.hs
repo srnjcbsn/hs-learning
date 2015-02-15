@@ -151,11 +151,13 @@ parseProblem =
         spaces
         ini <- parens $ string ":init " >> groundedPredicate `sepBy` comments
         spaces
-        g <- parens $ string ":goal " >> groundedPredicate `sepEndBy` comments
+        g <- parens $ string ":goal " >> parseFormula
         _ <- comments
         return Problem { probName = name
+                       , probDomain = dom
+                       , probObjs = objs
                        , probInitialState = Set.fromList ini
-                       , probGoalState = Set.fromList g
+                       , probGoal = g
                        }
 
 plan :: Parser Plan
