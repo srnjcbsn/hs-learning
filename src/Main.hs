@@ -1,5 +1,5 @@
 import PDDL.Type
-import FastDownward
+import Planning.FastDownward
 import PDDL.Samples.SimpleBox
 
 main :: IO ()
