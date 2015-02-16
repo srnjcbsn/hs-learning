@@ -1,6 +1,44 @@
-module PDDL.Type where
+module PDDL.Type
+    (
+    -- * Basic Types
+      Name
+    , Type
+    , Object
 
-import Data.List (intercalate, find)
+    -- * Formulae
+    , Formula (..)
+    , FluentPredicate
+    , Argument (Const, Ref)
+    , pName
+    , pArgs
+
+    -- * Composite types
+    , Domain (..)
+    , Problem (..)
+    , PredicateSpec
+    , ActionSpec (..)
+    , paramNames
+    , actionSpec
+
+    -- * Grounded data
+    , GroundedPredicate
+    , GroundedChanges
+    , GroundedAction
+    , State
+    , Plan
+    , Transition
+
+    -- ** Actions
+    , Action
+    , aName
+    , aArgs
+
+    -- * Functions for converting PDDL types to 'String's
+    , writeDomain
+    , writeProblem
+    )where
+
+import           Data.List (find, intercalate)
 import           Data.Set  (Set)
 import qualified Data.Set  as Set
 
@@ -23,8 +61,8 @@ type PredicateSpec = (Name, [Name])
 
 
 data ActionSpec = ActionSpec
-    { asName   :: String
-    , asParas  :: [Name]
+    { asName    :: String
+    , asParas   :: [Name]
     , asPrecond :: Formula
     , asEffect  :: Formula
     } deriving (Show, Eq, Ord)
@@ -56,6 +94,10 @@ data Problem = Problem
     } deriving (Show, Eq)
 
 type Plan = [Action]
+
+-- | A state transition is a the old state, the action that was applied to that
+--   state, and --- depending on the applicability of the action --- 'Just' an
+--   an updated state with the actions effects applied, or 'Nothing'.
 type Transition = (State, Action, Maybe State)
 
 pName :: FluentPredicate -> Name
@@ -76,14 +118,6 @@ paramNames = snd
 
 actionSpec :: Domain -> Name -> Maybe ActionSpec
 actionSpec domain name = find ((== name) . asName) (dmActionsSpecs domain)
-
-type Planner = Domain -> Problem -> Maybe [Action]
-
--- updateAction :: ActionSpec -> State -> State -> State -> ActionSpec
--- updateAction action oldState internalState actualState = undefined
-
--- showParameters :: [String] -> String
--- showParameters ls = unwords $ map ("?" ++) ls
 
 writeState :: State -> String
 writeState state =
