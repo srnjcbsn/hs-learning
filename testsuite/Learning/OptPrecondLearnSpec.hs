@@ -56,12 +56,7 @@ testPrecondLearnSpec = do
                 expected = (Set.delete (p Ref "x" "y") $ (fst negs), Set.empty)
                 (_, actual, _) = updatePreDomainHyp initDomain kn0 transition ! "as"
              in actual `shouldBe` expected
-
-
-
-
-
-
+             
 spec :: Spec
 spec = testPrecondLearnSpec
 

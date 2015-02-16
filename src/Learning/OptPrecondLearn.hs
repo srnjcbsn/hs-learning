@@ -38,7 +38,10 @@ initialPreDomainHyp dom =
     in Map.fromList $ fmap mapper (dmActionsSpecs dom)
 
 constructSchema :: PreKnowledge -> ActionSpec -> ActionSpec
-constructSchema = undefined
+constructSchema ((_, posKnown), (_, negKnown), _) aSpec =
+    aSpec { asPrecond = Con predList }
+    where predList =  Set.toList (Set.map Predicate posKnown)
+                   ++ Set.toList (Set.map (Neg . Predicate) negKnown)
 
 
 withoutSuperSetsOf :: CNF -> (Set FluentPredicate, Set FluentPredicate) -> CNF
