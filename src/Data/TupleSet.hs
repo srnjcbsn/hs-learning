@@ -21,3 +21,6 @@ size (s1,s2) = Set.size s1 + Set.size s2
 
 difference :: Ord a => (Set a, Set a) -> (Set a, Set a) -> (Set a, Set a)
 difference (s1a,s1b) (s2a,s2b) = (s1a `Set.difference` s2a, s1b `Set.difference` s2b )
+
+empty :: Ord a => (Set a, Set a)
+empty = (Set.empty, Set.empty)

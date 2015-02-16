@@ -19,11 +19,11 @@ p f x y = ("p", [f x,f y])
 pP x y = Predicate $ p Ref x y
 
 initActspec effects = ActionSpec
- { asName = "as"
- , asParas = ["x", "y", "z"]
- , asPrecond = Con []
- , asEffect = Con effects
- }
+    { asName = "as"
+    , asParas = ["x", "y", "z"]
+    , asPrecond = Con []
+    , asEffect = Con effects
+    }
 
 
 

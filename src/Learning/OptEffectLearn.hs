@@ -66,7 +66,8 @@ updateEffectHyp domain ak transition =
         unions = Set.unions . Set.toList
 
         gAdd :: Set GroundedPredicate
-        gAdd = fst . snd $ instantiateAction domain aSpec action
+        gAdd = fst $
+            instantiateFormula domain aSpecParas (aArgs action) (asEffect aSpec)
         kAdd = newState \\ oldState
         uAdd = newState `Set.intersection` oldState `Set.intersection` gAdd
 

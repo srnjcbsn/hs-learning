@@ -7,13 +7,14 @@ module PDDL.Logic ( isActionValid
                   , applyAction
                   ) where
 
-import PDDL.Type
-import qualified Data.List as List
-import           Data.Map  (Map)
-import qualified Data.Map as Map
-import           Data.Set  (Set)
-import qualified Data.Set as Set
-import           Data.Tuple (swap)
+import qualified Data.List     as List
+import           Data.Map      (Map)
+import qualified Data.Map      as Map
+import           Data.Maybe    (fromJust)
+import           Data.Set      (Set)
+import qualified Data.Set      as Set
+import           Data.Tuple    (swap)
+import           PDDL.Type
 
 import qualified Data.TupleSet as Set2
 
@@ -39,7 +40,7 @@ insAct :: Map Argument Object -> ActionSpec -> Action -> GroundedAction
 insAct m as act = ga
   where
     pairs = List.zip (List.map Ref $ asParas as) (aArgs act)
-    paraMap = Map.fromAscList pairs
+    paraMap = Map.fromList pairs
     fullMap = Map.union paraMap m
     ga = (insForm fullMap (asPrecond as), insForm fullMap (asEffect as))
 
@@ -60,10 +61,15 @@ domainMap :: Domain -> Map Argument Object
 domainMap domain = Map.fromList $ List.map (\n -> (Const n, n)) (dmConstants domain)
 
 -- | Instantiates a formula into the actual positive and negative changes
-instantiateFormula :: Domain -> Formula -> GroundedChanges
-instantiateFormula domain form =
-  let mapDomain = domainMap domain in
-    insForm mapDomain form
+instantiateFormula :: Domain
+                   -> [Name]          -- ^ Parameters
+                   -> [Name]          -- ^ Arguments
+                   -> Formula
+                   -> GroundedChanges
+instantiateFormula domain paras args form = insForm fullMap form
+    where pairs = List.zip (List.map Ref paras) args
+          paraMap = Map.fromList pairs
+          fullMap = Map.union paraMap $ domainMap domain
 
 -- | Instantiates a formula into the actual positive and negative changes
 instantiateAction :: Domain -> ActionSpec -> Action  -> GroundedAction
@@ -71,8 +77,14 @@ instantiateAction domain as a =
   let mapDomain = domainMap domain in
     insAct mapDomain as a
 
-ground :: Domain -> Set FluentPredicate -> Set GroundedPredicate
-ground domain fluents = fst $ instantiateFormula domain (Con $ List.map Predicate $ Set.toList fluents)
+ground :: Domain
+       -> Action
+       -> Set FluentPredicate
+       -> Set GroundedPredicate
+ground domain (name, args) fluents =
+    fst $ instantiateFormula domain paras args
+        (Con $ List.map Predicate $ Set.toList fluents)
+    where paras = asParas (fromJust $ actionSpec domain name)
 
 
 
