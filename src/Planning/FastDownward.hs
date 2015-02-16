@@ -1,16 +1,21 @@
 module Planning.FastDownward where
 
-import System.Process
-import System.IO.Error
-import System.IO.Temp
-import System.FilePath.Posix
+import           System.FilePath.Posix
+import           System.IO.Error
+import           System.IO.Temp
+import           System.Process
 
-import PDDL.Type
-import PDDL.Parser
+import           PDDL.Parser
+import           PDDL.Type
+
+class ExtPlanner ep where
+    makePlan :: ep -> Domain -> Problem -> IO (Maybe Plan)
 
 -- | A record describing how the fast-downard program should be called.
 data FastDownward = FastDownward
     { fdPath     :: FilePath -- ^ The path to the fast-downward program
+    , workDir    :: FilePath -- ^ The directory in which fast-downward should
+                             --   be executed.
     , domFile    :: FilePath -- ^ Path to a .pddl file desribing a domain
     , probFile   :: FilePath -- ^ Path to a .pddl file describing a problem
     , searchAlgo :: String   -- ^ The search algorithm to be used by the fast-
@@ -19,6 +24,31 @@ data FastDownward = FastDownward
     , planName   :: String   -- ^ The name of the plan file to be produced
                              --   by fast-downward
     }
+
+instance ExtPlanner FastDownward where
+    makePlan = makePlan'
+
+-- | construct a default 'FastDownward' record, where
+--
+-- * the path to the fast-downward program is @fd/fast-downward.py@
+--
+-- * the working directory is the current directory,
+--
+-- * the name of the domain and problem files are generated from their
+--   respective names
+--
+-- * the search algorithm is @astar(blind())@
+--
+-- * the name of the generated plan is "plan"
+mkFastDownard :: Domain -> Problem -> FastDownward
+mkFastDownard dom prob =
+    FastDownward { fdPath = "fd/fast-downward.py"
+                 , workDir = "."
+                 , domFile = dmName dom ++ ".pddl"
+                 , probFile = probName prob ++ ".pddl"
+                 , searchAlgo = "astar(blind())"
+                 , planName = "plan"
+                 }
 
 -- | Constructs a list of cammand line arguments to invoke fast-downward with.
 --   The argugments are of the form
@@ -35,23 +65,20 @@ fdArgs fd tmp =
     , "--search", searchAlgo fd
     ]
 
--- | This is a convenience function for calling fast-downward. It writes the
---   given domain and problem specifications to files and constructs a
---   'FastDownward' record with which it passes to 'fastDownward'.
-makePlan :: FilePath  -- ^ The path to the fast-downward program
-         -> String    -- ^ The search algorithm to be used by fast-downward.
-         -> String    -- ^ A template for the name of the temp dir
-         -> Domain
-         -> Problem
-         -> IO (Maybe Plan)
-makePlan fdPath searchAlgo temp dom prob =
-    let domFile = dmName dom
-        probFile = probName prob
-        fd = FastDownward fdPath domFile probFile searchAlgo "plan"
-    in do
-        writeFile (dmName dom) (writeDomain dom)
-        writeFile (probName prob) (writeProblem prob)
-        fastDownward fd temp
+-- | Write the given domain and problem specifications to the files specified in
+--   in the given 'FastDownward' record, and call 'fastDownward'.
+makePlan' :: FastDownward -> Domain -> Problem -> IO (Maybe Plan)
+makePlan' fd dom prob = do
+    writeFile (domFile fd) (writeDomain dom)
+    writeFile (probFile fd) (writeProblem prob)
+    fastDownward fd "plan"
+    -- let domFile = dmName dom
+    --     probFile = probName prob
+    --     fd = FastDownward fdPath domFile probFile searchAlgo "plan"
+    -- in do
+    --     writeFile (dmName dom) (writeDomain dom)
+    --     writeFile (probName prob) (writeProblem prob)
+    --     fastDownward fd temp
 
 
 domainToFile :: Domain -> String -> IO ()
@@ -65,8 +92,6 @@ domainFromFile path = do
          Left err  -> error $ show err
          Right val -> return val
 
--- TODO: This should probably not be in the current dir (for multiple instances)
---       Otherwise, the CWD needs to be set before calling this function.
 -- | Given a description of the fast downward invocation, creates a temporary
 --   directory (in the current directory) in which the output from fast-downard
 --   is stored.
@@ -77,9 +102,10 @@ fastDownward :: FastDownward
              -> IO (Maybe Plan) -- ^ The plan constructed by fd,
                                 -- or 'Nothing' if no plan could be found
 fastDownward fd temp =
-    withTempDirectory "." temp mkPlan
+    withTempDirectory (workDir fd) temp mkPlan
     where mkPlan tmp = do
-            _ <- callProcess (fdPath fd) $ fdArgs fd tmp
+            _ <- createProcess (proc (fdPath fd) $ fdArgs fd tmp)
+                {cwd = Just (workDir fd)} -- set the working directory
             parsePlan $ tmp </> planName fd
 
 -- TODO: If the file can be read, but not parsed, print the contents
