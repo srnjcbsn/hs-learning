@@ -45,7 +45,8 @@ constructSchema ((_, posKnown), (_, negKnown), _) aSpec =
 
 
 withoutSuperSetsOf :: CNF -> (Set FluentPredicate, Set FluentPredicate) -> CNF
-withoutSuperSetsOf cnfSets subset = Set.filter (not . TSet.isSubSetOf subset) cnfSets
+withoutSuperSetsOf cnfSets subset =
+    Set.filter (not . TSet.isSubSetOf subset) cnfSets
 
 
 addToCandiates :: CNF -> (Set FluentPredicate, Set FluentPredicate) -> CNF
@@ -83,7 +84,7 @@ updatePreDomainHyp dom hyp transition =
     in Map.insert name (updatePrecHypothesis dom pkn transition) hyp
 
 updatePrecHypothesis :: Domain -> PreKnowledge -> Transition -> PreKnowledge
-updatePrecHypothesis domain pk@(posKnowledge, negKnowledge, cnfs) (s, action, s') =
+updatePrecHypothesis domain (posKnowledge, negKnowledge, cnfs) (s, action, s') =
     let aSpecParas = asParas $ fromJust $ actionSpec domain (aName action)
         unground' :: GroundedPredicate -> Set FluentPredicate
         unground' = ungroundNExpand aSpecParas (aArgs action)
@@ -99,12 +100,15 @@ updatePrecHypothesis domain pk@(posKnowledge, negKnowledge, cnfs) (s, action, s'
         negRelevant = rel negUnkns
     in case s' of
          Nothing  -> ((posUnkns,posKns'), (negUnkns, negKns'), cnfs')
-            where -- All preds which are not in the state must be positive candidates
+            where -- All predicates that are in the state are candidates
+                  -- for being positive preconditions
                   posCands = posUnkns \\ posRelevant
-                  -- All preds which are in the state must be negative candidates
+
+                  -- All predicates that are not in the state are candidates
+                  -- for being negative preconditions
                   negCands = negUnkns `Set.intersection` negRelevant
-                  cands = (posCands,negCands)
-                  (posKns',negKns',cnfs')
+                  cands = (posCands, negCands)
+                  (posKns', negKns', cnfs')
                     | isSingleton cands =
                         ( Set.union posKns posCands
                         , Set.union negKns negCands, removeSetsWithKnowns cnfs cands

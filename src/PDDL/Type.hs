@@ -116,6 +116,8 @@ aName = fst
 paramNames :: PredicateSpec -> [Name]
 paramNames = snd
 
+-- | Returns the action specification with the given name in the domain,
+--   or 'Nothing' if it could not be found.
 actionSpec :: Domain -> Name -> Maybe ActionSpec
 actionSpec domain name = find ((== name) . asName) (dmActionsSpecs domain)
 

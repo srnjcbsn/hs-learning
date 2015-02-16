@@ -27,9 +27,9 @@ type DomainHypothesis = Map Name EffectHypothesis
 --   and a set of fluents which is suspected to be unambiguous.
 --   once determined they/it will be added to its respective set
 extractUnambiguous :: Set FluentPredicate
-       -> (Set FluentPredicate, Set FluentPredicate)
-       -> Set FluentPredicate
-       -> (Set FluentPredicate, Set FluentPredicate)
+                   -> (Set FluentPredicate, Set FluentPredicate)
+                   -> Set FluentPredicate
+                   -> (Set FluentPredicate, Set FluentPredicate)
 extractUnambiguous unk (uAmb,amb) test =
     case unambiguate unk test of
         Left uap  -> (Set.insert uap uAmb, amb)
@@ -66,8 +66,7 @@ updateEffectHyp domain ak transition =
         unions = Set.unions . Set.toList
 
         gAdd :: Set GroundedPredicate
-        gAdd = fst $
-            instantiateFormula domain aSpecParas (aArgs action) (asEffect aSpec)
+        gAdd = addList aSpec action domain
         kAdd = newState \\ oldState
         uAdd = newState `Set.intersection` oldState `Set.intersection` gAdd
 
@@ -114,6 +113,7 @@ updateDomain dom as =
     dom { dmActionsSpecs =
             as : deleteBy ((==) `on` asName) as (dmActionsSpecs dom)
         }
+
 -- | Changes all the domain's action specs effect based on the hypothesis
 domainFromKnowledge :: Domain -> DomainHypothesis -> Domain
 domainFromKnowledge dom dHyp =
@@ -139,7 +139,7 @@ updateEffectHypHelper :: Domain
                       -> Transition
                       -> DomainHypothesis
 updateEffectHypHelper dom dHyp transition = Map.insert (aName action) aHyp' dHyp
-    where (oldState, action, newState) = transition
+    where (_, action, _) = transition
           aHyp = effectHypothesis dHyp action
           aHyp' = updateEffectHyp dom aHyp transition
 

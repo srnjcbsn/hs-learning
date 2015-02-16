@@ -1,13 +1,13 @@
 module PDDL.LogicSpec (main, spec) where
 
+import           Control.Exception
+import           Data.Set              (Set)
+import qualified Data.Set              as Set
 import           PDDL.Logic
 import           PDDL.Type
 import           Test.Hspec
 import           Test.Hspec.QuickCheck
 import           Test.QuickCheck
-import qualified Data.Set  as Set
-import           Data.Set  (Set)
-import Control.Exception
 
 
 
@@ -57,13 +57,14 @@ testLogicSpec = do
             action = getAction testObj in
           apply domain initState action `shouldBe` Just emptyState
 
-      it "fails on action with ambiguous effects" $
-        let truePred = getGroundPred [testObj]
-            initState = getState [truePred]
+      it "applies the negative effects first, then the positive" $
+        let initState = Set.empty
             actSpec = getActSpec [] [Neg $ actionEffectA, actionEffectA] -- same predicate for pos and neg
             domain = getDomain [actSpec]
-            action = getAction testObj in
-          evaluate (apply domain initState action) `shouldThrow` errorCall ("ambiguous effects in " ++ aName action ++ ": " ++ show [truePred])
+            action = getAction testObj
+            expectedState = getState [getGroundPred [testObj]]
+        in
+          apply domain initState action `shouldBe` Just expectedState
 
       it "gives nothing when the action's preconditions are not satisfied" $
         let actSpec = getActSpec [actionCondionA] []

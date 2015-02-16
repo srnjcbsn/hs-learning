@@ -22,11 +22,7 @@ import qualified Data.TupleSet as Set2
 
 -- | Finds the action spec of an action in a domain
 findActionSpec :: Domain -> Action -> Maybe ActionSpec
-findActionSpec domain action = actionsSpec
-  where
-    specs = dmActionsSpecs domain
-    actname = aName action
-    actionsSpec = List.find (\as -> asName as == actname) specs
+findActionSpec domain (name, _) = actionSpec domain name
 
 
 -- | Instantiates a formula into the actual positive and negative changes
@@ -46,7 +42,7 @@ insAct m as act = ga
 
 -- | Checks if the preconditions of a grounded action are satisfied
 isActionValid :: State -> GroundedAction -> Bool
-isActionValid s ((posCond,negCond),(posEff,negEff)) =
+isActionValid s ((posCond, negCond), _) =
   Set.isSubsetOf posCond s &&
   Set.null (Set.intersection negCond s)
 
@@ -72,10 +68,10 @@ instantiateFormula domain paras args form = insForm fullMap form
           fullMap = Map.union paraMap $ domainMap domain
 
 -- | Instantiates a formula into the actual positive and negative changes
-instantiateAction :: Domain -> ActionSpec -> Action  -> GroundedAction
+instantiateAction :: Domain -> ActionSpec -> Action -> GroundedAction
 instantiateAction domain as a =
-  let mapDomain = domainMap domain in
-    insAct mapDomain as a
+  let mapDomain = domainMap domain
+  in  insAct mapDomain as a
 
 ground :: Domain
        -> Action
@@ -89,18 +85,8 @@ ground domain (name, args) fluents =
 
 
 -- | Takes an action, grounds it and then if the precondions are satisfied applies it to a state
---   If there are ambiguous effect an error is thrown
 apply :: Domain -> State -> Action -> Maybe State
-apply domain curState action = newState
-  where
-    mapDomain = domainMap domain
-    newState = case findActionSpec domain action of
-                Just actSpec -> out
-                  where
-                    gact@(_,(pos,neg)) = insAct mapDomain actSpec action
-                    ambiguousEffects = Set.intersection pos neg
-                    out = if Set.null ambiguousEffects
-                          then applyAction curState gact
-                          else error $ "ambiguous effects in " ++ aName action ++ ": " ++ show (Set.toList ambiguousEffects)
-
-                Nothing      -> Nothing
+apply domain state action =
+    case findActionSpec domain action of
+        Just aSpec -> applyAction state $ instantiateAction domain aSpec action
+        Nothing    -> Nothing
