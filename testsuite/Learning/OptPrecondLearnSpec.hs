@@ -39,7 +39,7 @@ expected = (TSet.empty, TSet.empty, Set.empty)
 testPrecondLearnSpec :: Spec
 testPrecondLearnSpec = do
     describe "update predicate hypothesis" $ do
-        it "can prove that a positive predicate can not a precondition" $ do
+        it "can prove that a positive predicate can not be a precondition" $ do
             let s0 = Set.empty
                 s1 = Set.empty
                 kn0 = initialPreDomainHyp initDomain
@@ -47,7 +47,7 @@ testPrecondLearnSpec = do
                 expected = TSet.empty
                 (actual, _, _) = updatePreDomainHyp initDomain kn0 transition ! "as"
              in actual `shouldBe` expected
-        it "can prove that a negative predicate can not a precondition" $ do
+        it "can prove that a negative predicate can not be a precondition" $ do
             let s0 = Set.singleton $ p id "a" "b"
                 s1 = Set.empty
                 kn0 = initialPreDomainHyp initDomain
@@ -56,7 +56,7 @@ testPrecondLearnSpec = do
                 expected = (Set.delete (p Ref "x" "y") $ (fst negs), Set.empty)
                 (_, actual, _) = updatePreDomainHyp initDomain kn0 transition ! "as"
              in actual `shouldBe` expected
-             
+
 spec :: Spec
 spec = testPrecondLearnSpec
 
