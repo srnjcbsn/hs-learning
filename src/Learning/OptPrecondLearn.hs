@@ -69,7 +69,7 @@ extractKnowns cnfs = (posKns, negKns, newCnfs')
     singletons = Set.filter isSingleton cnfs
     -- remove empty sets and singletons
     newCnfs = Set.filter ((> 1) . TSet.size ) cnfs
-    kns@(posKns, negKns) = Set.foldl TSet.union (Set.empty, Set.empty) singletons
+    kns@(posKns, negKns) = Set.foldl TSet.union TSet.empty singletons
     -- If a set of candidates suddenly contain knowns
     -- then the other candidates become worthless (as they could all be false)
     newCnfs' = removeSetsWithKnowns newCnfs kns
@@ -99,24 +99,28 @@ updatePrecHypothesis domain (posKnowledge, negKnowledge, cnfs) (s, action, s') =
         posRelevant = rel posUnkns
         negRelevant = rel negUnkns
     in case s' of
-         Nothing  -> ((posUnkns,posKns'), (negUnkns, negKns'), cnfs')
-            where -- All predicates that are in the state are candidates
+         Nothing  -> ( (posUnkns \\ posKns', posKns')
+                     , (negUnkns \\ negKns', negKns')
+                     , cnfs'
+                     )
+            where -- All predicates that are not in the state are candidates
                   -- for being positive preconditions
                   posCands = posUnkns \\ posRelevant
 
-                  -- All predicates that are not in the state are candidates
+                  -- All predicates that are in the state are candidates
                   -- for being negative preconditions
                   negCands = negUnkns `Set.intersection` negRelevant
                   cands = (posCands, negCands)
                   (posKns', negKns', cnfs')
                     | isSingleton cands =
                         ( Set.union posKns posCands
-                        , Set.union negKns negCands, removeSetsWithKnowns cnfs cands
+                        , Set.union negKns negCands
+                        , removeSetsWithKnowns cnfs cands
                         )
                     | otherwise = (posKns, negKns, addToCandiates cnfs cands)
 
-         Just _ -> ( (posUnkns', Set.union extractPosKns posKns )
-                   , (negUnkns', Set.union extractNegKns negKns)
+         Just _ -> ( (posUnkns' \\ extractPosKns, Set.union extractPosKns posKns)
+                   , (negUnkns' \\ extractNegKns, Set.union extractNegKns negKns)
                    , cnfs'')
             where -- All preds not in the state cant be a positive precond
                   posUnkns' = posUnkns `Set.intersection` posRelevant

@@ -59,7 +59,7 @@ testLogicSpec = do
 
       it "applies the negative effects first, then the positive" $
         let initState = Set.empty
-            actSpec = getActSpec [] [Neg $ actionEffectA, actionEffectA] -- same predicate for pos and neg
+            actSpec = getActSpec [] [actionEffectA, Neg $ actionEffectA] -- same predicate for pos and neg
             domain = getDomain [actSpec]
             action = getAction testObj
             expectedState = getState [getGroundPred [testObj]]
