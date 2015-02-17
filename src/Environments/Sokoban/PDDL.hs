@@ -43,17 +43,19 @@ directionFromObjs :: SokobanPDDL -> Location -> Location -> Direction
 directionFromObjs pddlw from to =
   let fromPos = objMap pddlw ! from
       toPos = objMap pddlw ! to
-   in case (toPos - fromPos) of
+   in case toPos - fromPos of
         Coord (0, 1) -> UpDir
         Coord (0, -1) -> DownDir
         Coord (1, 0) -> RightDir
         Coord (-1, 0) -> LeftDir
         _ -> error ("cannot get direction (fromPos: " ++ show fromPos ++", toPos: " ++ show toPos ++ ")")
 
+applyFromLoc :: SokobanPDDL -> Location -> Location -> SokobanPDDL
+applyFromLoc pddlw from to = pddlw { world = move (world pddlw) $ directionFromObjs pddlw from to}
 
 applyAction :: SokobanPDDL -> Action -> SokobanPDDL
-applyAction pddlw ("move-h", [from, to]) = pddlw { world = move (world pddlw) $ directionFromObjs pddlw from to}
-applyAction pddlw ("move-v", args) = undefined
+applyAction pddlw ("move-h", [from, to]) = applyFromLoc pddlw from to
+applyAction pddlw ("move-v", [from, to]) = applyFromLoc pddlw from to
 applyAction pddlw ("push-h", args) = undefined
 applyAction pddlw ("push-v", args) = undefined
 applyAction pddlw ("push-h-goal", args) = undefined
