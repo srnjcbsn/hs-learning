@@ -56,10 +56,10 @@ applyFromLoc pddlw from to = pddlw { world = move (world pddlw) $ directionFromO
 applyAction :: SokobanPDDL -> Action -> SokobanPDDL
 applyAction pddlw ("move-h", [from, to]) = applyFromLoc pddlw from to
 applyAction pddlw ("move-v", [from, to]) = applyFromLoc pddlw from to
-applyAction pddlw ("push-h", args) = undefined
-applyAction pddlw ("push-v", args) = undefined
-applyAction pddlw ("push-h-goal", args) = undefined
-applyAction pddlw ("push-v-goal", args) = undefined
+applyAction pddlw ("push-h", [_, from, to, _]) = applyFromLoc pddlw from to
+applyAction pddlw ("push-v", [_, from, to, _]) = applyFromLoc pddlw from to
+applyAction pddlw ("push-h-goal", [_, from, to, _]) = applyFromLoc pddlw from to
+applyAction pddlw ("push-v-goal", [_, from, to, _]) = applyFromLoc pddlw from to
 applyAction _ act = error ("Unknown action: " ++ show act)
 
 fromState :: State -> SokobanPDDL
