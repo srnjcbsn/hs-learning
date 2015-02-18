@@ -9,6 +9,7 @@ import           Data.Map                     (Map, (!))
 import qualified Data.Map                     as Map
 import           Data.Set                     (Set)
 import qualified Data.Set                     as Set
+import Data.Maybe (mapMaybe)
 
 data SokobanPDDL = SokobanPDDL
     { world           :: World
@@ -89,52 +90,55 @@ parseLocation n = error $ "Location " ++ n ++ " could not be parsed."
 writeLocation :: Coord -> Location
 writeLocation (Coord (x, y)) = ('b' : show x) ++ ('x' : show y)
 
-statePred :: GroundedPredicate -> StatePred
-statePred ("goal", [a]) = Goal a
-statePred ("at", [c, l]) = CrateLoc c l
-statePred ("sokobanAt", [l]) = SokobanLoc l
+statePred :: GroundedPredicate -> Maybe StatePred
+statePred ("goal", [a]) = Just $ Goal a
+statePred ("at", [c, l]) = Just $ CrateLoc c l
+statePred ("sokobanAt", [l]) = Just $ SokobanLoc l
 -- statePred (name, [a, b])
 --     | name == hAdjName || name == vAdjName = Structure (min a b) (max a b)
-statePred p = error $ "Could not understand predicate " ++ show p
+statePred p = Nothing -- error $ "Could not understand predicate " ++ show p
 
 data StatePred = Structure Location Location
                | CrateLoc Crate Location
                | SokobanLoc Location
                | Goal Location
 
--- TODO: Add 'goal' and 'notGoal' to persisten state
 fromState :: State -> SokobanPDDL
-fromState state =
-    let (structPreds, rest) = partition isStructurePred $ Set.toList state
-        coordMap = Map.fromList
-                 $ Set.toList
-                 $ Set.map (\n -> (n, parseLocation n))
-                 $ Set.unions
-                 $ map (\(_, args) -> Set.fromList args) structPreds
+fromState state = pddl where
+    (structPreds, rest) = partition isStructurePred $ Set.toList state
 
-        dataList = map statePred rest
-        -- If this is an empty list, we throw an error, as we wouldn't be able
-        -- to go on without knowing the location of Sokoban:
-        sokoLoco = head [ l | SokobanLoc l <- dataList ]
-        crates   = [ (coordMap ! l, Box c) | CrateLoc c l <- dataList ]
-        goals    = [ g | Goal g <- dataList ]
+    goalPreds = [ gp | gp@("goal", _) <- rest ]
+    notGoalPreds = [ ngp | ngp @("notGoal", _) <- rest ]
 
-        -- Set all tiles as 'Clear'
-        clearTiles = Map.fromList $ zip (Map.elems coordMap) (repeat Clear)
-        -- Overwrite the tiles that contain crates
-        tileMap  = Map.fromList crates `Map.union` clearTiles
+    coordMap = Map.fromList
+             $ Set.toList
+             $ Set.map (\n -> (n, parseLocation n))
+             $ Set.unions
+             $ map (\(_, args) -> Set.fromList args) structPreds
 
-        world = World { coordMap = tileMap
-                      , sokoban  = coordMap ! sokoLoco
-                      , goals    = map (coordMap !) goals
-                      }
+    dataList = mapMaybe statePred rest
+    -- If this is an empty list, we throw an error, as we wouldn't be able
+    -- to go on without knowing the location of Sokoban:
+    sokoLoco = coordMap ! head [ l | SokobanLoc l <- dataList ]
+    crates   = [ (coordMap ! l, Box c) | CrateLoc c l <- dataList ]
+    goals    = [ coordMap ! g | Goal g <- dataList ]
 
-        pddl = SokobanPDDL { world = world
-                           , locMap = coordMap
-                           , persistentState = Set.fromList structPreds
-                           }
+    -- Set all tiles as 'Clear'
+    clearTiles = Map.fromList $ zip (Map.elems coordMap) (repeat Clear)
+    -- Overwrite the tiles that contain crates
+    tileMap  = Map.fromList crates `Map.union` clearTiles
 
-     in pddl
+    world = World
+        { coordMap = tileMap
+        , sokoban  = sokoLoco
+        , goals    = goals
+        }
+
+    pddl = SokobanPDDL
+        { world = world
+        , locMap = coordMap
+        , persistentState = Set.fromList $ structPreds ++ goalPreds ++ notGoalPreds
+        }
 
 worldPreds :: World -> Set GroundedPredicate
 worldPreds world = Set.insert sokLoc tilePreds where
