@@ -3,16 +3,16 @@ module Environments.Sokoban.PDDL where
 import           Environments.Sokoban.Sokoban hiding (Object)
 import           PDDL.Type
 
+import           Data.Char                    (isDigit)
+import           Data.List                    (partition)
 import           Data.Map                     (Map, (!))
 import qualified Data.Map                     as Map
 import           Data.Set                     (Set)
 import qualified Data.Set                     as Set
-import Data.List (sort, partition)
-import Data.Char (isDigit)
 
 data SokobanPDDL = SokobanPDDL
-    { world  :: World
-    , objMap :: Map Object Coord
+    { world           :: World
+    , locMap          :: Map Location Coord
     , persistentState :: Set GroundedPredicate
     }
 
@@ -22,17 +22,15 @@ type Structure = ([Adj], [Adj])
 type Location = Object
 type Crate = Object
 
-
+hAdjName, vAdjName :: String
 hAdjName = "hAdj"
 vAdjName = "vAdj"
-sokobanAtName = "sokobanAt"
-atName = "at"
 
-hAdj :: Location -> Location -> GroundedPredicate
-hAdj from to = ("hAdj", [from, to])
-
-vAdj :: Location -> Location -> GroundedPredicate
-vAdj from to = ("vAdj", [from, to])
+-- hAdj :: Location -> Location -> GroundedPredicate
+-- hAdj from to = ("hAdj", [from, to])
+--
+-- vAdj :: Location -> Location -> GroundedPredicate
+-- vAdj from to = ("vAdj", [from, to])
 
 sokobanAt :: Location -> GroundedPredicate
 sokobanAt loc = ("sokobanAt", [loc])
@@ -54,8 +52,8 @@ notGoal loc = ("notGoal", [loc])
 
 directionFromObjs :: SokobanPDDL -> Location -> Location -> Direction
 directionFromObjs pddlw from to =
-  let fromPos = objMap pddlw ! from
-      toPos = objMap pddlw ! to
+  let fromPos = locMap pddlw ! from
+      toPos = locMap pddlw ! to
    in case toPos - fromPos of
         Coord (0, 1) -> UpDir
         Coord (0, -1) -> DownDir
@@ -81,34 +79,6 @@ isStructurePred (name, _)
     | name == hAdjName = True
     | otherwise        = False
 
--- isGoalPred :: GroundedPredicate -> Bool
--- isGoalPred (goalName, loc) = True
--- isGoalPred _               = False
---
--- isAtPred :: GroundedPredicate -> Bool
--- isAtPred (atName, loc) = True
--- isAtPred _             = False
-
--- instance Ord Adj where
---     Adj (a, b) <= Adj (c, d)
---         | min a b <  min c d = True
---         | min a b >  min c d = False
---         | otherwise          = max a b <= max b a
---
--- adjacencyLists :: [GroundedPredicate] -> Structure
--- adjacencyLists adjPreds = adjLists adjPreds ([], []) where
---     adjLists :: [GroundedPredicate] -> Structure -> Structure
---     adjLists ((name, [a, b]) : rest) (verts, horzs)
---         | name == vAdjName = adjLists rest (Adj (a, b) : verts, horzs)
---         | name == hAdjName = adjLists rest (verts, Adj (a, b) : horzs)
---         | otherwise = adjLists rest (verts, horzs)
---     adjLists (_ : rest) (verts, horzs) = adjLists rest (verts, horzs)
---     adjLists [] adjs = adjs
-
--- tupleSort :: Ord a => ([a], [a]) -> ([a], [a])
--- tupleSort (a, b) = (sort a, sort b)
-
-
 parseLocation :: Location -> Coord
 parseLocation ('b' : n) = Coord (x, y) where
     (xStr, rest) = span isDigit n
@@ -132,6 +102,7 @@ data StatePred = Structure Location Location
                | SokobanLoc Location
                | Goal Location
 
+-- TODO: Add 'goal' and 'notGoal' to persisten state
 fromState :: State -> SokobanPDDL
 fromState state =
     let (structPreds, rest) = partition isStructurePred $ Set.toList state
@@ -145,12 +116,13 @@ fromState state =
         -- If this is an empty list, we throw an error, as we wouldn't be able
         -- to go on without knowing the location of Sokoban:
         sokoLoco = head [ l | SokobanLoc l <- dataList ]
-        crates   = [ l | CrateLoc _ l <- dataList ]
+        crates   = [ (coordMap ! l, Box c) | CrateLoc c l <- dataList ]
         goals    = [ g | Goal g <- dataList ]
 
-        tileMap  = Map.union
-                   (Map.fromList $ zip (map (coordMap !) crates) (repeat Box))
-                   (Map.fromList $ zip (Map.elems coordMap) (repeat Clear))
+        -- Set all tiles as 'Clear'
+        clearTiles = Map.fromList $ zip (Map.elems coordMap) (repeat Clear)
+        -- Overwrite the tiles that contain crates
+        tileMap  = Map.fromList crates `Map.union` clearTiles
 
         world = World { coordMap = tileMap
                       , sokoban  = coordMap ! sokoLoco
@@ -158,11 +130,26 @@ fromState state =
                       }
 
         pddl = SokobanPDDL { world = world
-                           , objMap = coordMap
+                           , locMap = coordMap
                            , persistentState = Set.fromList structPreds
                            }
 
      in pddl
 
+worldPreds :: World -> Set GroundedPredicate
+worldPreds world = Set.insert sokLoc tilePreds where
+
+    sokLoc = sokobanAt $ writeLocation $ sokoban world
+    -- The tilemap minus the tile sokoban is standing on
+    tileMap' = Map.delete (sokoban world) (coordMap world)
+    tilePreds = Set.fromList $ map (uncurry tilePred) $ Map.toList tileMap'
+
+    tilePred :: Coord -> Tile -> GroundedPredicate
+    tilePred coord Clear = clear $ writeLocation coord
+    tilePred coord (Box n)
+        | coord `elem` goals world = atGoal n
+        | otherwise = at n $ writeLocation coord
+
 toState :: SokobanPDDL -> State
-toState pddl = undefined
+toState pddl =
+     worldPreds (world pddl) `Set.union` persistentState pddl
