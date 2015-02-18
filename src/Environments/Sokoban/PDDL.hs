@@ -1,15 +1,23 @@
 module Environments.Sokoban.PDDL where
 
-import Environments.Sokoban.Sokoban hiding (Object)
-import PDDL.Type
+import           Environments.Sokoban.Sokoban hiding (Object)
+import           PDDL.Type
 
-import qualified Data.Map as Map
-import Data.Map (Map)
+import           Data.Map                     (Map, (!))
+import qualified Data.Map                     as Map
+import           Data.Set                     (Set)
+import qualified Data.Set                     as Set
+import Data.List (sort, partition)
+import Data.Char (isDigit)
 
 data SokobanPDDL = SokobanPDDL
     { world  :: World
     , objMap :: Map Object Coord
+    , persistentState :: Set GroundedPredicate
     }
+
+data Adj = Adj (Object, Object) deriving Eq
+type Structure = ([Adj], [Adj])
 
 type Location = Object
 type Crate = Object
@@ -20,6 +28,11 @@ pushH = "push-h"
 pushV = "push-v"
 pushHGoal = "push-h-goal"
 pushVGoal = "push-v-goal"
+
+hAdjName = "hAdj"
+vAdjName = "vAdj"
+sokobanAtName = "sokobanAt"
+atName = "at"
 
 hAdj :: Location -> Location -> GroundedPredicate
 hAdj from to = ("hAdj", [from, to])
@@ -48,8 +61,94 @@ notGoal loc = ("notGoal", [loc])
 applyAction :: SokobanPDDL -> GroundedAction -> SokobanPDDL
 applyAction = undefined
 
+isStructurePred :: GroundedPredicate -> Bool
+isStructurePred (name, _)
+    | name == vAdjName = True
+    | name == hAdjName = True
+    | otherwise        = False
+
+isGoalPred :: GroundedPredicate -> Bool
+isGoalPred (goalName, loc) = True
+isGoalPred _               = False
+
+isAtPred :: GroundedPredicate -> Bool
+isAtPred (atName, loc) = True
+isAtPred _             = False
+
+-- instance Ord Adj where
+--     Adj (a, b) <= Adj (c, d)
+--         | min a b <  min c d = True
+--         | min a b >  min c d = False
+--         | otherwise          = max a b <= max b a
+--
+-- adjacencyLists :: [GroundedPredicate] -> Structure
+-- adjacencyLists adjPreds = adjLists adjPreds ([], []) where
+--     adjLists :: [GroundedPredicate] -> Structure -> Structure
+--     adjLists ((name, [a, b]) : rest) (verts, horzs)
+--         | name == vAdjName = adjLists rest (Adj (a, b) : verts, horzs)
+--         | name == hAdjName = adjLists rest (verts, Adj (a, b) : horzs)
+--         | otherwise = adjLists rest (verts, horzs)
+--     adjLists (_ : rest) (verts, horzs) = adjLists rest (verts, horzs)
+--     adjLists [] adjs = adjs
+
+-- tupleSort :: Ord a => ([a], [a]) -> ([a], [a])
+-- tupleSort (a, b) = (sort a, sort b)
+
+
+parseLocation :: Location -> Coord
+parseLocation ('b' : n) = (x, y) where
+    (xStr, rest) = span isDigit n
+    x = read xStr
+    y = read $ tail rest
+parseLocation n = error $ "Location " ++ n ++ " could not be parsed."
+
+writeLocation :: Coord -> Location
+writeLocation (x, y) = ('b' : show x) ++ ('x' : show y)
+
+statePred :: GroundedPredicate -> StatePred
+statePred ("goal", [a]) = Goal a
+statePred ("at", [c, l]) = CrateLoc c l
+statePred ("sokobanAt", [l]) = SokobanLoc l
+-- statePred (name, [a, b])
+--     | name == hAdjName || name == vAdjName = Structure (min a b) (max a b)
+statePred p = error $ "Could not understand predicate " ++ show p
+
+data StatePred = Structure Location Location
+               | CrateLoc Crate Location
+               | SokobanLoc Location
+               | Goal Location
+
 fromState :: State -> SokobanPDDL
-fromState = undefined
+fromState state =
+    let (structPreds, rest) = partition isStructurePred $ Set.toList state
+        coordMap = Map.fromList
+                 $ Set.toList
+                 $ Set.map (\n -> (n, parseLocation n))
+                 $ Set.unions
+                 $ map (\(_, args) -> Set.fromList args) structPreds
+
+        dataList = map statePred rest
+        -- If this is an empty list, we throw an error, as we wouldn't be able
+        -- to go on without knowing the location of Sokoban:
+        sokoLoco = head [ l | SokobanLoc l <- dataList ]
+        crates   = [ l | CrateLoc _ l <- dataList ]
+        goals    = [ g | Goal g <- dataList ]
+        
+        tileMap  = Map.union
+                   (Map.fromList $ zip (map (coordMap !) crates) (repeat Box))
+                   (Map.fromList $ zip (Map.elems coordMap) (repeat Clear))
+
+        world = World { coordMap = tileMap
+                      , sokoban  = coordMap ! sokoLoco
+                      , goals    = map (coordMap !) goals
+                      }
+
+        pddl = SokobanPDDL { world = world
+                           , objMap = coordMap
+                           , persistentState = Set.fromList structPreds
+                           }
+
+     in pddl
 
 toState :: SokobanPDDL -> State
-toState = undefined
+toState pddl =

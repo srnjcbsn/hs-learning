@@ -13,6 +13,7 @@ type Coord = (Int, Int)
 data World = World
     { coordMap :: Map Coord Tile
     , sokoban  :: Coord
+    , goals    :: [Coord]
     }
 
 data Direction = Left
