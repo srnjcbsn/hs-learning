@@ -1,11 +1,15 @@
 module Environments.Sokoban.Sokoban where
 
-import           Data.Map (Map)
+import           Data.Map (Map, (!))
 import qualified Data.Map as Map
 
 data Tile = Clear
           | Box Object
           deriving Show
+
+isClear :: Tile -> Bool
+isClear Clear = True
+isClear _     = False
 
 type Object = String
 
@@ -63,5 +67,6 @@ move w DownDir  = moveVector w (Coord ( 0, -1))
 move w LeftDir  = moveVector w (Coord (-1,  0))
 move w RightDir = moveVector w (Coord ( 1,  0))
 
+-- | The goal is satisfied when all goal tiles are occupied by boxes
 isSolved :: World -> Bool
-isSolved = undefined
+isSolved world = all ((not . isClear) . (coordMap world !)) (goals world)
