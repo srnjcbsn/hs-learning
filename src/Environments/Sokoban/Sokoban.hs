@@ -37,7 +37,7 @@ moveCreate :: Object -> Coord -> Coord -> Map Coord Tile -> Map Coord Tile
 moveCreate name from to cMap =
   Map.insert to (Box name) (Map.insert from Clear cMap)
 
-moveVector :: World -> Coord -> World
+moveVector :: World -> Coord -> Maybe World
 moveVector world vec  =
   let sokoPos = sokoban world
       moveTo = vec + sokoPos
@@ -45,16 +45,19 @@ moveVector world vec  =
       atTo = Map.lookup moveTo $ coordMap world
       atPushTo = Map.lookup pushTo $ coordMap world
   in case (atTo, atPushTo) of
-       (Just Clear, _) -> world { sokoban = moveTo }
+       (Just Clear, _) -> Just $ world { sokoban = moveTo }
        (Just (Box n), Just Clear) ->
-        world { sokoban = moveTo
-              , coordMap = moveCreate n moveTo pushTo (coordMap world)
-              }
-       (Nothing, _) -> world
-       (Just (Box _), _) -> world
+        Just $ world  { sokoban = moveTo
+                      , coordMap = moveCreate n moveTo pushTo (coordMap world)
+                      }
+       (Nothing, _) -> Nothing
+       (Just (Box _), _) -> Nothing
 
-move :: World -> Direction -> World
+move :: World -> Direction -> Maybe World
 move w UpDir    = moveVector w (Coord ( 0,  1))
 move w DownDir  = moveVector w (Coord ( 0, -1))
 move w LeftDir  = moveVector w (Coord (-1,  0))
 move w RightDir = moveVector w (Coord ( 1,  0))
+
+isSolved :: World -> Bool
+isSolved = undefined

@@ -144,7 +144,7 @@ updateEffectHypHelper dom dHyp transition = Map.insert (aName action) aHyp' dHyp
           aHyp' = updateEffectHyp dom aHyp transition
 
 -- | If application of the action in the provided transition would yield the
---   same new state as the environment, the old actin hypothesis is returned
+--   same new state as the environment, the old action hypothesis is returned
 --   unchanged. Otherwise, the hypothesis is updated with the new information.
 updateDomainHyp :: Domain
                 -> DomainHypothesis

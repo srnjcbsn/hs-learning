@@ -56,10 +56,13 @@ directionFromObjs pddlw from to =
         Coord (-1, 0) -> LeftDir
         _ -> error ("cannot get direction (fromPos: " ++ show fromPos ++", toPos: " ++ show toPos ++ ")")
 
-applyFromLoc :: SokobanPDDL -> Location -> Location -> SokobanPDDL
-applyFromLoc pddlw from to = pddlw { world = move (world pddlw) $ directionFromObjs pddlw from to}
+applyFromLoc :: SokobanPDDL -> Location -> Location -> Maybe SokobanPDDL
+applyFromLoc pddlw from to =
+      case move (world pddlw) $ directionFromObjs pddlw from to of
+        Just world' -> Just pddlw { world = world' }
+        Nothing -> Nothing
 
-applyAction :: SokobanPDDL -> Action -> SokobanPDDL
+applyAction :: SokobanPDDL -> Action -> Maybe SokobanPDDL
 applyAction pddlw ("move-h", [from, to]) = applyFromLoc pddlw from to
 applyAction pddlw ("move-v", [from, to]) = applyFromLoc pddlw from to
 applyAction pddlw ("push-h", [_, from, to, _]) = applyFromLoc pddlw from to

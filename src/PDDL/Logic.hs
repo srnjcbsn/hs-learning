@@ -82,7 +82,8 @@ ground domain (name, args) fluents =
         (Con $ List.map Predicate $ Set.toList fluents)
     where paras = asParas (fromJust $ actionSpec domain name)
 
-
+isGoalReached :: Problem -> State -> Bool
+isGoalReached = undefined
 
 -- | Takes an action, grounds it and then if the precondions are satisfied applies it to a state
 apply :: Domain -> State -> Action -> Maybe State
