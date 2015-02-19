@@ -3,10 +3,9 @@ module Environments.Sokoban.Sokoban where
 import           Data.Map (Map)
 import qualified Data.Map as Map
 
-
-
 data Tile = Clear
           | Box Object
+          deriving Show
 
 type Object = String
 
@@ -21,12 +20,17 @@ instance Num Coord where
   fromInteger i = Coord (i, i)
   (-) (Coord (x1,y1)) (Coord (x2,y2)) = Coord (x1-x2, y1-y2)
 
+xCoord :: Coord -> Int
+xCoord (Coord (x, _)) = fromIntegral x
+
+yCoord :: Coord -> Int
+yCoord (Coord (_, y)) = fromIntegral y
 
 data World = World
     { coordMap :: Map Coord Tile
     , sokoban  :: Coord
     , goals    :: [Coord]
-    }
+    } deriving Show
 
 data Direction = LeftDir
                | RightDir
