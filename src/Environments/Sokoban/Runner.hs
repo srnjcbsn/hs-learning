@@ -4,7 +4,7 @@ import System.Console.ANSI
 import Control.Monad (forM_)
 import Data.Map (assocs, keys)
 import Text.Show.Pretty (ppShow)
-
+import Data.Maybe
 
 import Planning.FastDownward
 import PDDL.Type
@@ -13,7 +13,8 @@ import Learning.OptPrecondLearn
 import Learning.OptEffectLearn
 import Environments.Sokoban.Sokoban
 import Environments.Sokoban.PDDL
-
+import PDDL.Environment (Environment)
+import qualified PDDL.Environment as Env
 setCursorPosition' :: Integer -> Integer -> IO ()
 setCursorPosition' x y =
     setCursorPosition (fromIntegral x) (fromIntegral y)
@@ -65,35 +66,44 @@ visualize pddl = do
           goalCoords = (goals . world) pddl
           sokoCoord  = (sokoban . world) pddl
 
-runSokoban :: ExtPlanner ep => ep
+runSokoban :: (ExtPlanner ep, Environment env)
+           => ep
            -> Domain
-           -> [Problem]
+           -> Problem
+           -> env
            -> DomainHypothesis
            -> PreDomainHypothesis
-           -> SokobanPDDL
-           -> Problem
-           -> Plan
-           -> [IO ()]
-runSokoban planner domain (p:ps) effectHyp precondHyp env curP curPlan =
-  let s = probInitialState p
+           -> Maybe Plan
+           -> IO ()
+runSokoban planner domain problem env effectHyp precondHyp maybeCurPlan =
+  let s = toState env
       uptDom = (`domainFromKnowledge` effectHyp) . (`domainFromPrecondHypothesis` precondHyp)
       actions =
         do
-          maybePlan <-  if null curPlan
-                        then makePlan planner (uptDom domain) curP
-                        else return $ Just curPlan
+          maybePlan <-  if isNothing maybeCurPlan
+                        then makePlan planner
+                                (uptDom domain)
+                                ( problem { probInitialState = s} )
+                        else return maybeCurPlan
           case maybePlan of
-            Just (act:acts) ->
+            Just (act:restPlan) ->
               let maybeEnv' = applyAction env act
-                  s' = do env' <- maybeEnv'
-                          return $ toState env'
-                  trans = (s, act, s')
+                  maybeS' = do env' <- maybeEnv'
+                               return $ toState env'
+                  trans = (s, act, maybeS')
                   effectHyp' = updateDomainHyp domain effectHyp trans
                   precondHyp' = updatePreDomainHyp domain precondHyp trans
+              in case maybeEnv' of
+                  Just env' ->
+                    do visualize env'
+                       return $ Just (env',effectHyp',precondHyp', problem, Just restPlan)
+                  Nothing -> return $ Just (env,effectHyp',precondHyp', problem, Just restPlan)
+            Just [] -> return Nothing
+            Nothing -> undefined
 
-              in return undefined
-            Nothing -> return undefined
 
-
-   in undefined
-runSokoban _ _ [] _ _ _ _ _= []
+   in do
+     outp <- actions
+     case outp of
+      Just (env',effectHyp',precondHyp', ps', restPlan) ->
+        undefined--runSokoban planner domain ps' effectHyp' precondHyp' env' restPlan

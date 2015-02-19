@@ -46,6 +46,13 @@ type Name = String
 type Type = String
 type Object  = String
 
+class Environment env where
+  fromProblem :: Problem -> env
+  domain :: env -> Domain
+  applyAction :: env -> Action -> Maybe env
+  goalReached :: Problem -> env -> Bool
+  toState :: env -> State
+
 data Argument = Const Name
               | Ref Name
               deriving (Show, Eq, Ord)
