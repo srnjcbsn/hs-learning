@@ -7,9 +7,9 @@ import           Data.Char                    (isDigit)
 import           Data.List                    (partition)
 import           Data.Map                     (Map, (!))
 import qualified Data.Map                     as Map
+import           Data.Maybe                   (mapMaybe)
 import           Data.Set                     (Set)
 import qualified Data.Set                     as Set
-import Data.Maybe (mapMaybe)
 
 data SokobanPDDL = SokobanPDDL
     { world           :: World
@@ -26,12 +26,6 @@ type Crate = Object
 hAdjName, vAdjName :: String
 hAdjName = "hAdj"
 vAdjName = "vAdj"
-
--- hAdj :: Location -> Location -> GroundedPredicate
--- hAdj from to = ("hAdj", [from, to])
---
--- vAdj :: Location -> Location -> GroundedPredicate
--- vAdj from to = ("vAdj", [from, to])
 
 sokobanAt :: Location -> GroundedPredicate
 sokobanAt loc = ("sokobanAt", [loc])
@@ -98,6 +92,7 @@ statePred ("sokobanAt", [l]) = Just $ SokobanLoc l
 --     | name == hAdjName || name == vAdjName = Structure (min a b) (max a b)
 statePred p = Nothing -- error $ "Could not understand predicate " ++ show p
 
+
 data StatePred = Structure Location Location
                | CrateLoc Crate Location
                | SokobanLoc Location
@@ -107,8 +102,8 @@ fromState :: State -> SokobanPDDL
 fromState state = pddl where
     (structPreds, rest) = partition isStructurePred $ Set.toList state
 
-    goalPreds = [ gp | gp@("goal", _) <- rest ]
-    notGoalPreds = [ ngp | ngp @("notGoal", _) <- rest ]
+    goalPreds    = [ gp  | gp@("goal", _) <- rest ]
+    notGoalPreds = [ ngp | ngp@("notGoal", _) <- rest ]
 
     coordMap = Map.fromList
              $ Set.toList
