@@ -54,7 +54,11 @@ directionFromObjs pddlw from to =
         Coord (0, -1) -> DownDir
         Coord (1, 0) -> RightDir
         Coord (-1, 0) -> LeftDir
-        _ -> error ("cannot get direction (fromPos: " ++ show fromPos ++", toPos: " ++ show toPos ++ ")")
+        _ -> error $  "cannot get direction (fromPos: "
+                   ++ show fromPos
+                   ++ ", toPos: "
+                   ++ show toPos
+                   ++ ")"
 
 applyFromLoc :: SokobanPDDL -> Location -> Location -> SokobanPDDL
 applyFromLoc pddlw from to =
