@@ -1,4 +1,6 @@
-module PDDL.Logic ( isActionValid
+module PDDL.Logic ( negateF
+                  , conjunction
+                  , isActionValid
                   , apply
                   , findActionSpec
                   , instantiateFormula
@@ -18,7 +20,26 @@ import           PDDL
 
 import qualified Data.TupleSet as Set2
 
+-- flatten :: Formula -> Formula
+-- flatten (Con ((Con f) : fs)) = map flatten f `conjunction` map flatten fs
+-- flatten (Neg (Con fs))       = Con (map (Neg . flatten) fs)
+-- flatten f                    = f
 
+-- | Negate a 'Formula'. If the given 'Formula' is a conjunction, the contained
+--   'Formula'e are negated recursively.
+negateF :: Formula -> Formula
+negateF (Con fs)        = Con $ map negateF fs
+negateF p@(Predicate _) = Neg p
+negateF (Neg f)         = f
+
+-- | Forms a 'Conjunction' from two 'Formula'e.
+conjunction :: Formula -> Formula -> Formula
+conjunction (Con c1) (Con c2)       = Con (c1 ++ c2)
+conjunction p@(Predicate _) (Con c) = Con (p : c)
+conjunction (Con c) p@(Predicate _) = Con (p : c)
+conjunction (Neg f1) f2 = Neg (conjunction f1 f2)
+conjunction f1 (Neg f2) = Neg (conjunction f1 f2)
+conjunction f1 f2 = Con [f1, f2]
 
 -- | Finds the action spec of an action in a domain
 findActionSpec :: Domain -> Action -> Maybe ActionSpec
@@ -81,9 +102,6 @@ ground domain (name, args) fluents =
     fst $ instantiateFormula domain paras args
         (Con $ List.map Predicate $ Set.toList fluents)
     where paras = asParas (fromJust $ actionSpec domain name)
-
-isGoalReached :: Problem -> State -> Bool
-isGoalReached = undefined
 
 -- | Takes an action, grounds it and then if the precondions are satisfied applies it to a state
 apply :: Domain -> State -> Action -> Maybe State
