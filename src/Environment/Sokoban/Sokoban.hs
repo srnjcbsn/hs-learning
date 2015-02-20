@@ -1,4 +1,4 @@
-module Environments.Sokoban.Sokoban where
+module Environment.Sokoban.Sokoban where
 
 import           Data.Map (Map, (!))
 import qualified Data.Map as Map

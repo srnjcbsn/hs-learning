@@ -1,4 +1,4 @@
-module Environments.Sokoban.ConsoleView where
+module Environment.Sokoban.ConsoleView where
 
 import           Control.Monad                (forM_)
 import           Data.Map                     (assocs, keys)
@@ -6,8 +6,8 @@ import           System.Console.ANSI
 import           Text.Show.Pretty             (ppShow)
 
 
-import           Environments.Sokoban.PDDL
-import           Environments.Sokoban.Sokoban
+import           Environment.Sokoban.PDDL
+import           Environment.Sokoban.Sokoban
 
 setCursorPosition' :: Integer -> Integer -> IO ()
 setCursorPosition' x y =

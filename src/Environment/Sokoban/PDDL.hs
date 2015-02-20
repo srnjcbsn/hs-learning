@@ -1,6 +1,6 @@
-module Environments.Sokoban.PDDL where
+module Environment.Sokoban.PDDL where
 
-import           Environments.Sokoban.Sokoban hiding (Object)
+import           Environment.Sokoban.Sokoban hiding (Object)
 import           PDDL.Type
 
 import           Data.Char                    (isDigit)
