@@ -1,4 +1,4 @@
-module Environment.Sokoban.Samples.Sample1(world) where
+module Environment.Sokoban.Samples.WikiSample (world) where
 
 import Environment.Sokoban hiding (goals)
 p = Right True
@@ -14,8 +14,10 @@ worldmap = [ [e,e,e,e,e,e,e,e]
            , [e,c,e,e,b,c,e,e]
            , [e,c,e,c,c,c,e,e]
            , [e,b,c,b,b,b,c,e]
-           , [e,e,e,e,e,e,e,e]]
+           , [e,e,e,e,e,e,e,e]
+           ]
 
+goals :: [Coord]
 goals = [ Coord (1,2)
         , Coord (5,3)
         , Coord (1,4)

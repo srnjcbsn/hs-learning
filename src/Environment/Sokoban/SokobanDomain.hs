@@ -34,8 +34,8 @@ goal      = ("goal", ["l"])
 notGoal   = ("notGoal", ["l"])
 
 moveParas, pushParas :: [Name]
-moveParas = ["?from", "?to"]
-pushParas = ["?c", "?sokoban", "?from", "?to"]
+moveParas = ["from", "to"]
+pushParas = ["c", "sokoban", "from", "to"]
 
 predicate :: PredicateSpec -> [Name] -> Formula
 predicate ps paras = Predicate $ fluentPredicate ps paras
@@ -97,7 +97,7 @@ pushVGoal = mkActionSpec "push-v-goal" pushParas (pushCond vAdj goal) pushEffGoa
 
 sokobanDomain :: Domain
 sokobanDomain = Domain
-    { dmName = "sokoban"
+    { dmName = "sokobanDom"
     , dmPredicates = [hAdj, vAdj, sokobanAt, at, atGoal, clear, goal, notGoal]
     , dmActionsSpecs = [moveH, moveV, pushH, pushV, pushHGoal, pushVGoal]
     , dmConstants = []

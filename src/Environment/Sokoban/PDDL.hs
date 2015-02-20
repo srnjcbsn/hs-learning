@@ -2,13 +2,15 @@ module Environment.Sokoban.PDDL where
 
 import           Environment.Sokoban hiding (Object)
 import           PDDL
+-- import Environment (Environment(..))
+import qualified Environment as Env
 
 import           Data.Char                    (isDigit)
 import           Data.List                    (partition)
 import qualified Data.List                    as List
 import           Data.Map                     (Map, member, (!))
 import qualified Data.Map                     as Map
-import           Data.Maybe                   (mapMaybe,catMaybes)
+import           Data.Maybe                   (mapMaybe)
 import           Data.Set                     (Set)
 import qualified Data.Set                     as Set
 
@@ -17,6 +19,12 @@ data SokobanPDDL = SokobanPDDL
     , locMap          :: Map Location Coord
     , persistentState :: Set GroundedPredicate
     }
+
+instance Env.Environment SokobanPDDL where
+    toState = toState
+    fromProblem = fromState . probState
+    applyAction = applyAction
+    isGoalReached _ = isSolved . world
 
 data Adj = Adj (Object, Object) deriving Eq
 type Structure = ([Adj], [Adj])
@@ -304,11 +312,11 @@ toProblem pWorld =
     let crateObjs = [ t | Box t <- Map.elems (coordMap pWorld) ]
         structObjs = map writeLocation $ Map.keys (coordMap pWorld)
         goalPred c = Predicate (atGoalName, [Const c])
-        goalsF = Con $ map goalPred crateObjs
+        goalsF = Con $ map goalPred (crateObjs ++ structObjs)
     in Problem
-        { probName   = "sokoban"
+        { probName   = "sokobanProb"
         , probObjs   = crateObjs ++ structObjs
-        , probDomain = "sokoban"
+        , probDomain = "sokobanDom"
         , probState  = (toState . fromWorld) pWorld
         , probGoal   = goalsF
         }

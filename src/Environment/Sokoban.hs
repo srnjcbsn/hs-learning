@@ -50,10 +50,10 @@ from2DList objs goalList =
       coordY y (x,val) = (Coord (toInteger x, toInteger y),val)
       coordX (y,l) = List.map (coordY y) l
       objsCoords = List.concatMap coordX xObjs
-      tileName (Coord (x,y)) = "b"++show x++"x"++show y
-      tiles = [ (c,val $ tileName c) | (c,Left val) <- objsCoords]
-      player = List.head [ c | (c,Right True) <- objsCoords]
-      tileMap = Map.fromList tiles
+      tileName (Coord (x,y)) = "boxAt" ++ show x ++ "x" ++ show y
+      tiles = [ (c, val $ tileName c) | (c, Left val) <- objsCoords]
+      player = List.head [ c | (c, Right True) <- objsCoords]
+      tileMap = Map.insert player Clear $ Map.fromList tiles
    in World { coordMap = tileMap, sokoban = player, goals = goalList }
 
 

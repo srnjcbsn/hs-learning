@@ -1,36 +1,34 @@
 module Main where
 
-import Planning.FastDownward
-import Environment
-import Environment.Sokoban.SokobanDomain
-import Environment.Sokoban.ConsoleView
-import Environment.Sokoban.Samples.Sample1
+import System.Directory (removeFile)
+import           System.Console.ANSI
+
+import           Environment
+import           Environment.Sokoban.ConsoleView (visualize)
+import           Environment.Sokoban.PDDL
+import qualified Environment.Sokoban.Samples.WikiSample as WS
+import qualified Environment.Sokoban.Samples.SimpleSample as SS
+import           Environment.Sokoban.SokobanDomain
+import           Learning
+import           Planning.FastDownward
+import Learning.OptEffectLearn
+import Learning.OptPrecondLearn
+import ActionViewer
+
+logPath = "./log.log"
 
 main :: IO ()
-main = undefined
-    -- fd = mkFastDownard dom
-    -- let p f x y = ("p", [f x,f y])
-    --     pP x y = Predicate $ p Ref x y
-    --
-    --     initActspec preconds = ActionSpec
-    --         { asName = "as"
-    --         , asParas = ["x", "y", "z"]
-    --         , asPrecond = Con preconds
-    --         , asEffect = Con []
-    --         }
-    --
-    --     initDomain = Domain
-    --         { dmName = "TestDomain"
-    --         , dmPredicates = [p id "x" "y"]
-    --         , dmActionsSpecs = [initActspec []]
-    --         , dmConstants = []
-    --         }
-    --     s0 = Set.empty
-    --     s1 = Set.empty
-    --     kn0 = initialPreDomainHyp initDomain
-    --     transition = (s0, ("as", ["a", "b", "c"]), Just s1)
-    --     actualPre = updatePreDomainHyp initDomain kn0 transition
-    --     actual = updatePreDomainHyp initDomain kn0 transition ! "as"
-    --     expected :: PreKnowledge
-    --     expected = (TSet.empty, TSet.empty, Set.empty)
-    -- in putStrLn (show actual)
+main = do
+    removeFile logPath
+    clearScreen
+    setTitle "SOKOBAN!"
+    runnerVisualized fd visualize (logAction logPath) dom prob sokoEnv iniPreDomHyp iniEffDomHyp Nothing
+    where
+
+        sokoWorld = SS.world
+        sokoEnv = fromWorld sokoWorld
+        dom = sokobanDomain
+        prob = toProblem sokoWorld
+        fd = mkFastDownard dom prob
+        iniPreDomHyp = initialPreDomainHyp dom
+        iniEffDomHyp = initialHypothesis dom

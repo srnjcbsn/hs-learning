@@ -55,11 +55,11 @@ visState world' = do
 --   below it.
 visualize :: SokobanPDDL -> IO ()
 visualize pddl = do
-    clearScreen
+    -- clearScreen
     forM_ tileCoords (uncurry visTile)
     forM_ goalCoords visGoal
     visSokoban sokoCoord
-    visState (world pddl)
+    -- visState (world pddl)
     where tileCoords = assocs $ (coordMap . world) pddl
           goalCoords = (goals . world) pddl
           sokoCoord  = (sokoban . world) pddl

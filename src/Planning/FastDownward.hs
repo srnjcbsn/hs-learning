@@ -4,6 +4,8 @@ import           System.FilePath.Posix
 import           System.IO.Error
 import           System.IO.Temp
 import           System.Process
+import System.IO (openFile, IOMode (..))
+import Control.Concurrent (threadDelay)
 
 import           PDDL.Parser
 import           PDDL
@@ -90,6 +92,7 @@ domainFromFile path = do
          Left err  -> error $ show err
          Right val -> return val
 
+-- TODO: write output from fd to logfile or similar.
 -- | Given a description of the fast downward invocation, creates a temporary
 --   directory (in the current directory) in which the output from fast-downard
 --   is stored.
@@ -102,8 +105,14 @@ fastDownward :: FastDownward
 fastDownward fd temp =
     withTempDirectory (workDir fd) temp mkPlan
     where mkPlan tmp = do
-            _ <- createProcess (proc (fdPath fd) $ fdArgs fd tmp)
-                {cwd = Just (workDir fd)} -- set the working directory
+            handle <- openFile "log" AppendMode
+            (_, _, _, pH) <- createProcess (proc (fdPath fd) $ fdArgs fd tmp)
+                { cwd = Just (workDir fd) -- set the working directory
+                , std_out = UseHandle handle    -- don't write to stdout
+                }
+            waitForProcess pH
+            -- putStrLn $ tmp </> planName fd
+            -- threadDelay $ (10 ^ 12 :: Int)
             parsePlan $ tmp </> planName fd
 
 -- TODO: If the file can be read, but not parsed, print the contents
