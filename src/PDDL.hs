@@ -96,7 +96,7 @@ data Problem = Problem
     { probName         :: String
     , probObjs         :: [Object]
     , probDomain       :: String
-    , probState :: State
+    , probState        :: State
     , probGoal         :: Formula
     } deriving (Show, Eq)
 
