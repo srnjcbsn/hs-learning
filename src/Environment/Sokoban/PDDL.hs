@@ -24,9 +24,10 @@ type Structure = ([Adj], [Adj])
 type Location = Object
 type Crate = Object
 
-hAdjName, vAdjName :: String
+hAdjName, vAdjName, atGoalName :: String
 hAdjName = "hAdj"
 vAdjName = "vAdj"
+atGoalName = "atGoal"
 
 pSokobanAt :: Location -> GroundedPredicate
 pSokobanAt loc = ("sokobanAt", [loc])
@@ -41,7 +42,7 @@ pVAdj :: Location -> Location -> GroundedPredicate
 pVAdj loc loc2 = (vAdjName, [loc, loc2])
 
 pAtGoal :: Crate -> GroundedPredicate
-pAtGoal crate = ("atGoal", [crate])
+pAtGoal crate = (atGoalName, [crate])
 
 pClear :: Location -> GroundedPredicate
 pClear loc = ("clear", [loc])
@@ -297,3 +298,17 @@ fromWorld w =
       locs = Map.fromList [(writeLocation c, c) | (c, _) <- Map.toList cm]
       persist = Set.union persistAdjs (Set.fromList persistGoals)
    in SokobanPDDL { world = w, locMap = locs, persistentState = persist}
+
+toProblem :: World -> Problem
+toProblem pWorld =
+    let crateObjs = [ t | Box t <- Map.elems (coordMap pWorld) ]
+        structObjs = map writeLocation $ Map.keys (coordMap pWorld)
+        goalPred c = Predicate (atGoalName, [Const c])
+        goalsF = Con $ map goalPred crateObjs
+    in Problem
+        { probName   = "sokoban"
+        , probObjs   = crateObjs ++ structObjs
+        , probDomain = "sokoban"
+        , probState  = (toState . fromWorld) pWorld
+        , probGoal   = goalsF
+        }

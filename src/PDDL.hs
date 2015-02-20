@@ -46,13 +46,6 @@ type Name = String
 type Type = String
 type Object  = String
 
-class Environment env where
-  fromProblem :: Problem -> env
-  domain :: env -> Domain
-  applyAction :: env -> Action -> Maybe env
-  goalReached :: Problem -> env -> Bool
-  toState :: env -> State
-
 data Argument = Const Name
               | Ref Name
               deriving (Show, Eq, Ord)
@@ -66,15 +59,12 @@ data Formula = Predicate FluentPredicate
 
 type PredicateSpec = (Name, [Name])
 
-
 data ActionSpec = ActionSpec
     { asName    :: String
     , asParas   :: [Name]
     , asPrecond :: Formula
     , asEffect  :: Formula
     } deriving (Show, Eq, Ord)
-
-
 type Action = (Name, [Object])
 
 type GroundedPredicate = (Name, [Object])
