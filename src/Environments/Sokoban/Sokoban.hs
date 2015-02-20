@@ -1,11 +1,15 @@
 module Environments.Sokoban.Sokoban where
 
-import           Data.Map (Map)
+import           Data.Map (Map, (!))
 import qualified Data.Map as Map
 
 data Tile = Clear
           | Box Object
           deriving Show
+
+isClear :: Tile -> Bool
+isClear Clear = True
+isClear _     = False
 
 type Object = String
 
@@ -41,7 +45,7 @@ moveCreate :: Object -> Coord -> Coord -> Map Coord Tile -> Map Coord Tile
 moveCreate name from to cMap =
   Map.insert to (Box name) (Map.insert from Clear cMap)
 
-moveVector :: World -> Coord -> Maybe World
+moveVector :: World -> Coord -> World
 moveVector world vec  =
   let sokoPos = sokoban world
       moveTo = vec + sokoPos
@@ -49,19 +53,20 @@ moveVector world vec  =
       atTo = Map.lookup moveTo $ coordMap world
       atPushTo = Map.lookup pushTo $ coordMap world
   in case (atTo, atPushTo) of
-       (Just Clear, _) -> Just $ world { sokoban = moveTo }
+       (Just Clear, _) ->world { sokoban = moveTo }
        (Just (Box n), Just Clear) ->
-        Just $ world  { sokoban = moveTo
-                      , coordMap = moveCreate n moveTo pushTo (coordMap world)
-                      }
-       (Nothing, _) -> Nothing
-       (Just (Box _), _) -> Nothing
+            world { sokoban = moveTo
+                  , coordMap = moveCreate n moveTo pushTo (coordMap world)
+                  }
+       (Nothing, _) -> world
+       (Just (Box _), _) -> world
 
-move :: World -> Direction -> Maybe World
+move :: World -> Direction -> World
 move w UpDir    = moveVector w (Coord ( 0,  1))
 move w DownDir  = moveVector w (Coord ( 0, -1))
 move w LeftDir  = moveVector w (Coord (-1,  0))
 move w RightDir = moveVector w (Coord ( 1,  0))
 
+-- | The goal is satisfied when all goal tiles are occupied by boxes
 isSolved :: World -> Bool
-isSolved = undefined
+isSolved world = all ((not . isClear) . (coordMap world !)) (goals world)

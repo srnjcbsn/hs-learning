@@ -5,7 +5,7 @@ import           PDDL.Type
 
 import           Data.Char                    (isDigit)
 import           Data.List                    (partition)
-import           Data.Map                     (Map, (!))
+import           Data.Map                     (Map, member, (!))
 import qualified Data.Map                     as Map
 import           Data.Maybe                   (mapMaybe)
 import           Data.Set                     (Set)
@@ -27,23 +27,23 @@ hAdjName, vAdjName :: String
 hAdjName = "hAdj"
 vAdjName = "vAdj"
 
-sokobanAt :: Location -> GroundedPredicate
-sokobanAt loc = ("sokobanAt", [loc])
+pSokobanAt :: Location -> GroundedPredicate
+pSokobanAt loc = ("sokobanAt", [loc])
 
-at :: Crate -> Location -> GroundedPredicate
-at crate loc = ("at", [crate, loc])
+pAt :: Crate -> Location -> GroundedPredicate
+pAt crate loc = ("at", [crate, loc])
 
-atGoal :: Crate -> GroundedPredicate
-atGoal crate = ("atGoal", [crate])
+pAtGoal :: Crate -> GroundedPredicate
+pAtGoal crate = ("atGoal", [crate])
 
-clear :: Location -> GroundedPredicate
-clear loc = ("clear", [loc])
+pClear :: Location -> GroundedPredicate
+pClear loc = ("clear", [loc])
 
-goal :: Location -> GroundedPredicate
-goal loc = ("goal", [loc])
+pGoal :: Location -> GroundedPredicate
+pGoal loc = ("goal", [loc])
 
-notGoal :: Location -> GroundedPredicate
-notGoal loc = ("notGoal", [loc])
+pNotGoal :: Location -> GroundedPredicate
+pNotGoal loc = ("notGoal", [loc])
 
 directionFromObjs :: SokobanPDDL -> Location -> Location -> Direction
 directionFromObjs pddlw from to =
@@ -54,21 +54,125 @@ directionFromObjs pddlw from to =
         Coord (0, -1) -> DownDir
         Coord (1, 0) -> RightDir
         Coord (-1, 0) -> LeftDir
-        _ -> error ("cannot get direction (fromPos: " ++ show fromPos ++", toPos: " ++ show toPos ++ ")")
+        _ -> error $  "cannot get direction (fromPos: "
+                   ++ show fromPos
+                   ++ ", toPos: "
+                   ++ show toPos
+                   ++ ")"
 
-applyFromLoc :: SokobanPDDL -> Location -> Location -> Maybe SokobanPDDL
+applyFromLoc :: SokobanPDDL -> Location -> Location -> SokobanPDDL
 applyFromLoc pddlw from to =
-      case move (world pddlw) $ directionFromObjs pddlw from to of
-        Just world' -> Just pddlw { world = world' }
-        Nothing -> Nothing
+    pddlw { world = move (world pddlw) $ directionFromObjs pddlw from to }
+    --   case move (world pddlw) $ directionFromObjs pddlw from to of
+    --     Just world' -> Just pddlw { world = world' }
+    --     Nothing -> Nothing
+
+-- type Assert = (World -> Bool)
+-- asserts :: [World -> Bool]
+
+locToCoord :: SokobanPDDL -> Location -> Coord
+locToCoord pddl loc = locMap pddl ! loc
+
+locationExists :: Location -> SokobanPDDL -> Bool
+locationExists loc pddl = member loc (locMap pddl)
+
+sokobanAt :: Location -> SokobanPDDL -> Bool
+sokobanAt loc pddl =
+    locMap pddl ! loc == (sokoban . world $ pddl)
+
+hAdj, vAdj :: Location -> Location -> SokobanPDDL -> Bool
+hAdj a b pddl =
+    case (locMap pddl ! a) - (locMap pddl ! b) of
+        Coord (-1, 0) -> True
+        Coord (1 , 0) -> True
+        _             -> False
+
+vAdj a b pddl =
+    case (locMap pddl ! a) - (locMap pddl ! b) of
+        Coord (0, -1) -> True
+        Coord (0,  1) -> True
+        _             -> False
+
+tileClear :: Location -> Assertion
+tileClear loc pddl =
+    case coordMap (world pddl) ! coord of
+        Clear -> not $ sokobanAt loc pddl
+        Box _ -> False
+    where coord = locMap pddl ! loc
+
+crateAt :: Crate -> Location -> Assertion
+crateAt c loc pddl =
+    case (coordMap . world) pddl ! (locMap pddl ! loc) of
+        Box c' -> c == c'
+        _      -> False
+
+goal :: Location -> Assertion
+goal loc pddl = (locMap pddl ! loc) `elem` (goals . world) pddl
+
+notGoal :: Location -> Assertion
+notGoal loc pddl = not $ goal loc pddl
+
+type Assertion = SokobanPDDL -> Bool
+
+asserts :: SokobanPDDL -> [SokobanPDDL -> Bool] -> Bool
+asserts pddl = all (\f -> f pddl)
+
 
 applyAction :: SokobanPDDL -> Action -> Maybe SokobanPDDL
-applyAction pddlw ("move-h", [from, to]) = applyFromLoc pddlw from to
-applyAction pddlw ("move-v", [from, to]) = applyFromLoc pddlw from to
-applyAction pddlw ("push-h", [_, from, to, _]) = applyFromLoc pddlw from to
-applyAction pddlw ("push-v", [_, from, to, _]) = applyFromLoc pddlw from to
-applyAction pddlw ("push-h-goal", [_, from, to, _]) = applyFromLoc pddlw from to
-applyAction pddlw ("push-v-goal", [_, from, to, _]) = applyFromLoc pddlw from to
+applyAction pddlw ("move-h", [from, to])
+    | asserts pddlw [sokobanAt from, tileClear to, hAdj from to] =
+        Just $ applyFromLoc pddlw from to
+    | otherwise = Nothing
+
+applyAction pddlw ("move-v", [from, to])
+    | asserts pddlw [sokobanAt from, tileClear to, vAdj from to] =
+        Just $ applyFromLoc pddlw from to
+    | otherwise = Nothing
+
+applyAction pddlw ("push-h", [c, soko, cLoc, toLoc])
+    | asserts pddlw conditions = Just $ applyFromLoc pddlw soko cLoc
+    | otherwise = Nothing
+        where conditions = [ sokobanAt soko
+                           , crateAt c cLoc
+                           , hAdj soko cLoc
+                           , hAdj cLoc toLoc
+                           , tileClear toLoc
+                           , notGoal toLoc
+                           ]
+
+applyAction pddlw ("push-v", [c, soko, cLoc, toLoc])
+    | asserts pddlw conditions = Just $ applyFromLoc pddlw soko toLoc
+    | otherwise = Nothing
+        where conditions = [ sokobanAt soko
+                           , crateAt c cLoc
+                           , vAdj soko cLoc
+                           , vAdj cLoc toLoc
+                           , tileClear toLoc
+                           , notGoal toLoc
+                           ]
+
+applyAction pddlw ("push-h-goal", [c, soko, cLoc, toLoc])
+    | asserts pddlw conditions = Just $ applyFromLoc pddlw soko toLoc
+    | otherwise = Nothing
+        where conditions = [ sokobanAt soko
+                           , crateAt c cLoc
+                           , hAdj soko cLoc
+                           , hAdj cLoc toLoc
+                           , tileClear toLoc
+                           , goal toLoc
+                           ]
+
+applyAction pddlw ("push-v-goal", [c, soko, cLoc, toLoc])
+    | asserts pddlw conditions = Just $ applyFromLoc pddlw soko toLoc
+    | otherwise = Nothing
+        where conditions = [ sokobanAt soko
+                           , crateAt c cLoc
+                           , vAdj soko cLoc
+                           , vAdj cLoc toLoc
+                           , tileClear toLoc
+                           , goal toLoc
+                           ]
+
 applyAction _ act = error ("Unknown action: " ++ show act)
 
 isStructurePred :: GroundedPredicate -> Bool
@@ -141,16 +245,16 @@ fromState state = pddl where
 worldPreds :: World -> Set GroundedPredicate
 worldPreds world = Set.insert sokLoc tilePreds where
 
-    sokLoc = sokobanAt $ writeLocation $ sokoban world
+    sokLoc = pSokobanAt $ writeLocation $ sokoban world
     -- The tilemap minus the tile sokoban is standing on
     tileMap' = Map.delete (sokoban world) (coordMap world)
     tilePreds = Set.fromList $ map (uncurry tilePred) $ Map.toList tileMap'
 
     tilePred :: Coord -> Tile -> GroundedPredicate
-    tilePred coord Clear = clear $ writeLocation coord
+    tilePred coord Clear = pClear $ writeLocation coord
     tilePred coord (Box n)
-        | coord `elem` goals world = atGoal n
-        | otherwise = at n $ writeLocation coord
+        | coord `elem` goals world = pAtGoal n
+        | otherwise = pAt n $ writeLocation coord
 
 toState :: SokobanPDDL -> State
 toState pddl =
