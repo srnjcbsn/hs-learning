@@ -5,9 +5,10 @@ import           PDDL
 
 import           Data.Char                    (isDigit)
 import           Data.List                    (partition)
+import qualified Data.List                    as List
 import           Data.Map                     (Map, member, (!))
 import qualified Data.Map                     as Map
-import           Data.Maybe                   (mapMaybe)
+import           Data.Maybe                   (mapMaybe,catMaybes)
 import           Data.Set                     (Set)
 import qualified Data.Set                     as Set
 
@@ -32,6 +33,12 @@ pSokobanAt loc = ("sokobanAt", [loc])
 
 pAt :: Crate -> Location -> GroundedPredicate
 pAt crate loc = ("at", [crate, loc])
+
+pHAdj :: Location -> Location -> GroundedPredicate
+pHAdj loc loc2 = (hAdjName, [loc, loc2])
+
+pVAdj :: Location -> Location -> GroundedPredicate
+pVAdj loc loc2 = (vAdjName, [loc, loc2])
 
 pAtGoal :: Crate -> GroundedPredicate
 pAtGoal crate = ("atGoal", [crate])
@@ -259,3 +266,34 @@ worldPreds world = Set.insert sokLoc tilePreds where
 toState :: SokobanPDDL -> State
 toState pddl =
      worldPreds (world pddl) `Set.union` persistentState pddl
+
+
+adjTiles:: World -> Coord -> ([(Coord,Tile)], [(Coord,Tile)])
+adjTiles w coord =
+  let vAdj = [Coord (0,1),Coord (0,-1)]
+      hAdj = [Coord (1,0),Coord (-1,0)]
+      absHAdj = List.map (+ coord) hAdj
+      absVAdj = List.map (+ coord) vAdj
+      f x = (x, Map.lookup x $ coordMap w)
+      tilesH = List.map f absHAdj
+      tilesV = List.map f absVAdj
+      tOnly tiles = [(c,t) | (c,Just t) <- tiles]
+   in (tOnly tilesH, tOnly tilesV)
+
+fromWorld :: World -> SokobanPDDL
+fromWorld w =
+  let cm = coordMap w
+      addAdjsToSet coord _ allPreds =
+          let (hAdjs, vAdjs) = adjTiles w coord
+              cLoc = writeLocation coord
+              toLocs l = [writeLocation c | (c,_) <- l]
+              hlocs = toLocs hAdjs
+              vlocs = toLocs vAdjs
+              vPreds = List.map (pVAdj cLoc) vlocs
+              hPreds = List.map (pHAdj cLoc) hlocs
+           in Set.union allPreds (Set.fromList $ vPreds ++ hPreds)
+      persistAdjs = Map.foldWithKey addAdjsToSet Set.empty cm
+      persistGoals = List.map (pGoal . writeLocation) $ goals w
+      locs = Map.fromList [(writeLocation c, c) | (c, _) <- Map.toList cm]
+      persist = Set.union persistAdjs (Set.fromList persistGoals)
+   in SokobanPDDL { world = w, locMap = locs, persistentState = persist}

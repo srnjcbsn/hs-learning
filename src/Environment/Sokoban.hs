@@ -2,6 +2,7 @@ module Environment.Sokoban where
 
 import           Data.Map (Map, (!))
 import qualified Data.Map as Map
+import qualified Data.List as List
 
 data Tile = Clear
           | Box Object
@@ -40,6 +41,21 @@ data Direction = LeftDir
                | RightDir
                | UpDir
                | DownDir
+
+from2DList :: [[Either (String -> Tile) Bool]] -> [Coord] -> World
+from2DList objs goalList =
+  let addEle l = List.zip [0 .. List.length l] l
+      yObjs = List.map addEle objs
+      xObjs = addEle yObjs
+      coordY y (x,val) = (Coord (toInteger x, toInteger y),val)
+      coordX (y,l) = List.map (coordY y) l
+      objsCoords = List.concatMap coordX xObjs
+      tileName (Coord (x,y)) = "b"++show x++"x"++show y
+      tiles = [ (c,val $ tileName c) | (c,Left val) <- objsCoords]
+      player = List.head [ c | (c,Right True) <- objsCoords]
+      tileMap = Map.fromList tiles
+   in World { coordMap = tileMap, sokoban = player, goals = goalList }
+
 
 moveCreate :: Object -> Coord -> Coord -> Map Coord Tile -> Map Coord Tile
 moveCreate name from to cMap =
