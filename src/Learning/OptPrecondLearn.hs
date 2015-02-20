@@ -2,7 +2,7 @@ module Learning.OptPrecondLearn where
 
 import           Learning.Induction
 import           PDDL.Logic
-import           PDDL.Type
+import           PDDL
 
 import           Data.Map           (Map, (!))
 import qualified Data.Map           as Map

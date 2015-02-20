@@ -1,4 +1,4 @@
-module PDDL.Type
+module PDDL
     (
     -- * Basic Types
       Name

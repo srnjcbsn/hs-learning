@@ -1,5 +1,5 @@
 module Environment where
-import PDDL.Type
+import PDDL
 
 class Environment env where
   toState :: env -> State

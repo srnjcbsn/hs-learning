@@ -6,7 +6,7 @@ import           System.IO.Temp
 import           System.Process
 
 import           PDDL.Parser
-import           PDDL.Type
+import           PDDL
 import           Planning
 
 -- | A record describing how the fast-downard program should be called.

@@ -14,7 +14,7 @@ import           Data.Maybe    (fromJust)
 import           Data.Set      (Set)
 import qualified Data.Set      as Set
 import           Data.Tuple    (swap)
-import           PDDL.Type
+import           PDDL
 
 import qualified Data.TupleSet as Set2
 

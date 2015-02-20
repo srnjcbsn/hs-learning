@@ -14,7 +14,7 @@ import qualified Data.TupleSet as TSet
 import           Learning.OptPrecondLearn
 import           PDDL.Logic
 import           PDDL.Samples.SimpleBox
-import           PDDL.Type
+import           PDDL
 
 p f x y = ("p", [f x,f y])
 pP x y = Predicate $ p Ref x y

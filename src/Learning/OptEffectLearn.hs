@@ -11,7 +11,7 @@ import           Debug.Trace
 
 import           Learning.Induction
 import           PDDL.Logic
-import           PDDL.Type
+import           PDDL
 
 -- | (unknown, known)
 type EffectKnowledge = (Set FluentPredicate, Set FluentPredicate)

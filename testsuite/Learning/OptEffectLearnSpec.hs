@@ -13,7 +13,7 @@ import           Test.QuickCheck
 import           Learning.OptEffectLearn
 import           PDDL.Logic
 import           PDDL.Samples.SimpleBox
-import           PDDL.Type
+import           PDDL
 
 p f x y = ("p", [f x,f y])
 pP x y = Predicate $ p Ref x y

@@ -1,6 +1,6 @@
 module PDDL.Samples.SimpleBox where
 
-import PDDL.Type
+import PDDL
 
 inside a = ("inside", [a])
 pInside = Predicate . inside

@@ -1,6 +1,6 @@
 module Learning where
 
-import PDDL.Type
+import PDDL
 import qualified Learning.OptEffectLearn as Eff
 import qualified Learning.OptPrecondLearn as Pre
 import qualified Environment as Env

@@ -6,7 +6,7 @@ module PDDL.Parser
 import           Control.Applicative           ((*>), (<*))
 import           Control.Monad                 (liftM2)
 import qualified Data.Set                      as Set
-import           PDDL.Type
+import           PDDL
 import           Text.ParserCombinators.Parsec
 
 acceptableRequirements :: [String]

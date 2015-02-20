@@ -1,4 +1,4 @@
-import PDDL.Type
+import PDDL
 import Planning.FastDownward
 import PDDL.Samples.SimpleBox
 import           Data.List              (sort)
@@ -12,7 +12,7 @@ import qualified Data.TupleSet as TSet
 import           Learning.OptPrecondLearn
 import           PDDL.Logic
 import           PDDL.Samples.SimpleBox
-import           PDDL.Type
+import           PDDL
 
 main :: IO ()
 main =

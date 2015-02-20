@@ -5,7 +5,7 @@ import           Data.Map  (Map)
 import qualified Data.Map  as Map
 import           Data.Set  (Set)
 import qualified Data.Set  as Set
-import           PDDL.Type
+import           PDDL
 import           Control.Monad      (replicateM)
 
 -- | Returns an unambiguous predicate, if any

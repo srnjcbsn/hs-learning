@@ -7,7 +7,7 @@ import           Text.Show.Pretty             (ppShow)
 
 
 import           Environment.Sokoban.PDDL
-import           Environment.Sokoban.Sokoban
+import           Environment.Sokoban
 
 setCursorPosition' :: Integer -> Integer -> IO ()
 setCursorPosition' x y =

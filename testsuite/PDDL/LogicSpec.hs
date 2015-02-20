@@ -4,7 +4,7 @@ import           Control.Exception
 import           Data.Set              (Set)
 import qualified Data.Set              as Set
 import           PDDL.Logic
-import           PDDL.Type
+import           PDDL
 import           Test.Hspec
 import           Test.Hspec.QuickCheck
 import           Test.QuickCheck

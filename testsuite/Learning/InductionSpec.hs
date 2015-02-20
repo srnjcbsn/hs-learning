@@ -1,7 +1,7 @@
 module Learning.InductionSpec (main, spec) where
 
 import           Learning.Induction
-import           PDDL.Type
+import           PDDL
 import           Test.Hspec
 import           Test.Hspec.QuickCheck
 import           Test.QuickCheck
