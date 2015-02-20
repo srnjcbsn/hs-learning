@@ -156,7 +156,7 @@ parseProblem =
         return Problem { probName = name
                        , probDomain = dom
                        , probObjs = objs
-                       , probInitialState = Set.fromList ini
+                       , probState = Set.fromList ini
                        , probGoal = g
                        }
 

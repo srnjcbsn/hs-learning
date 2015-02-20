@@ -13,8 +13,6 @@ import Learning.OptPrecondLearn
 import Learning.OptEffectLearn
 import Environments.Sokoban.Sokoban
 import Environments.Sokoban.PDDL
-import PDDL.Environment (Environment)
-import qualified PDDL.Environment as Env
 setCursorPosition' :: Integer -> Integer -> IO ()
 setCursorPosition' x y =
     setCursorPosition (fromIntegral x) (fromIntegral y)
@@ -65,45 +63,3 @@ visualize pddl = do
     where tileCoords = assocs $ (coordMap . world) pddl
           goalCoords = (goals . world) pddl
           sokoCoord  = (sokoban . world) pddl
-
-runSokoban :: (ExtPlanner ep, Environment env)
-           => ep
-           -> Domain
-           -> Problem
-           -> env
-           -> DomainHypothesis
-           -> PreDomainHypothesis
-           -> Maybe Plan
-           -> IO ()
-runSokoban planner domain problem env effectHyp precondHyp maybeCurPlan =
-  let s = toState env
-      uptDom = (`domainFromKnowledge` effectHyp) . (`domainFromPrecondHypothesis` precondHyp)
-      actions =
-        do
-          maybePlan <-  if isNothing maybeCurPlan
-                        then makePlan planner
-                                (uptDom domain)
-                                ( problem { probInitialState = s} )
-                        else return maybeCurPlan
-          case maybePlan of
-            Just (act:restPlan) ->
-              let maybeEnv' = applyAction env act
-                  maybeS' = do env' <- maybeEnv'
-                               return $ toState env'
-                  trans = (s, act, maybeS')
-                  effectHyp' = updateDomainHyp domain effectHyp trans
-                  precondHyp' = updatePreDomainHyp domain precondHyp trans
-              in case maybeEnv' of
-                  Just env' ->
-                    do visualize env'
-                       return $ Just (env',effectHyp',precondHyp', problem, Just restPlan)
-                  Nothing -> return $ Just (env,effectHyp',precondHyp', problem, Just restPlan)
-            Just [] -> return Nothing
-            Nothing -> undefined
-
-
-   in do
-     outp <- actions
-     case outp of
-      Just (env',effectHyp',precondHyp', ps', restPlan) ->
-        undefined--runSokoban planner domain ps' effectHyp' precondHyp' env' restPlan

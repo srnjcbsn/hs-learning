@@ -7,9 +7,7 @@ import           System.Process
 
 import           PDDL.Parser
 import           PDDL.Type
-
-class ExtPlanner ep where
-    makePlan :: ep -> Domain -> Problem -> IO (Maybe Plan)
+import           Planning
 
 -- | A record describing how the fast-downard program should be called.
 data FastDownward = FastDownward
@@ -25,7 +23,7 @@ data FastDownward = FastDownward
                              --   by fast-downward
     }
 
-instance ExtPlanner FastDownward where
+instance ExternalPlanner FastDownward where
     makePlan = makePlan'
 
 -- | construct a default 'FastDownward' record, where

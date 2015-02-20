@@ -96,7 +96,7 @@ data Problem = Problem
     { probName         :: String
     , probObjs         :: [Object]
     , probDomain       :: String
-    , probInitialState :: State
+    , probState :: State
     , probGoal         :: Formula
     } deriving (Show, Eq)
 
@@ -172,7 +172,7 @@ writeProblem prob =
     let defineStr = "(define (problem " ++ probName prob ++ ")"
         domStr    = "(:domain " ++ probDomain prob ++ ")"
         objsStr   = "(:objects " ++ unwords (probObjs prob) ++ ")"
-        initStr   = "(:init " ++ writeState (probInitialState prob) ++ ")"
+        initStr   = "(:init " ++ writeState (probState prob) ++ ")"
         goalStr   = "(:goal " ++ writeFormula (probGoal prob) ++ ")"
     in intercalate "\n\t" [defineStr, domStr, objsStr, initStr, goalStr] ++ ")"
 

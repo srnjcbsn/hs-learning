@@ -54,7 +54,7 @@ problemSpecRes =
     Problem { probName = "prob"
             , probObjs = ["x", "y"]
             , probDomain = "dom"
-            , probInitialState = Set.singleton ("test1", ["x", "y"])
+            , probState = Set.singleton ("test1", ["x", "y"])
             , probGoal = Predicate ("test2", [Const "x", Const "y"])
             }
 
