@@ -8,11 +8,10 @@ module PDDL.Logic ( negateF
                   , ground
                   , applyAction
                   ) where
-
+import Data.List (intercalate)
 import qualified Data.List     as List
 import           Data.Map      (Map)
 import qualified Data.Map      as Map
-import           Data.Maybe    (fromJust)
 import           Data.Set      (Set)
 import qualified Data.Set      as Set
 import           Data.Tuple    (swap)
@@ -42,8 +41,16 @@ conjunction f1 (Neg f2) = Neg (conjunction f1 f2)
 conjunction f1 f2 = Con [f1, f2]
 
 -- | Finds the action spec of an action in a domain
-findActionSpec :: Domain -> Action -> Maybe ActionSpec
-findActionSpec domain (name, _) = actionSpec domain name
+findActionSpec :: Domain -> Action -> ActionSpec
+findActionSpec domain (name, _) =
+    case actionSpec domain name of
+        Just aSpec -> aSpec
+        Nothing    ->
+            error $  "Action specification with name " ++ name
+                  ++ " does not exist in domain (action names: "
+                  ++ names ++ ")"
+            where names = intercalate ","
+                        $ map asName (dmActionsSpecs domain)
 
 
 -- | Instantiates a formula into the actual positive and negative changes
@@ -99,13 +106,13 @@ ground :: Domain
        -> Set FluentPredicate
        -> Set GroundedPredicate
 ground domain (name, args) fluents =
-    fst $ instantiateFormula domain paras args
+    fst $ instantiateFormula domain (asParas aSpec) args
         (Con $ List.map Predicate $ Set.toList fluents)
-    where paras = asParas (fromJust $ actionSpec domain name)
+        where aSpec = findActionSpec domain (name, args)
 
 -- | Takes an action, grounds it and then if the precondions are satisfied applies it to a state
 apply :: Domain -> State -> Action -> Maybe State
 apply domain state action =
-    case findActionSpec domain action of
+    case actionSpec domain (aName action) of
         Just aSpec -> applyAction state $ instantiateAction domain aSpec action
         Nothing    -> Nothing

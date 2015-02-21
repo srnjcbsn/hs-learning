@@ -50,10 +50,10 @@ constructEffectSchema ak action  =
 
 -- | Updates the effect hypothesis based on the transition
 updateEffectHyp :: Domain -> EffectHypothesis -> Transition -> EffectHypothesis
-updateEffectHyp domain ak transition =
-    let (oldState, action, mNewState) = transition
-        newState = fromJust mNewState
-        aSpec = fromJust $ findActionSpec domain action
+-- if the action application was unsuccessful, we cannot learn anything
+updateEffectHyp _ ak (_, _, Nothing) = ak
+updateEffectHyp domain ak (oldState, action, Just newState) =
+    let aSpec = findActionSpec domain action
         aSpecParas = asParas aSpec
         (posEffects, negEffects) = ak
         (posUnkEff, posKnEff) = posEffects
@@ -151,7 +151,7 @@ updateDomainHyp :: Domain
                 -> Transition
                 -> DomainHypothesis
 updateDomainHyp dom dHyp transition
-    | Just planState == newState = dHyp
+    | planState == newState = dHyp
     | otherwise = updateEffectHypHelper dom dHyp transition
     where (oldState, action, newState) = transition
-          planState = fromJust $ apply dom oldState action
+          planState = apply dom oldState action

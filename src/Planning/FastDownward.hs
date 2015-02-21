@@ -122,7 +122,7 @@ fastDownward fd temp =
 parsePlan :: FilePath -> IO (Maybe Plan)
 parsePlan planFile =
     (readFile planFile >>= parsePlan') `catchIOError` errHandler
-    where parsePlan' str =
+    where parsePlan' str = 
             case doParse plan str of
             Left perr   -> ioError $ parseErr perr
             Right plan' -> return $ Just plan'
@@ -132,5 +132,5 @@ parsePlan planFile =
 
           errHandler :: IOError -> IO (Maybe Plan)
           errHandler e
-                | isDoesNotExistError e = return Nothing
-                | otherwise = ioError e
+                | isDoesNotExistError e = print e >> return Nothing
+                | otherwise = print e >> ioError e

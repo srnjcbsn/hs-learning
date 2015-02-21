@@ -6,7 +6,6 @@ import           PDDL
 
 import           Data.Map           (Map, (!))
 import qualified Data.Map           as Map
-import           Data.Maybe         (fromJust)
 import           Data.Set           (Set, (\\))
 import qualified Data.Set           as Set
 import qualified Data.TupleSet      as TSet
@@ -95,7 +94,7 @@ updatePreDomainHyp dom hyp transition =
 
 updatePrecHypothesis :: Domain -> PreKnowledge -> Transition -> PreKnowledge
 updatePrecHypothesis domain (posKnowledge, negKnowledge, cnfs) (s, action, s') =
-    let aSpecParas = asParas $ fromJust $ actionSpec domain (aName action)
+    let aSpecParas = asParas $ findActionSpec domain action
         unground' :: GroundedPredicate -> Set FluentPredicate
         unground' = ungroundNExpand aSpecParas (aArgs action)
 
