@@ -26,7 +26,7 @@ data FastDownward = FastDownward
                              --   by fast-downward
     }
 
-instance ExternalPlanner FastDownward PDDLDomain PDDLProblem where
+instance ExternalPlanner FastDownward PDDLDomain PDDLProblem ActionSpec where
     makePlan = makePlan'
 
 -- | construct a default 'FastDownward' record, where

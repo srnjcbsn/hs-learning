@@ -13,7 +13,7 @@ import qualified Learning.OptPrecondLearn as Pre
 import           Planning.PDDL
 import           Planning
 
-refine  :: ExternalPlanner ep PDDLDomain PDDLProblem
+refine  :: ExternalPlanner ep PDDLDomain PDDLProblem ActionSpec
         => ep
         -> PDDLDomain
         -> PDDLProblem
@@ -50,7 +50,7 @@ perform env (Just fullPlan@(action:restPlan)) =
 perform _ (Just []) = Right True
 perform _ Nothing = Right False
 
-run :: (ExternalPlanner ep PDDLDomain PDDLProblem, Environment env)
+run :: (ExternalPlanner ep PDDLDomain PDDLProblem ActionSpec, Environment env)
     => ep
     -> PDDLDomain
     -> PDDLProblem
@@ -68,7 +68,7 @@ run planner domain problem env preHyp effHyp plan =
          in return $ Left (env', preHyp', effHyp', plan'')
        Right ans -> return $ Right ans
 
-runnerVisualized :: (ExternalPlanner ep PDDLDomain PDDLProblem, Environment env)
+runnerVisualized :: (ExternalPlanner ep PDDLDomain PDDLProblem ActionSpec, Environment env)
                  => ep
                  -> (env -> IO ())
                  -> (Maybe Plan -> IO ())

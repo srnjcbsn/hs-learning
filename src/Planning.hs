@@ -1,5 +1,3 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
-
 module Planning where
 
 import           Data.TupleSet (TupleSet)
@@ -17,17 +15,24 @@ type State = Set GroundedPredicate
 type Action = (Name, [Object])
 type Plan = [Action]
 
-class (Domain d, Problem p) => ExternalPlanner ep d p where
+aArgs :: Action -> [Object]
+aArgs = snd
+
+aName :: Action -> Name
+aName = fst
+
+class (Domain d as, Problem p) => ExternalPlanner ep d p as where
     makePlan :: ep -> d -> p -> IO (Maybe Plan)
 
-class Domain d where
-    actionSpecification :: ActionSpecification a => d -> Name -> a
-    actions             :: ActionSpecification a => d -> [a]
-    apply               :: ActionSpecification a => d -> a -> State -> [Name] -> State
+class ActionSpecification as => Domain d as | d -> as where
+    actionSpecification :: d -> Name -> as
+    actions             :: d -> [as]
+    apply               :: d -> State -> Action -> State
 
 class Problem p where
     initialState :: p -> State
     isSolved     :: p -> State -> Bool
+    objects      :: p -> [Object]
 
 class ActionSpecification a where
     name           :: a -> String

@@ -70,6 +70,12 @@ data ActionSpec = ActionSpec
     , asEffect  :: Formula
     } deriving (Show, Eq, Ord)
 
+instance ActionSpecification ActionSpec where
+    name         = undefined
+    arity        = undefined
+    isApplicable = undefined
+    effect       = undefined
+
 type GroundedChanges = (Set GroundedPredicate, Set GroundedPredicate)
 
 type GroundedAction = (GroundedChanges, GroundedChanges)
@@ -81,7 +87,7 @@ data PDDLDomain = PDDLDomain
     , dmConstants    :: [Name]
     } deriving (Show, Eq)
 
-instance Domain PDDLDomain where
+instance Domain PDDLDomain ActionSpec where
     actionSpecification = undefined
     actions             = undefined
     apply               = undefined
@@ -97,6 +103,7 @@ data PDDLProblem = PDDLProblem
 instance Problem PDDLProblem where
     initialState = undefined
     isSolved     = undefined
+    objects      = undefined
 
 -- | A state transition is a the old state, the action that was applied to that
 --   state, and --- depending on the applicability of the action --- 'Just' an
@@ -108,13 +115,6 @@ pName = fst
 
 pArgs :: FluentPredicate -> [Argument]
 pArgs = snd
-
-
-aArgs :: Action -> [Object]
-aArgs = snd
-
-aName :: Action -> Name
-aName = fst
 
 paramNames :: PredicateSpec -> [Name]
 paramNames = snd
