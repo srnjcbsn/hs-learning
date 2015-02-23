@@ -106,6 +106,17 @@ testParsePredicateSpec = do
             tryParse parseFormula ("(and " ++ predStrA ++ " " ++ predStrB ++ ")")
                 `shouldBe` Just (Con [Predicate predResA, Predicate predResB])
 
+    describe "Plan parser" $ do
+        it "can parse simple plans (as produced by fast-downward)" $
+            let planStr = unlines [ "(push-h b0x0 b0x0 b1x0 b2x0)"
+                                  , "(push-h b2x1 b2x2 boxat1x0 boxat2x1)"
+                                  , "; cost = 2 (unit cost)"
+                                  ]
+                expectedPlan = [ ("push-h", ["b0x0", "b0x0", "b1x0", "b2x0"])
+                               , ("push-h", ["b2x1", "b2x2", "boxat1x0", "boxat2x1"])
+                               ]
+            in tryParse plan planStr `shouldBe` Just expectedPlan
+
     describe "Action specification parser" $ do
         it "can parse basic action specifications" $
             tryParse parseActionSpec actionSpecStr `shouldBe` Just actionSpecRes

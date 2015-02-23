@@ -2,6 +2,8 @@ module Learning where
 
 import           Control.Monad
 import           Data.Maybe
+import           Text.Show.Pretty
+
 import           Environment              (Environment)
 import qualified Environment              as Env
 import           Learning.OptEffectLearn  (DomainHypothesis)
@@ -59,6 +61,7 @@ run :: (ExternalPlanner ep, Environment env)
     -> IO (Either (env, PreDomainHypothesis, DomainHypothesis, Maybe Plan) Bool)
 run planner domain problem env preHyp effHyp plan =
   do plan' <- refine planner domain problem preHyp effHyp plan
+     putStrLn $ "running: refine returned plan: " ++ (show plan')
      case perform env plan' of
        Left (env', trans, plan'') ->
         let (preHyp', effHyp') = learn domain trans preHyp effHyp

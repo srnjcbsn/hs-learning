@@ -1,14 +1,15 @@
 module Planning.FastDownward where
 
+import           Control.Concurrent    (threadDelay)
+import           System.Directory
 import           System.FilePath.Posix
+import           System.IO             (IOMode (..), openFile)
 import           System.IO.Error
 import           System.IO.Temp
 import           System.Process
-import System.IO (openFile, IOMode (..))
-import Control.Concurrent (threadDelay)
 
-import           PDDL.Parser
 import           PDDL
+import           PDDL.Parser
 import           Planning
 
 -- | A record describing how the fast-downard program should be called.
@@ -50,7 +51,7 @@ mkFastDownard dom prob =
                  , planName = "plan"
                  }
 
--- | Constructs a list of cammand line arguments to invoke fast-downward with.
+-- | Constructs a list of command line arguments to invoke fast-downward with.
 --   The argugments are of the form
 --
 -- > --run-all --plan-file <PLANFILE> <DOMAINFILE> <PROBLEMFILE> --search <SEARCHALGO>
@@ -60,7 +61,7 @@ fdArgs :: FastDownward
        -> [String]
 fdArgs fd tmp =
     [ "--run-all"
-    , "--plan-file", tmp </> planName fd
+    , "--plan-file", planName fd
     , domFile fd, probFile fd
     , "--search", searchAlgo fd
     ]
@@ -71,7 +72,9 @@ makePlan' :: FastDownward -> Domain -> Problem -> IO (Maybe Plan)
 makePlan' fd dom prob = do
     writeFile (domFile fd) (writeDomain dom)
     writeFile (probFile fd) (writeProblem prob)
-    fastDownward fd "plan"
+    fdPath' <-  getCurrentDirectory
+    let fd' = fd { workDir = fdPath' }
+    fastDownward fd dom prob "plan"
     -- let domFile = dmName dom
     --     probFile = probName prob
     --     fd = FastDownward fdPath domFile probFile searchAlgo "plan"
@@ -99,19 +102,26 @@ domainFromFile path = do
 --   After the plan output by fd has been parsed, the temporary directory is
 --   removed (including the plan file).
 fastDownward :: FastDownward
+             -> Domain
+             -> Problem
              -> String          -- ^ A template for the name of the temp dir
              -> IO (Maybe Plan) -- ^ The plan constructed by fd,
                                 -- or 'Nothing' if no plan could be found
-fastDownward fd temp =
+fastDownward fd dom prob temp =
     withTempDirectory (workDir fd) temp mkPlan
     where mkPlan tmp = do
+            writeFile (tmp </> domFile fd) (writeDomain dom)
+            writeFile (tmp </> probFile fd) (writeProblem prob)
+            fdp <- getCurrentDirectory >>= (\cwd' -> return $ cwd' </> fdPath fd)
             handle <- openFile "log" AppendMode
-            (_, _, _, pH) <- createProcess (proc (fdPath fd) $ fdArgs fd tmp)
-                { cwd = Just (workDir fd) -- set the working directory
-                , std_out = UseHandle handle    -- don't write to stdout
+            (_, _, _, pH) <- createProcess (proc fdp $ fdArgs fd tmp)
+                { cwd = Just tmp -- set the working directory
+                , std_out = UseHandle handle -- don't write to stdout
+                , std_err = UseHandle handle
                 }
-            waitForProcess pH
-            -- putStrLn $ tmp </> planName fd
+            ec <- waitForProcess pH
+            putStrLn $ tmp </> planName fd
+            putStrLn (show ec)
             -- threadDelay $ (10 ^ 12 :: Int)
             parsePlan $ tmp </> planName fd
 
@@ -121,14 +131,23 @@ fastDownward fd temp =
 --   parser error.
 parsePlan :: FilePath -> IO (Maybe Plan)
 parsePlan planFile =
-    (readFile planFile >>= parsePlan') `catchIOError` errHandler
-    where parsePlan' str = 
+    ((readFile planFile >>= return . Just) `catchIOError` eHandler) >>= parsePlan'
+    -- case readFile planFile `catchIOError` errHandler
+    where parsePlan' (Just str) = putStrLn ("parsePlan1: " ++ str) >>
             case doParse plan str of
-            Left perr   -> ioError $ parseErr perr
-            Right plan' -> return $ Just plan'
+            Left perr   -> do putStrLn ("parsePlan2: " ++ show perr)
+                              error (parseErr perr)
+            Right plan' -> do putStrLn ("parsePlan3: " ++ show plan')
+                              return $ Just plan'
+          parsePlan' Nothing = putStrLn "parsePlan4: Nothing" >> return Nothing
 
-          parseErr :: ParseError -> IOError
-          parseErr err = userError $ "Failed to parse plan: \n" ++ show err
+          parseErr :: ParseError -> String
+          parseErr err = "Failed to parse plan: \n" ++ show err
+
+          eHandler :: IOError -> IO (Maybe String)
+          eHandler e
+            | isDoesNotExistError e = print e >> return Nothing
+            | otherwise = print e >> ioError e
 
           errHandler :: IOError -> IO (Maybe Plan)
           errHandler e

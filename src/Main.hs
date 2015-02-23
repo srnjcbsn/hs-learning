@@ -22,9 +22,9 @@ main = do
     removeFile logPath
     clearScreen
     setTitle "SOKOBAN!"
-    runnerVisualized fd visualize (logAction logPath) dom prob sokoEnv iniPreDomHyp iniEffDomHyp Nothing
+    runnerVisualized fd vis (logAction logPath) dom prob sokoEnv iniPreDomHyp iniEffDomHyp Nothing
     where
-
+        vis _ = return () :: IO ()
         sokoWorld = SS.world
         sokoEnv = fromWorld sokoWorld
         dom = sokobanDomain
