@@ -1,19 +1,19 @@
 module Learning.OptEffectLearnSpec where
 
-import           Data.List              (sort)
-import           Data.Map               (Map)
-import qualified Data.Map               as Map
-import           Data.Maybe             (fromJust)
-import           Data.Set               (Set)
-import qualified Data.Set               as Set
+import           Data.List                       (sort)
+import           Data.Map                        (Map)
+import qualified Data.Map                        as Map
+import           Data.Maybe                      (fromJust)
+import           Data.Set                        (Set)
+import qualified Data.Set                        as Set
 import           Test.Hspec
 import           Test.Hspec.QuickCheck
 import           Test.QuickCheck
 
 import           Learning.OptEffectLearn
-import           PDDL.Logic
-import           PDDL.Samples.SimpleBox
-import           PDDL
+import           Planning.PDDL
+import           Planning.PDDL.Logic
+import           Planning.PDDL.Samples.SimpleBox
 
 p f x y = ("p", [f x,f y])
 pP x y = Predicate $ p Ref x y
@@ -27,7 +27,7 @@ initActspec effects = ActionSpec
 
 
 
-initDomain as = Domain
+initDomain as = PDDLDomain
     { dmName = "TestDomain"
     , dmPredicates = [p id "x" "y"]
     , dmActionsSpecs = [as]

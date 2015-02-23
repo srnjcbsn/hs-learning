@@ -1,6 +1,6 @@
-module PDDL.Samples.SimpleBox where
+module Planning.PDDL.Samples.SimpleBox where
 
-import PDDL
+import Planning.PDDL
 
 inside a = ("inside", [a])
 pInside = Predicate . inside
@@ -26,7 +26,7 @@ takeOut = ActionSpec
     , asEffect = Con [Neg $ pInside ar, pOutside ar]
     }
 
-sBDomain = Domain
+sBDomain = PDDLDomain
     { dmName = "SimpleBox"
     , dmPredicates = [inside a, outside a]
     , dmActionsSpecs = [putIn, takeOut]

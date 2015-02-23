@@ -1,7 +1,7 @@
 -- | Adapted from http://reason.cs.uiuc.edu/filter/filter/blocks-world-exper/blocks-domain.pddl
-module PDDL.Samples.BlocksWorld where
+module Planning.PDDL.Samples.BlocksWorld where
 
-import PDDL
+import Planning.PDDL
 
 
 

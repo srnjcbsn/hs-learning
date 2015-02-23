@@ -1,10 +1,11 @@
-module PDDL.LogicSpec (main, spec) where
+module Planning.PDDL.LogicSpec (main, spec) where
 
 import           Control.Exception
 import           Data.Set              (Set)
 import qualified Data.Set              as Set
-import           PDDL.Logic
-import           PDDL
+import           Planning.PDDL.Logic
+import           Planning.PDDL
+
 import           Test.Hspec
 import           Test.Hspec.QuickCheck
 import           Test.QuickCheck
@@ -29,7 +30,7 @@ getGroundPred objs = ("testPred1", objs)
 
 getGroundAct posCond negCond posEff negEff = ((getState posCond,getState negCond),(getState posEff,getState negEff))
 
-getDomain as = Domain { dmName = "testDomain"
+getDomain as = PDDLDomain { dmName = "testDomain"
                       , dmPredicates = []
                       , dmActionsSpecs = as
                       , dmConstants = []

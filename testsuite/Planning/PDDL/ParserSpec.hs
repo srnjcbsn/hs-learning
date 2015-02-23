@@ -1,12 +1,12 @@
-module PDDL.ParserSpec (main, spec) where
+module Planning.PDDL.ParserSpec (main, spec) where
 
-import           PDDL.Parser
-import           PDDL
+import           Data.Char
+import qualified Data.Set              as Set
+import           Planning.PDDL
+import           Planning.PDDL.Parser
 import           Test.Hspec
 import           Test.Hspec.QuickCheck
 import           Test.QuickCheck
-import Data.Char
-import qualified Data.Set as Set
 
 predStrA = "(a ?x Y)"
 predResA = ("a", [Ref "x", Const "Y"])
@@ -36,7 +36,7 @@ domainSpecStr =
             ]
 
 domainSpecRes =
-    Domain { dmName         = "test"
+    PDDLDomain { dmName         = "test"
            , dmPredicates   = [("a", ["x", "y"])]
            , dmActionsSpecs = [actionSpecRes]
            , dmConstants    = ["A", "B"]
@@ -51,7 +51,7 @@ problemSpecStr =
             ]
 
 problemSpecRes =
-    Problem { probName = "prob"
+    PDDLProblem { probName = "prob"
             , probObjs = ["x", "y"]
             , probDomain = "dom"
             , probState = Set.singleton ("test1", ["x", "y"])

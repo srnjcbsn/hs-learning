@@ -1,4 +1,4 @@
-module Planning.FastDownward where
+module Planning.Planner.FastDownward where
 
 import           Control.Concurrent    (threadDelay)
 import           System.Directory
@@ -8,8 +8,8 @@ import           System.IO.Error
 import           System.IO.Temp
 import           System.Process
 
-import           PDDL
-import           PDDL.Parser
+import           Planning.PDDL
+import           Planning.PDDL.Parser
 import           Planning
 
 -- | A record describing how the fast-downard program should be called.
@@ -26,7 +26,7 @@ data FastDownward = FastDownward
                              --   by fast-downward
     }
 
-instance ExternalPlanner FastDownward where
+instance ExternalPlanner FastDownward PDDLDomain PDDLProblem where
     makePlan = makePlan'
 
 -- | construct a default 'FastDownward' record, where
@@ -41,7 +41,7 @@ instance ExternalPlanner FastDownward where
 -- * the search algorithm is @astar(blind())@
 --
 -- * the name of the generated plan is "plan"
-mkFastDownard :: Domain -> Problem -> FastDownward
+mkFastDownard :: PDDLDomain -> PDDLProblem -> FastDownward
 mkFastDownard dom prob =
     FastDownward { fdPath = "fd/fast-downward.py"
                  , workDir = "."
@@ -68,7 +68,7 @@ fdArgs fd tmp =
 
 -- | Write the given domain and problem specifications to the files specified in
 --   in the given 'FastDownward' record, and call 'fastDownward'.
-makePlan' :: FastDownward -> Domain -> Problem -> IO (Maybe Plan)
+makePlan' :: FastDownward -> PDDLDomain -> PDDLProblem -> IO (Maybe Plan)
 makePlan' fd dom prob = do
     writeFile (domFile fd) (writeDomain dom)
     writeFile (probFile fd) (writeProblem prob)
@@ -84,11 +84,11 @@ makePlan' fd dom prob = do
     --     fastDownward fd temp
 
 
-domainToFile :: Domain -> String -> IO ()
+domainToFile :: PDDLDomain -> String -> IO ()
 domainToFile domain path =
     writeFile path (writeDomain domain)
 
-domainFromFile :: FilePath -> IO Domain
+domainFromFile :: FilePath -> IO PDDLDomain
 domainFromFile path = do
     cont   <- readFile path
     case doParse parseDomain cont of
@@ -102,8 +102,8 @@ domainFromFile path = do
 --   After the plan output by fd has been parsed, the temporary directory is
 --   removed (including the plan file).
 fastDownward :: FastDownward
-             -> Domain
-             -> Problem
+             -> PDDLDomain
+             -> PDDLProblem
              -> String          -- ^ A template for the name of the temp dir
              -> IO (Maybe Plan) -- ^ The plan constructed by fd,
                                 -- or 'Nothing' if no plan could be found
@@ -148,8 +148,3 @@ parsePlan planFile =
           eHandler e
             | isDoesNotExistError e = print e >> return Nothing
             | otherwise = print e >> ioError e
-
-          errHandler :: IOError -> IO (Maybe Plan)
-          errHandler e
-                | isDoesNotExistError e = print e >> return Nothing
-                | otherwise = print e >> ioError e

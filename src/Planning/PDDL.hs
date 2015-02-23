@@ -1,8 +1,7 @@
-module PDDL
+module Planning.PDDL
     (
     -- * Basic Types
       Name
-    , Type
     , Object
 
     -- * Formulae
@@ -13,8 +12,8 @@ module PDDL
     , pArgs
 
     -- * Composite types
-    , Domain (..)
-    , Problem (..)
+    , PDDLDomain (..)
+    , PDDLProblem (..)
     , PredicateSpec
     , ActionSpec (..)
     , paramNames
@@ -36,15 +35,20 @@ module PDDL
     -- * Functions for converting PDDL types to 'String's
     , writeDomain
     , writeProblem
-    )where
+    ) where
+
+
+import qualified Data.TupleSet as TSet
+import Data.TupleSet (TupleSet)
+import Planning
 
 import           Data.List (find, intercalate)
 import           Data.Set  (Set)
 import qualified Data.Set  as Set
 
-type Name = String
-type Type = String
-type Object  = String
+class ActionSpecification a => PDDLAction a where
+    preConditions  :: a -> Formula
+    effects        :: a -> Formula
 
 data Argument = Const Name
               | Ref Name
@@ -65,24 +69,24 @@ data ActionSpec = ActionSpec
     , asPrecond :: Formula
     , asEffect  :: Formula
     } deriving (Show, Eq, Ord)
-type Action = (Name, [Object])
-
-type GroundedPredicate = (Name, [Object])
 
 type GroundedChanges = (Set GroundedPredicate, Set GroundedPredicate)
 
 type GroundedAction = (GroundedChanges, GroundedChanges)
 
-data Domain = Domain
+data PDDLDomain = PDDLDomain
     { dmName         :: Name
     , dmPredicates   :: [PredicateSpec]
     , dmActionsSpecs :: [ActionSpec]
     , dmConstants    :: [Name]
     } deriving (Show, Eq)
 
-type State = Set GroundedPredicate
+instance Domain PDDLDomain where
+    actionSpecification = undefined
+    actions             = undefined
+    apply               = undefined
 
-data Problem = Problem
+data PDDLProblem = PDDLProblem
     { probName         :: String
     , probObjs         :: [Object]
     , probDomain       :: String
@@ -90,7 +94,9 @@ data Problem = Problem
     , probGoal         :: Formula
     } deriving (Show, Eq)
 
-type Plan = [Action]
+instance Problem PDDLProblem where
+    initialState = undefined
+    isSolved     = undefined
 
 -- | A state transition is a the old state, the action that was applied to that
 --   state, and --- depending on the applicability of the action --- 'Just' an
@@ -115,7 +121,7 @@ paramNames = snd
 
 -- | Returns the action specification with the given name in the domain,
 --   or 'Nothing' if it could not be found.
-actionSpec :: Domain -> Name -> Maybe ActionSpec
+actionSpec :: PDDLDomain -> Name -> Maybe ActionSpec
 actionSpec domain name = find ((== name) . asName) (dmActionsSpecs domain)
 
 writeState :: State -> String
@@ -157,7 +163,7 @@ writeFormula (Predicate f) = writeFluentPredicate f
 writeFormula (Neg f) = "(not " ++ writeFormula f ++ ")"
 writeFormula (Con fs) = "(and " ++ unwords (map writeFormula fs) ++ ")"
 
-writeProblem :: Problem -> String
+writeProblem :: PDDLProblem -> String
 writeProblem prob =
     let defineStr = "(define (problem " ++ probName prob ++ ")"
         domStr    = "(:domain " ++ probDomain prob ++ ")"
@@ -167,7 +173,7 @@ writeProblem prob =
     in intercalate "\n\t" [defineStr, domStr, objsStr, initStr, goalStr] ++ ")"
 
 
-writeDomain :: Domain -> String
+writeDomain :: PDDLDomain -> String
 writeDomain domain =
     let defineStr = "(define (domain " ++ dmName domain ++ ")"
         reqsStr = "(:requirements :strips)"

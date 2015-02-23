@@ -1,13 +1,13 @@
 module Learning.InductionSpec (main, spec) where
 
+import qualified Data.List             as List
+import           Data.Set              (Set)
+import qualified Data.Set              as Set
 import           Learning.Induction
-import           PDDL
+import           Planning.PDDL
 import           Test.Hspec
 import           Test.Hspec.QuickCheck
 import           Test.QuickCheck
-import qualified Data.Set  as Set
-import           Data.Set  (Set)
-import qualified Data.List as List
 
 
 getArgs = List.map snd

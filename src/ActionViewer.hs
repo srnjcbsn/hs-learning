@@ -1,6 +1,6 @@
 module ActionViewer where
 
-import PDDL
+import Planning.PDDL
 import Text.Show.Pretty
 import System.Directory
 

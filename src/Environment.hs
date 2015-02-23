@@ -1,8 +1,8 @@
 module Environment where
-import PDDL
+import Planning.PDDL
 
 class Environment env where
   toState :: env -> State
-  fromProblem :: Problem -> env
+  fromProblem :: PDDLProblem -> env
   applyAction :: env -> Action -> Maybe env
-  isGoalReached :: Problem -> env -> Bool
+  isGoalReached :: PDDLProblem -> env -> Bool

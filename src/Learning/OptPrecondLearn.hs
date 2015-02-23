@@ -1,8 +1,8 @@
 module Learning.OptPrecondLearn where
 
 import           Learning.Induction
-import           PDDL.Logic
-import           PDDL
+import           Planning.PDDL.Logic
+import           Planning.PDDL
 
 import           Data.Map           (Map, (!))
 import qualified Data.Map           as Map
@@ -26,7 +26,7 @@ initialPreKnowledge consts allPs paras =
         kn = (unkns, Set.empty)
     in (kn, kn, Set.empty)
 
-initialPreDomainHyp :: Domain -> PreDomainHypothesis
+initialPreDomainHyp :: PDDLDomain -> PreDomainHypothesis
 initialPreDomainHyp dom =
     let mapper aSpec = ( asName aSpec
                        , initialPreKnowledge (dmConstants dom)
@@ -46,7 +46,7 @@ constructPrecondSchema ((_, posKnown), (_, negKnown), cnf) aSpec =
                    ++ Set.toList (Set.map (Neg . Predicate) negKnown)
                    ++ Set.toList (Set.map orList cnf)
 
-domainFromPrecondHypothesis :: Domain -> PreDomainHypothesis -> Domain
+domainFromPrecondHypothesis :: PDDLDomain -> PreDomainHypothesis -> PDDLDomain
 domainFromPrecondHypothesis dom dHyp =
  dom { dmActionsSpecs = map (\as -> constructPrecondSchema (dHyp ! asName as) as)
                             $ dmActionsSpecs dom
@@ -83,7 +83,7 @@ extractKnowns cnfs = (posKns, negKns, newCnfs')
     -- then the other candidates become worthless (as they could all be false)
     newCnfs' = removeSetsWithKnowns newCnfs kns
 
-updatePreDomainHyp :: Domain
+updatePreDomainHyp :: PDDLDomain
                    -> PreDomainHypothesis
                    -> Transition
                    -> PreDomainHypothesis
@@ -92,7 +92,7 @@ updatePreDomainHyp dom hyp transition =
         pkn = hyp ! name
     in Map.insert name (updatePrecHypothesis dom pkn transition) hyp
 
-updatePrecHypothesis :: Domain -> PreKnowledge -> Transition -> PreKnowledge
+updatePrecHypothesis :: PDDLDomain -> PreKnowledge -> Transition -> PreKnowledge
 updatePrecHypothesis domain (posKnowledge, negKnowledge, cnfs) (s, action, s') =
     let aSpecParas = asParas $ findActionSpec domain action
         unground' :: GroundedPredicate -> Set FluentPredicate

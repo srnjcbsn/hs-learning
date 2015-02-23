@@ -3,7 +3,7 @@ module Data.TupleSet where
 import           Data.Set           (Set, (\\))
 import qualified Data.Set           as Set
 
-
+type TupleSet a = (Set a, Set a)
 
 -- | Gets two unions of a tuples with sets
 union :: Ord a => (Set a, Set a) -> (Set a, Set a) -> (Set a, Set a)

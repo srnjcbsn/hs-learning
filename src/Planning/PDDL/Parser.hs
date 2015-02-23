@@ -1,12 +1,12 @@
-module PDDL.Parser
-    ( module PDDL.Parser
+module Planning.PDDL.Parser
+    ( module Planning.PDDL.Parser
     , Text.ParserCombinators.Parsec.ParseError
     ) where
 
 import           Control.Applicative           ((*>), (<*))
 import           Control.Monad                 (liftM2)
 import qualified Data.Set                      as Set
-import           PDDL
+import           Planning.PDDL
 import           Text.ParserCombinators.Parsec
 
 acceptableRequirements :: [String]
@@ -120,7 +120,7 @@ parseActionSpec =
                           , asEffect = eff
                           }
 
-parseDomain :: Parser Domain
+parseDomain :: Parser PDDLDomain
 parseDomain =
     parens $ do
         string "define "
@@ -133,13 +133,13 @@ parseDomain =
         preds <- parens $ string ":predicates " >> parsePredicateSpec `sepBy` spaces
         spaces
         actions <- parseActionSpec `sepEndBy1` spaces
-        return Domain { dmName         = name
+        return PDDLDomain { dmName         = name
                       , dmPredicates   = preds
                       , dmActionsSpecs = actions
                       , dmConstants    = consts
                       }
 
-parseProblem :: Parser Problem
+parseProblem :: Parser PDDLProblem
 parseProblem =
     parens $ do
         string "define "
@@ -153,7 +153,7 @@ parseProblem =
         spaces
         g <- parens $ string ":goal " >> parseFormula
         _ <- comments
-        return Problem { probName = name
+        return PDDLProblem { probName = name
                        , probDomain = dom
                        , probObjs = objs
                        , probState = Set.fromList ini
@@ -200,7 +200,7 @@ tryParse ps str =
 --                            , asEffect  = Neg (Predicate ("p", [Ref "a"]))
 --                            }
 -- domainSpecRes =
---     Domain { dmName         = "test"
+--     PDDLDomain { dmName         = "test"
 --            , dmPredicates   = [("a", ["x", "y"])]
 --            , dmActionsSpecs = [actionSpecRes]
 --            , dmConstants    = ["A", "B"]

@@ -1,21 +1,22 @@
-module PDDL.Logic ( negateF
-                  , conjunction
-                  , isActionValid
-                  , apply
-                  , findActionSpec
-                  , instantiateFormula
-                  , instantiateAction
-                  , ground
-                  , applyAction
-                  ) where
-import Data.List (intercalate)
+module Planning.PDDL.Logic
+    ( negateF
+    , conjunction
+    , isActionValid
+    , apply
+    , findActionSpec
+    , instantiateFormula
+    , instantiateAction
+    , ground
+    , applyAction
+    ) where
+import           Data.List     (intercalate)
 import qualified Data.List     as List
 import           Data.Map      (Map)
 import qualified Data.Map      as Map
 import           Data.Set      (Set)
 import qualified Data.Set      as Set
 import           Data.Tuple    (swap)
-import           PDDL
+import           Planning.PDDL
 
 import qualified Data.TupleSet as Set2
 
@@ -41,7 +42,7 @@ conjunction f1 (Neg f2) = Neg (conjunction f1 f2)
 conjunction f1 f2 = Con [f1, f2]
 
 -- | Finds the action spec of an action in a domain
-findActionSpec :: Domain -> Action -> ActionSpec
+findActionSpec :: PDDLDomain -> Action -> ActionSpec
 findActionSpec domain (name, _) =
     case actionSpec domain name of
         Just aSpec -> aSpec
@@ -81,11 +82,11 @@ applyAction s act@(_,(posEff,negEff)) =
       Just $ Set.union (Set.difference s negEff) posEff
     else Nothing
 
-domainMap :: Domain -> Map Argument Object
+domainMap :: PDDLDomain -> Map Argument Object
 domainMap domain = Map.fromList $ List.map (\n -> (Const n, n)) (dmConstants domain)
 
 -- | Instantiates a formula into the actual positive and negative changes
-instantiateFormula :: Domain
+instantiateFormula :: PDDLDomain
                    -> [Name]          -- ^ Parameters
                    -> [Name]          -- ^ Arguments
                    -> Formula
@@ -96,12 +97,12 @@ instantiateFormula domain paras args form = insForm fullMap form
           fullMap = Map.union paraMap $ domainMap domain
 
 -- | Instantiates a formula into the actual positive and negative changes
-instantiateAction :: Domain -> ActionSpec -> Action -> GroundedAction
+instantiateAction :: PDDLDomain -> ActionSpec -> Action -> GroundedAction
 instantiateAction domain as a =
   let mapDomain = domainMap domain
   in  insAct mapDomain as a
 
-ground :: Domain
+ground :: PDDLDomain
        -> Action
        -> Set FluentPredicate
        -> Set GroundedPredicate
@@ -111,7 +112,7 @@ ground domain (name, args) fluents =
         where aSpec = findActionSpec domain (name, args)
 
 -- | Takes an action, grounds it and then if the precondions are satisfied applies it to a state
-apply :: Domain -> State -> Action -> Maybe State
+apply :: PDDLDomain -> State -> Action -> Maybe State
 apply domain state action =
     case actionSpec domain (aName action) of
         Just aSpec -> applyAction state $ instantiateAction domain aSpec action

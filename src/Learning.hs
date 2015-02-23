@@ -10,13 +10,13 @@ import           Learning.OptEffectLearn  (DomainHypothesis)
 import qualified Learning.OptEffectLearn  as Eff
 import           Learning.OptPrecondLearn (PreDomainHypothesis)
 import qualified Learning.OptPrecondLearn as Pre
-import           PDDL
+import           Planning.PDDL
 import           Planning
 
-refine  :: ExternalPlanner ep
+refine  :: ExternalPlanner ep PDDLDomain PDDLProblem
         => ep
-        -> Domain
-        -> Problem
+        -> PDDLDomain
+        -> PDDLProblem
         -> PreDomainHypothesis
         -> DomainHypothesis
         -> Maybe Plan
@@ -28,7 +28,7 @@ refine planner domain problem precondHyp effectHyp maybeCurPlan =
         then makePlan planner (uptDom domain) problem
         else return maybeCurPlan
 
-learn :: Domain
+learn :: PDDLDomain
       -> Transition
       -> PreDomainHypothesis
       -> DomainHypothesis
@@ -50,10 +50,10 @@ perform env (Just fullPlan@(action:restPlan)) =
 perform _ (Just []) = Right True
 perform _ Nothing = Right False
 
-run :: (ExternalPlanner ep, Environment env)
+run :: (ExternalPlanner ep PDDLDomain PDDLProblem, Environment env)
     => ep
-    -> Domain
-    -> Problem
+    -> PDDLDomain
+    -> PDDLProblem
     -> env
     -> PreDomainHypothesis
     -> DomainHypothesis
@@ -68,12 +68,12 @@ run planner domain problem env preHyp effHyp plan =
          in return $ Left (env', preHyp', effHyp', plan'')
        Right ans -> return $ Right ans
 
-runnerVisualized :: (ExternalPlanner ep, Environment env)
+runnerVisualized :: (ExternalPlanner ep PDDLDomain PDDLProblem, Environment env)
                  => ep
                  -> (env -> IO ())
                  -> (Maybe Plan -> IO ())
-                 -> Domain
-                 -> Problem
+                 -> PDDLDomain
+                 -> PDDLProblem
                  -> env
                  -> PreDomainHypothesis
                  -> DomainHypothesis

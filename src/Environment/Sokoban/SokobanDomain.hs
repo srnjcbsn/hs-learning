@@ -1,7 +1,7 @@
 module Environment.Sokoban.SokobanDomain where
 
-import PDDL
-import PDDL.Logic
+import Planning.PDDL
+import Planning.PDDL.Logic
 
 fluentPredicate :: PredicateSpec -> [Name] -> FluentPredicate
 fluentPredicate (name, _) ns = (name, map Ref ns)
@@ -95,8 +95,8 @@ pushV     = mkActionSpec "push-v" pushParas (pushCond vAdj notGoal) pushEffNotGo
 pushHGoal = mkActionSpec "push-h-goal" pushParas (pushCond hAdj goal) pushEffGoal
 pushVGoal = mkActionSpec "push-v-goal" pushParas (pushCond vAdj goal) pushEffGoal
 
-sokobanDomain :: Domain
-sokobanDomain = Domain
+sokobanDomain :: PDDLDomain
+sokobanDomain = PDDLDomain
     { dmName = "sokobanDom"
     , dmPredicates = [hAdj, vAdj, sokobanAt, at, atGoal, clear, goal, notGoal]
     , dmActionsSpecs = [moveH, moveV, pushH, pushV, pushHGoal, pushVGoal]

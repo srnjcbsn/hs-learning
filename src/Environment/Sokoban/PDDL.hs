@@ -1,7 +1,7 @@
 module Environment.Sokoban.PDDL where
 
 import           Environment.Sokoban hiding (Object)
-import           PDDL
+import           Planning.PDDL
 -- import Environment (Environment(..))
 import qualified Environment as Env
 
@@ -307,13 +307,13 @@ fromWorld w =
       persist = Set.union persistAdjs (Set.fromList persistGoals)
    in SokobanPDDL { world = w, locMap = locs, persistentState = persist}
 
-toProblem :: World -> Problem
+toProblem :: World -> PDDLProblem
 toProblem pWorld =
     let crateObjs = [ t | Box t <- Map.elems (coordMap pWorld) ]
         structObjs = map writeLocation $ Map.keys (coordMap pWorld)
         goalPred c = Predicate (atGoalName, [Const c])
         goalsF = Con $ map goalPred (crateObjs ++ structObjs)
-    in Problem
+    in PDDLProblem
         { probName   = "sokobanProb"
         , probObjs   = crateObjs ++ structObjs
         , probDomain = "sokobanDom"

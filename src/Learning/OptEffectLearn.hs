@@ -10,8 +10,8 @@ import qualified Data.Set           as Set
 import           Debug.Trace
 
 import           Learning.Induction
-import           PDDL.Logic
-import           PDDL
+import           Planning.PDDL.Logic
+import           Planning.PDDL
 
 -- | (unknown, known)
 type EffectKnowledge = (Set FluentPredicate, Set FluentPredicate)
@@ -36,7 +36,7 @@ extractUnambiguous unk (uAmb,amb) test =
         Right aps -> (uAmb, Set.union amb aps)
 
 
-addList :: ActionSpec -> Action -> Domain -> Set GroundedPredicate
+addList :: ActionSpec -> Action -> PDDLDomain -> Set GroundedPredicate
 addList aSpec action dom = fst $ snd $ instantiateAction dom aSpec action
 
 -- | Sets the effects of the provided ActionSpec to that of the effect hypothesis
@@ -49,7 +49,7 @@ constructEffectSchema ak action  =
     in action { asEffect = effect }
 
 -- | Updates the effect hypothesis based on the transition
-updateEffectHyp :: Domain -> EffectHypothesis -> Transition -> EffectHypothesis
+updateEffectHyp :: PDDLDomain -> EffectHypothesis -> Transition -> EffectHypothesis
 -- if the action application was unsuccessful, we cannot learn anything
 updateEffectHyp _ ak (_, _, Nothing) = ak
 updateEffectHyp domain ak (oldState, action, Just newState) =
@@ -108,21 +108,21 @@ effectHypothesis dmKnowledge (actName, _) = dmKnowledge ! actName
 
 -- update the domain by inserting the given action specification
 -- in place of the existing one with the same name
-updateDomain :: Domain -> ActionSpec -> Domain
+updateDomain :: PDDLDomain -> ActionSpec -> PDDLDomain
 updateDomain dom as =
     dom { dmActionsSpecs =
             as : deleteBy ((==) `on` asName) as (dmActionsSpecs dom)
         }
 
 -- | Changes all the domain's action specs effect based on the hypothesis
-domainFromKnowledge :: Domain -> DomainHypothesis -> Domain
+domainFromKnowledge :: PDDLDomain -> DomainHypothesis -> PDDLDomain
 domainFromKnowledge dom dHyp =
     dom { dmActionsSpecs = map (\as -> constructEffectSchema (dHyp ! asName as) as)
                          $ dmActionsSpecs dom
         }
 
 -- | Constructs a hypothesis based on what is known about the domain
-initialHypothesis :: Domain -> DomainHypothesis
+initialHypothesis :: PDDLDomain -> DomainHypothesis
 initialHypothesis dom = dHyp
     where dHyp = foldl ins Map.empty $ dmActionsSpecs dom
           ins m as  = Map.insert (asName as) (aKn as) m
@@ -134,7 +134,7 @@ initialHypothesis dom = dHyp
 
 
 -- | Updates the effects hypothesis based on the transition
-updateEffectHypHelper :: Domain
+updateEffectHypHelper :: PDDLDomain
                       -> DomainHypothesis
                       -> Transition
                       -> DomainHypothesis
@@ -146,7 +146,7 @@ updateEffectHypHelper dom dHyp transition = Map.insert (aName action) aHyp' dHyp
 -- | If application of the action in the provided transition would yield the
 --   same new state as the environment, the old action hypothesis is returned
 --   unchanged. Otherwise, the hypothesis is updated with the new information.
-updateDomainHyp :: Domain
+updateDomainHyp :: PDDLDomain
                 -> DomainHypothesis
                 -> Transition
                 -> DomainHypothesis
