@@ -68,13 +68,9 @@ data ActionSpec = ActionSpec
     , asParas   :: [Name]
     , asPrecond :: Formula
     , asEffect  :: Formula
+    , asConstants :: [Name]
     } deriving (Show, Eq, Ord)
 
-instance ActionSpecification ActionSpec where
-    name         = undefined
-    arity        = undefined
-    isApplicable = undefined
-    effect       = undefined
 
 type GroundedChanges = (Set GroundedPredicate, Set GroundedPredicate)
 
@@ -87,11 +83,6 @@ data PDDLDomain = PDDLDomain
     , dmConstants    :: [Name]
     } deriving (Show, Eq)
 
-instance Domain PDDLDomain ActionSpec where
-    actionSpecification = undefined
-    actions             = undefined
-    apply               = undefined
-
 data PDDLProblem = PDDLProblem
     { probName         :: String
     , probObjs         :: [Object]
@@ -100,15 +91,16 @@ data PDDLProblem = PDDLProblem
     , probGoal         :: Formula
     } deriving (Show, Eq)
 
-instance Problem PDDLProblem where
-    initialState = undefined
-    isSolved     = undefined
-    objects      = undefined
-
 -- | A state transition is a the old state, the action that was applied to that
 --   state, and --- depending on the applicability of the action --- 'Just' an
 --   an updated state with the actions effects applied, or 'Nothing'.
 type Transition = (State, Action, Maybe State)
+
+-- | Checks if the preconditions of a grounded action are satisfied
+isActionValid :: State -> GroundedAction -> Bool
+isActionValid s ((posCond, negCond), _) =
+  Set.isSubsetOf posCond s &&
+  Set.null (Set.intersection negCond s)
 
 pName :: FluentPredicate -> Name
 pName = fst

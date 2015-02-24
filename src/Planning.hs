@@ -1,13 +1,12 @@
 module Planning where
 
-import           Data.TupleSet (TupleSet)
-import qualified Data.TupleSet as TSet
-
 import           Data.Set      (Set)
-import qualified Data.Set      as Set
+
+import           Data.TupleSet (TupleSet)
 
 type Object = String
 type Name = String
+
 
 type GroundedPredicate = (Name, [Object])
 type State = Set GroundedPredicate
@@ -21,13 +20,13 @@ aArgs = snd
 aName :: Action -> Name
 aName = fst
 
-class (Domain d as, Problem p) => ExternalPlanner ep d p as where
+class (Domain d as, Problem p) => ExternalPlanner ep d p as | p -> d as where
     makePlan :: ep -> d -> p -> IO (Maybe Plan)
 
 class ActionSpecification as => Domain d as | d -> as where
-    actionSpecification :: d -> Name -> as
+    actionSpecification :: d -> Name -> Maybe as
     actions             :: d -> [as]
-    apply               :: d -> State -> Action -> State
+    apply               :: d -> State -> Action -> Maybe State
 
 class Problem p where
     initialState :: p -> State
@@ -38,4 +37,4 @@ class ActionSpecification a where
     name           :: a -> String
     arity          :: a -> Int
     isApplicable   :: a -> State -> [Name] -> Bool
-    effect         :: a -> State -> [Name] -> TupleSet GroundedPredicate
+    effect         :: a -> [Name] -> TupleSet GroundedPredicate

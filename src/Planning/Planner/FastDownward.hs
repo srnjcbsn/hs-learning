@@ -8,9 +8,10 @@ import           System.IO.Error
 import           System.IO.Temp
 import           System.Process
 
-import           Planning.PDDL
-import           Planning.PDDL.Parser
 import           Planning
+import           Planning.PDDL
+import           Planning.PDDL.Logic
+import           Planning.PDDL.Parser
 
 -- | A record describing how the fast-downard program should be called.
 data FastDownward = FastDownward

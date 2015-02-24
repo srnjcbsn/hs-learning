@@ -16,6 +16,7 @@ import qualified Data.Map      as Map
 import           Data.Set      (Set)
 import qualified Data.Set      as Set
 import           Data.Tuple    (swap)
+import           Planning
 import           Planning.PDDL
 
 import qualified Data.TupleSet as Set2
@@ -83,7 +84,11 @@ applyAction s act@(_,(posEff,negEff)) =
     else Nothing
 
 domainMap :: PDDLDomain -> Map Argument Object
-domainMap domain = Map.fromList $ List.map (\n -> (Const n, n)) (dmConstants domain)
+domainMap domain = constMap (dmConstants domain)
+
+constMap :: [Name] -> Map Argument Object
+constMap consts =
+    Map.fromList $ List.map (\n -> (Const n, n)) consts
 
 -- | Instantiates a formula into the actual positive and negative changes
 instantiateFormula :: PDDLDomain
@@ -96,11 +101,15 @@ instantiateFormula domain paras args form = insForm fullMap form
           paraMap = Map.fromList pairs
           fullMap = Map.union paraMap $ domainMap domain
 
+
 -- | Instantiates a formula into the actual positive and negative changes
-instantiateAction :: PDDLDomain -> ActionSpec -> Action -> GroundedAction
-instantiateAction domain as a =
-  let mapDomain = domainMap domain
-  in  insAct mapDomain as a
+instantiateAction :: ActionSpec -> Action -> GroundedAction
+instantiateAction as a = ga where
+    m = constMap (asConstants as)
+    pairs = List.zip (List.map Ref $ asParas as) (aArgs a)
+    paraMap = Map.fromList pairs
+    fullMap = Map.union paraMap m
+    ga = (insForm fullMap (asPrecond as), insForm fullMap (asEffect as))
 
 ground :: PDDLDomain
        -> Action
@@ -112,8 +121,42 @@ ground domain (name, args) fluents =
         where aSpec = findActionSpec domain (name, args)
 
 -- | Takes an action, grounds it and then if the precondions are satisfied applies it to a state
-apply :: PDDLDomain -> State -> Action -> Maybe State
-apply domain state action =
+apply' :: PDDLDomain -> State -> Action -> Maybe State
+apply' domain state action =
     case actionSpec domain (aName action) of
-        Just aSpec -> applyAction state $ instantiateAction domain aSpec action
+        Just aSpec -> applyAction state $ instantiateAction aSpec action
         Nothing    -> Nothing
+
+
+applyActionSpec :: ActionSpec -> [Name] -> Action
+applyActionSpec aSpec args = (asName aSpec, args)
+
+groundArg :: Argument -> Object
+groundArg (Ref r)   = r
+groundArg (Const c) = c
+
+toGrounded :: FluentPredicate -> GroundedPredicate
+toGrounded (n, args) = (n, map groundArg args)
+
+isSatisfied :: Formula -> State -> Bool
+isSatisfied (Predicate p) s = Set.member (toGrounded p) s
+isSatisfied (Neg f)       s = not $ isSatisfied f s
+isSatisfied (Con fs)      s = all (`isSatisfied` s) fs
+
+instance ActionSpecification ActionSpec where
+    name         = asName
+    arity        = length . asParas
+    isApplicable as s args =
+        isActionValid s $ instantiateAction as $ applyActionSpec as args
+    effect as args = snd $ instantiateAction as $ applyActionSpec as args
+
+
+instance Domain PDDLDomain ActionSpec where
+    actionSpecification = actionSpec
+    actions             = dmActionsSpecs
+    apply               = apply'
+
+instance Problem PDDLProblem where
+    initialState = probState
+    isSolved     = isSatisfied . probGoal
+    objects      = probObjs
