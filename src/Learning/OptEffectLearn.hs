@@ -37,7 +37,7 @@ extractUnambiguous unk (uAmb,amb) test =
 
 
 addList :: ActionSpec -> Action -> PDDLDomain -> Set GroundedPredicate
-addList aSpec action dom = fst $ snd $ instantiateAction dom aSpec action
+addList aSpec action dom = fst $ snd $ instantiateAction aSpec action
 
 -- | Sets the effects of the provided ActionSpec to that of the effect hypothesis
 constructEffectSchema :: EffectHypothesis -> ActionSpec -> ActionSpec
