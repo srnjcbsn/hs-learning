@@ -5,17 +5,8 @@ import           Planning
 import           Control.Monad (replicateM)
 import           Data.Set      (Set, (\\))
 import qualified Data.Set      as Set
-
-class Queue q a where
-    enqueue  :: q -> a -> q
-    dequeue  :: q -> Maybe (a, q)
-    fromList :: [a] -> q
-
-instance Queue [a] a where
-    enqueue ls val = ls ++ [val]
-    dequeue (x : xs) = Just (x, xs)
-    dequeue []       = Nothing
-    fromList = id
+import qualified Data.Queue as Queue
+import           Data.Queue (Queue)
 
 type Node = (State, [Action])
 
@@ -36,16 +27,17 @@ isExplored explored (s, _) = s `Set.member` explored
 
 search :: (Domain d a, Problem p) => d -> p -> Maybe Plan
 search dom p =
-    do (_, as) <- bfs (Set.fromList [initialState p]) [(initialState p, [])]
+    do (_, as) <- bfs (Set.fromList [initialState p]) (Queue.fromList [(initialState p, [])])
        return $ reverse as
 
-    where bfs :: Set State -> [Node] -> Maybe Node
-          bfs _ [] = Nothing
-          bfs explored (n@(s, _) : xs)
-            | s `Set.member` explored = bfs explored xs
-            | isSolved p s = Just n
-            | otherwise = bfs (Set.insert s explored) (xs ++ uExpl)
-            where actions' as = applicableActions as p s
-                  apActs      = concatMap actions' (actions dom)
-                  uExpl       = filter (not . isExplored explored)
-                              $ map (toNode dom n) apActs
+    where bfs :: Set State -> Queue Node -> Maybe Node
+          bfs explored queue = do
+            (n@(s,_), queue') <- Queue.dequeue queue
+            let actions' as = applicableActions as p s
+                apActs      = concatMap actions' (actions dom)
+                uExpl       = filter (not . isExplored explored)
+                            $ map (toNode dom n) apActs
+                res | s `Set.member` explored = bfs explored queue'
+                    | isSolved p s = Just n
+                    | otherwise = bfs (Set.insert s explored) (foldl Queue.enqueue queue' uExpl)
+             in res
