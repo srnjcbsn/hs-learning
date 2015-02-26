@@ -9,7 +9,7 @@ module Planning.PDDL.Logic
     ) where
 import           Data.List     (intercalate)
 import qualified Data.List     as List
-import           Data.Map      (Map)
+import           Data.Map      (Map, (!))
 import qualified Data.Map      as Map
 import           Data.Set      (Set)
 import qualified Data.Set      as Set
@@ -113,24 +113,29 @@ applyActionSpec aSpec args = (asName aSpec, args)
 isSatisfied :: Formula Name -> State -> Bool
 isSatisfied = evaluateCWA
 
+applicable :: ActionSpec -> State -> [Name] -> Bool
+applicable as s args = evaluateCWA (fmap subst (asPrecond as)) s where
+    subst (Const c) = c
+    subst (Ref r)   = refMap ! r
+    refMap = Map.fromList $ zip (asParas as) args
+
 numberOfSatisfied :: Formula Name -> State -> Int
 numberOfSatisfied (Pred p) s | Set.member p s = 1
                              | otherwise = 0
 
 numberOfSatisfied (Neg f) s | not $ isSatisfied f s = numberOfSatisfied f s
                             | otherwise = 0
-numberOfSatisfied (Con fs) s = foldl (+) 0 $ map (`numberOfSatisfied` s) fs
+numberOfSatisfied (Con fs) s = sum $ map (`numberOfSatisfied` s) fs
 
 numberOfPredicates :: Formula Name -> Int
 numberOfPredicates (Pred _) = 1
 numberOfPredicates (Neg f) = numberOfPredicates f
-numberOfPredicates (Con fs) = foldl (+) 0 $ map (numberOfPredicates) fs
+numberOfPredicates (Con fs) = sum $ map numberOfPredicates fs
 
 instance ActionSpecification ActionSpec where
     name         = asName
     arity        = length . asParas
-    isApplicable as s args =
-        isActionValid s $ instantiateAction as $ applyActionSpec as args
+    isApplicable = applicable
     effect as args = snd $ instantiateAction as $ applyActionSpec as args
 
 
