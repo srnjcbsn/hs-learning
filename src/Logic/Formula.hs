@@ -5,7 +5,13 @@ module Logic.Formula
     , predArgs
     , mapNegate
     , conjunction
+    , evaluateCWA
     ) where
+
+import Data.Set (Set)
+import qualified Data.Set as Set
+import Data.Map (Map, (!))
+import qualified Data.Map as Map
 
 type Name = String
 
@@ -30,6 +36,11 @@ instance Functor Formula where
     fmap f (Pred p) = Pred $ fmap f p
     fmap f (Neg n)  = Neg  $ fmap f n
     fmap f (Con fs) = Con  $ fmap (fmap f) fs
+
+evaluateCWA :: Ord a => Formula a -> Set (Predicate a) -> Bool
+evaluateCWA (Pred p) s = Set.member p s
+evaluateCWA (Neg f)  s = not $ evaluateCWA f s
+evaluateCWA (Con fs) s = all (`evaluateCWA` s) fs
 
 -- flatten :: Formula -> Formula
 -- flatten (Con ((Con f) : fs)) = map flatten f `conjunction` map flatten fs
