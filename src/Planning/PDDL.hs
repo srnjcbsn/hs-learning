@@ -38,9 +38,9 @@ module Planning.PDDL
     ) where
 
 
-import qualified Data.TupleSet as TSet
-import Data.TupleSet (TupleSet)
-import Planning
+--import qualified Data.TupleSet as TSet
+--import Data.TupleSet (TupleSet)
+import Planning as Plng
 
 import           Data.List (find, intercalate)
 import           Data.Set  (Set)

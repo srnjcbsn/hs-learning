@@ -27,6 +27,11 @@ library
                  , Learning.OptPrecondLearn
                  , Planning.Planner.FastDownward
                  , Data.TupleSet
+                 , Data.Queue
+                 , Data.PriorityQueue
+                 , Graph
+                 , Graph.Search
+                 , Graph.Search.Astar
                  , Environment.Sokoban
                  , Environment.Sokoban.PDDL
                  , Environment.Sokoban.ConsoleView
