@@ -7,7 +7,7 @@ import qualified Data.Map as Map
 import Data.Map (Map)
 --import Data.Set (Set)
 import Data.PriorityQueue as PrioQ
-
+import Data.Maybe (mapMaybe)
 --type SearchNode v e = (v,[e])
 
 
@@ -42,8 +42,9 @@ astar graph explored (queue,vMap) =
      else
        let newFrontier = (q', Map.delete v vMap)
            edges = adjacentEdges graph v
-           etoN e =  (adjacentVertex graph v e, cost + edgeCost graph v e, e:path)
-           nodes = map etoN edges
+           etoN e = do adjV <- adjacentVertex graph v e
+                       return (adjV, cost + edgeCost graph adjV e, e:path)
+           nodes = mapMaybe etoN edges
            frontier = foldl (updateFrontier graph explored) newFrontier nodes
         in astar graph (Set.insert v explored) frontier
 
