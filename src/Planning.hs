@@ -9,7 +9,6 @@ import Logic.Formula
 type Object = String
 type Name = String
 
-
 type GroundedPredicate = Predicate Object
 type State = Set GroundedPredicate
 

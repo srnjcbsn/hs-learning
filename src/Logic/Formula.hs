@@ -3,7 +3,7 @@ module Logic.Formula
     , Formula (..)
     , predName
     , predArgs
-    , negateF
+    , mapNegate
     , conjunction
     ) where
 
@@ -11,17 +11,25 @@ type Name = String
 
 data Predicate a = Predicate Name [a] deriving (Eq, Ord, Show)
 
+instance Functor Predicate where
+    fmap f (Predicate n as) = Predicate n (fmap f as)
+
 predName :: Predicate a -> Name
 predName (Predicate n _) = n
 
 predArgs :: Predicate a -> [a]
 predArgs (Predicate _ as) = as
 
-data (Eq a, Show a, Ord a) => Formula a
+data Formula a
     = Pred (Predicate a)
     | Neg  (Formula a)
     | Con  [Formula a]
     deriving (Eq, Ord, Show)
+
+instance Functor Formula where
+    fmap f (Pred p) = Pred $ fmap f p
+    fmap f (Neg n)  = Neg  $ fmap f n
+    fmap f (Con fs) = Con  $ fmap (fmap f) fs
 
 -- flatten :: Formula -> Formula
 -- flatten (Con ((Con f) : fs)) = map flatten f `conjunction` map flatten fs
@@ -30,10 +38,10 @@ data (Eq a, Show a, Ord a) => Formula a
 
 -- | Negate a 'Formula'. If the given 'Formula' is a conjunction, the contained
 --   'Formula'e are negated recursively.
-negateF :: (Eq a, Ord a, Show a) => Formula a -> Formula a
-negateF (Con fs)   = Con $ map negateF fs
-negateF p@(Pred _) = Neg p
-negateF (Neg f)    = f
+mapNegate :: (Eq a, Ord a, Show a) => Formula a -> Formula a
+mapNegate (Con fs) = Con $ map Neg fs
+mapNegate (Neg f)  = f
+mapNegate f        = Neg f
 
 -- | Forms a 'Conjunction' from two 'Formula'e.
 conjunction :: (Eq a, Ord a, Show a) => Formula a -> Formula a -> Formula a
