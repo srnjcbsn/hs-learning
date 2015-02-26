@@ -11,12 +11,13 @@ import           Test.Hspec.QuickCheck
 import           Test.QuickCheck
 
 import           Learning.OptEffectLearn
+import           Logic.Formula
 import           Planning.PDDL
 import           Planning.PDDL.Logic
 import           Planning.PDDL.Samples.SimpleBox
 
-p f x y = ("p", [f x,f y])
-pP x y = Predicate $ p Ref x y
+p f x y = Predicate "p" [f x,f y]
+pP x y = Pred $ p Ref x y
 
 initActspec effects = ActionSpec
     { asName = "as"
@@ -25,15 +26,12 @@ initActspec effects = ActionSpec
     , asEffect = Con effects
     }
 
-
-
 initDomain as = PDDLDomain
     { dmName = "TestDomain"
     , dmPredicates = [p id "x" "y"]
     , dmActionsSpecs = [as]
     , dmConstants = []
     }
-
 
 actionPosEffects :: DomainHypothesis -> Name -> EffectKnowledge
 actionPosEffects domainHyp name = fst $ domainHyp Map.! name
