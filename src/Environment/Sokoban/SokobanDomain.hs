@@ -112,6 +112,6 @@ sokobanDomain :: PDDLDomain
 sokobanDomain = PDDLDomain
     { dmName = "sokobanDom"
     , dmPredicates = [hAdj, vAdj, sokobanAt, at, atGoal, clear, goal, notGoal]
-    , dmActionsSpecs = [moveH, moveV, pushH, pushV, pushHGoal, pushVGoal]
+    , dmActionsSpecs = [moveV] -- [moveH, moveV, pushH, pushV, pushHGoal, pushVGoal]
     , dmConstants = []
     }

@@ -7,14 +7,12 @@ c = Left $ const Clear
 b = Left Box
 
 worldmap :: [[Either (String -> Tile) Bool]]
-worldmap = [ [c, b, p]
-           , [e, e, b]
-           , [e, e, c]
+worldmap = [ [c]
+           , [p]
            ]
 
 goals :: [Coord]
-goals = [ Coord (0, 0)
-        , Coord (2, 2)
+goals = [
         ]
 
 world :: World

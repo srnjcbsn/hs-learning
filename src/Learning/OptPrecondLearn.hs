@@ -37,15 +37,19 @@ initialPreDomainHyp dom =
 
     in Map.fromList $ fmap mapper (dmActionsSpecs dom)
 
-constructPrecondSchema :: PreKnowledge -> ActionSpec -> ActionSpec
-constructPrecondSchema ((_, posKnown), (_, negKnown), cnf) aSpec =
-    aSpec { asPrecond = Con predList }
+constructPrecondFormula :: PreKnowledge -> Formula Argument
+constructPrecondFormula ((_, posKnown), (_, negKnown), cnf) =
+    Con predList
     where negPredList (poss,negs) =  Set.toList (Set.map Pred negs)
                                   ++ Set.toList (Set.map (Neg . Pred) poss)
           orList = Neg . Con . negPredList
           predList =  Set.toList (Set.map Pred posKnown)
                    ++ Set.toList (Set.map (Neg . Pred) negKnown)
                    ++ Set.toList (Set.map orList cnf)
+
+constructPrecondSchema :: PreKnowledge -> ActionSpec -> ActionSpec
+constructPrecondSchema preKnow aSpec =
+    aSpec { asPrecond = constructPrecondFormula preKnow }
 
 domainFromPrecondHypothesis :: PDDLDomain -> PreDomainHypothesis -> PDDLDomain
 domainFromPrecondHypothesis dom dHyp =

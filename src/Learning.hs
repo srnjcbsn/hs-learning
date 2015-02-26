@@ -40,8 +40,9 @@ learn :: PDDLDomain
 learn domain trans@(_,act@(name,_),_) preHyp effHyp  =
   let effectHyp' = Eff.updateDomainHyp domain effHyp trans
       precondHyp' = Pre.updatePreDomainHyp domain preHyp trans
-   in trace ("learned(" ++ show act ++ "): " ++ (ppShow $ precondHyp' ! name))
-            (precondHyp', effectHyp')
+   in (precondHyp', effectHyp')
+        --trace ("learned(" ++ show act ++ "): " ++ (ppShow $ precondHyp' ! name))
+        --    (precondHyp', effectHyp')
 
 perform :: (Environment env)
         => env
@@ -66,12 +67,14 @@ run :: (ExternalPlanner ep PDDLDomain PDDLProblem ActionSpec, Environment env)
     -> IO (Either (env, PreDomainHypothesis, DomainHypothesis, Maybe Plan) Bool)
 run planner domain problem env preHyp effHyp plan =
   do plan' <- refine planner domain problem preHyp effHyp plan
-     case trace ("running: refine returned plan: " ++ (show plan'))
-                (perform env plan') of
+     case (perform env plan')
+          --trace ("running: refine returned plan: " ++ (show plan'))
+          --      (perform env plan')
+       of
        Left (env', trans@(_,act,s'), plan'') ->
         let (preHyp', effHyp') = learn domain trans preHyp effHyp
-         in do --putStrLn $ "running: did action " ++ (ppShow act)
-               --putStrLn $ "running: new state: " ++ (ppShow s')
+         in do putStrLn $ "running: did action " ++ (ppShow act)
+               putStrLn $ "running: new state: " ++ (ppShow s')
                return $ Left (env', preHyp', effHyp', plan'')
        Right ans -> return $ Right ans
 
