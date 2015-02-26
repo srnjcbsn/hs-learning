@@ -30,6 +30,7 @@ library
                  , Environment.Sokoban
                  , Environment.Sokoban.PDDL
                  , Environment.Sokoban.ConsoleView
+                 , Logic.Formula
   default-extensions: MultiParamTypeClasses
                     , FlexibleContexts
                     , FlexibleInstances

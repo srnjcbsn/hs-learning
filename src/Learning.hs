@@ -25,7 +25,10 @@ refine planner domain problem precondHyp effectHyp maybeCurPlan =
     let uptDom = (`Eff.domainFromKnowledge` effectHyp)
                . (`Pre.domainFromPrecondHypothesis` precondHyp)
      in if isNothing maybeCurPlan
-        then makePlan planner (uptDom domain) problem
+        then do p' <- makePlan planner (uptDom domain) problem
+                putStrLn (ppShow p')
+                return p'
+
         else return maybeCurPlan
 
 learn :: PDDLDomain

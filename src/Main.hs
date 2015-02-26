@@ -13,6 +13,7 @@ import           Environment.Sokoban.SokobanDomain
 import           Learning
 import           Learning.OptEffectLearn
 import           Learning.OptPrecondLearn
+import           Planning.Planner.BFS
 import           Planning.Planner.FastDownward
 
 logPath = "./log.log"
@@ -22,13 +23,14 @@ main = do
     removeFile logPath
     clearScreen
     setTitle "SOKOBAN!"
-    runnerVisualized fd vis (logAction logPath) dom prob sokoEnv iniPreDomHyp iniEffDomHyp Nothing
+    runnerVisualized bfs vis (logAction logPath) dom prob sokoEnv iniPreDomHyp iniEffDomHyp Nothing
     where
         vis _ = return () :: IO ()
         sokoWorld = SS.world
         sokoEnv = fromWorld sokoWorld
         dom = sokobanDomain
         prob = toProblem sokoWorld
-        fd = mkFastDownard dom prob
+        -- fd = mkFastDownard dom prob
+        bfs = BFS
         iniPreDomHyp = initialPreDomainHyp dom
         iniEffDomHyp = initialHypothesis dom

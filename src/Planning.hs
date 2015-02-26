@@ -4,11 +4,13 @@ import           Data.Set      (Set)
 
 import           Data.TupleSet (TupleSet)
 
+import Logic.Formula
+
 type Object = String
 type Name = String
 
 
-type GroundedPredicate = (Name, [Object])
+type GroundedPredicate = Predicate Object
 type State = Set GroundedPredicate
 
 type Action = (Name, [Object])
@@ -20,7 +22,7 @@ aArgs = snd
 aName :: Action -> Name
 aName = fst
 
-class (Domain d as, Problem p) => ExternalPlanner ep d p as | p -> d as where
+class (Domain d as, Problem p) => ExternalPlanner ep d p as where
     makePlan :: ep -> d -> p -> IO (Maybe Plan)
 
 class ActionSpecification as => Domain d as | d -> as where

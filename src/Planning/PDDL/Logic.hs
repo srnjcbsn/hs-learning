@@ -1,7 +1,5 @@
 module Planning.PDDL.Logic
-    ( negateF
-    , conjunction
-    , isActionValid
+    ( isActionValid
     , apply
     , findActionSpec
     , instantiateFormula
@@ -20,27 +18,8 @@ import           Planning
 import           Planning.PDDL
 
 import qualified Data.TupleSet as Set2
+import Logic.Formula
 
--- flatten :: Formula -> Formula
--- flatten (Con ((Con f) : fs)) = map flatten f `conjunction` map flatten fs
--- flatten (Neg (Con fs))       = Con (map (Neg . flatten) fs)
--- flatten f                    = f
-
--- | Negate a 'Formula'. If the given 'Formula' is a conjunction, the contained
---   'Formula'e are negated recursively.
-negateF :: Formula -> Formula
-negateF (Con fs)        = Con $ map negateF fs
-negateF p@(Predicate _) = Neg p
-negateF (Neg f)         = f
-
--- | Forms a 'Conjunction' from two 'Formula'e.
-conjunction :: Formula -> Formula -> Formula
-conjunction (Con c1) (Con c2)       = Con (c1 ++ c2)
-conjunction p@(Predicate _) (Con c) = Con (p : c)
-conjunction (Con c) p@(Predicate _) = Con (p : c)
-conjunction (Neg f1) f2 = Neg (conjunction f1 f2)
-conjunction f1 (Neg f2) = Neg (conjunction f1 f2)
-conjunction f1 f2 = Con [f1, f2]
 
 -- | Finds the action spec of an action in a domain
 findActionSpec :: PDDLDomain -> Action -> ActionSpec
@@ -56,8 +35,9 @@ findActionSpec domain (name, _) =
 
 
 -- | Instantiates a formula into the actual positive and negative changes
-insForm :: Map Argument Object -> Formula -> GroundedChanges
-insForm m (Predicate p) = (Set.singleton (pName p, List.map (m Map.!) $ pArgs p), Set.empty)
+insForm :: Map Argument Object -> Formula Argument -> GroundedChanges
+insForm m (Pred p) =
+    (Set.singleton (Predicate (pName p) (List.map (m Map.!) $ pArgs p)), Set.empty)
 insForm m (Neg f) = swap $ insForm m f
 insForm m (Con fs) = List.foldl (\changes f -> Set2.union changes $ insForm m f ) (Set.empty,Set.empty) fs
 
@@ -94,7 +74,7 @@ constMap consts =
 instantiateFormula :: PDDLDomain
                    -> [Name]          -- ^ Parameters
                    -> [Name]          -- ^ Arguments
-                   -> Formula
+                   -> Formula Argument
                    -> GroundedChanges
 instantiateFormula domain paras args form = insForm fullMap form
     where pairs = List.zip (List.map Ref paras) args
@@ -117,7 +97,7 @@ ground :: PDDLDomain
        -> Set GroundedPredicate
 ground domain (name, args) fluents =
     fst $ instantiateFormula domain (asParas aSpec) args
-        (Con $ List.map Predicate $ Set.toList fluents)
+        (Con $ List.map Pred $ Set.toList fluents)
         where aSpec = findActionSpec domain (name, args)
 
 -- | Takes an action, grounds it and then if the precondions are satisfied applies it to a state
@@ -131,17 +111,10 @@ apply' domain state action =
 applyActionSpec :: ActionSpec -> [Name] -> Action
 applyActionSpec aSpec args = (asName aSpec, args)
 
-groundArg :: Argument -> Object
-groundArg (Ref r)   = r
-groundArg (Const c) = c
-
-toGrounded :: FluentPredicate -> GroundedPredicate
-toGrounded (n, args) = (n, map groundArg args)
-
-isSatisfied :: Formula -> State -> Bool
-isSatisfied (Predicate p) s = Set.member (toGrounded p) s
-isSatisfied (Neg f)       s = not $ isSatisfied f s
-isSatisfied (Con fs)      s = all (`isSatisfied` s) fs
+isSatisfied :: Formula Name -> State -> Bool
+isSatisfied (Pred p) s = Set.member p s
+isSatisfied (Neg f)  s = not $ isSatisfied f s
+isSatisfied (Con fs) s = all (`isSatisfied` s) fs
 
 instance ActionSpecification ActionSpec where
     name         = asName
