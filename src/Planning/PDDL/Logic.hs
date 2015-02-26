@@ -23,15 +23,14 @@ import Logic.Formula
 
 -- | Finds the action spec of an action in a domain
 findActionSpec :: PDDLDomain -> Action -> ActionSpec
-findActionSpec domain (n, _) =
-    case actionSpec domain n of
-        Just aSpec -> aSpec
-        Nothing    ->
-            error $  "Action specification with name " ++ n
-                  ++ " does not exist in domain (action names: "
-                  ++ names ++ ")"
-            where names = intercalate ","
-                        $ map asName (dmActionsSpecs domain)
+findActionSpec domain (n, _) = case actionSpec domain n of
+    Just aSpec -> aSpec
+    Nothing    ->
+        error $  "Action specification with name " ++ n
+              ++ " does not exist in domain (action names: "
+              ++ names ++ ")"
+        where names = intercalate ","
+                    $ map asName (dmActionsSpecs domain)
 
 
 -- | Instantiates a formula into the actual positive and negative changes
@@ -39,7 +38,8 @@ insForm :: Map Argument Object -> Formula Argument -> GroundedChanges
 insForm m (Pred p) =
     (Set.singleton (Predicate (pName p) (List.map (m Map.!) $ pArgs p)), Set.empty)
 insForm m (Neg f) = swap $ insForm m f
-insForm m (Con fs) = List.foldl (\changes f -> Set2.union changes $ insForm m f ) (Set.empty,Set.empty) fs
+insForm m (Con fs) =
+    List.foldl (\changes f -> Set2.union changes $ insForm m f ) (Set.empty,Set.empty) fs
 
 -- | instantiates an Action into the actual precondions and the actual effect
 insAct :: Map Argument Object -> ActionSpec -> Action -> GroundedAction
@@ -58,10 +58,9 @@ isActionValid s ((posCond, negCond), _) =
 
 -- | Applies the grounded actions to a state, if the action is not valid nothing is returned
 applyAction :: State -> GroundedAction -> Maybe State
-applyAction s act@(_,(posEff,negEff)) =
-    if isActionValid s act then
-      Just $ Set.union (Set.difference s negEff) posEff
-    else Nothing
+applyAction s act@(_,(posEff,negEff))
+    | isActionValid s act = Just $ Set.union (Set.difference s negEff) posEff
+    | otherwise           = Nothing
 
 domainMap :: PDDLDomain -> Map Argument Object
 domainMap domain = constMap (dmConstants domain)
@@ -107,14 +106,11 @@ apply' domain state action =
         Just aSpec -> applyAction state $ instantiateAction aSpec action
         Nothing    -> Nothing
 
-
 applyActionSpec :: ActionSpec -> [Name] -> Action
 applyActionSpec aSpec args = (asName aSpec, args)
 
 isSatisfied :: Formula Name -> State -> Bool
-isSatisfied (Pred p) s = Set.member p s
-isSatisfied (Neg f)  s = not $ isSatisfied f s
-isSatisfied (Con fs) s = all (`isSatisfied` s) fs
+isSatisfied = evaluateCWA
 
 instance ActionSpecification ActionSpec where
     name         = asName
