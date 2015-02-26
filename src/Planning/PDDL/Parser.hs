@@ -4,14 +4,17 @@ module Planning.PDDL.Parser
     ) where
 
 import           Control.Applicative           ((*>))
+import           Control.Monad                 (liftM)
+import qualified Data.Map                      as Map
 import qualified Data.Set                      as Set
 import           Text.ParserCombinators.Parsec
 
 import           Logic.Formula
+import           Planning                      ()
 import           Planning.PDDL
 
 acceptableRequirements :: [String]
-acceptableRequirements = [":strips"]
+acceptableRequirements = [":strips", ":typing"]
 
 parens :: Parser a -> Parser a
 parens = between (char '(') (char ')')
@@ -40,15 +43,15 @@ parseArgRef = char '?' >> parseName
 
 parseArgument :: Parser Argument
 parseArgument =
-        (parseName   >>= return . Const)
-    <|> (parseArgRef >>= return . Ref)
-
-groundedNamed :: Parser GroundedPredicate
-groundedNamed = parens $ do
-    name <- parseName
-    spaces
-    params <- sepBy parseName spaces
-    return $ Predicate name params
+        liftM Const parseName
+    <|> liftM Ref   parseArgRef
+--
+-- groundedNamed :: Parser GroundedPredicate
+-- groundedNamed = parens $ do
+--     name <- parseName
+--     spaces
+--     params <- sepBy parseName spaces
+--     return $ Predicate name params
 
 groundedPredicate :: Parser GroundedPredicate
 groundedPredicate = parens $ do
@@ -105,7 +108,8 @@ parseFormula =
     <|> try (parseNegation parseFormula)
     <|> (parseFluent >>= return . Pred)
 
-
+parseType :: Parser String
+parseType = char '-' >> spaces >> parseName
 
 groundedFormula :: Parser (Formula Name)
 groundedFormula =
@@ -113,39 +117,42 @@ groundedFormula =
     <|> try (parseNegation groundedFormula)
     <|> (groundedPredicate >>= return . Pred)
 
-
 parseActionSpec :: Parser ActionSpec
 parseActionSpec =
     parens $ do
-        string ":action "
+        _ <- string ":action "
         spaces
         name <- parseName
         spaces
-        string ":parameters "
+        _ <- string ":parameters "
         spaces
         params <- parens (parseArgRef `sepBy` spaces)
         spaces
-        string ":precondition "
+        _ <- string ":precondition "
         spaces
         precond <- parseFormula
         spaces
-        string ":effect "
+        _ <- string ":effect "
         spaces
         eff <- parseFormula
         spaces
-        return ActionSpec { asName = name
-                          , asParas = params
+        return ActionSpec { asName    = name
+                          , asParas   = params
                           , asPrecond = precond
-                          , asEffect = eff
+                          , asEffect  = eff
+                          , asConstants = []
+                          , asTypes = Map.empty
                           }
 
 parseDomain :: Parser PDDLDomain
 parseDomain =
     parens $ do
-        string "define "
+        _ <- string "define "
         name <- parens $ string "domain " >> parseName
         spaces
-        parens $ string ":requirements " >> many parseRequirement
+        _ <- parens $ string ":requirements " >> many parseRequirement
+        spaces
+        types <- parens $ string ":types " >> parseName `sepBy` spaces
         spaces
         consts <- parens $ string ":constants " >> parseName `sepBy` spaces
         spaces
@@ -153,15 +160,16 @@ parseDomain =
         spaces
         actions <- parseActionSpec `sepEndBy1` spaces
         return PDDLDomain { dmName         = name
-                      , dmPredicates   = preds
-                      , dmActionsSpecs = actions
-                      , dmConstants    = consts
-                      }
+                          , dmPredicates   = preds
+                          , dmActionsSpecs = actions
+                          , dmConstants    = consts
+                          , dmTypes        = types
+                          }
 
 parseProblem :: Parser PDDLProblem
 parseProblem =
     parens $ do
-        string "define "
+        _ <- string "define "
         name <- parens $ string "problem " >> parseName
         spaces
         dom <- parens $ string ":domain " >> parseName
@@ -173,11 +181,12 @@ parseProblem =
         g <- parens $ string ":goal " >> groundedFormula
         _ <- comments
         return PDDLProblem { probName = name
-                       , probDomain = dom
-                       , probObjs = objs
-                       , probState = Set.fromList ini
-                       , probGoal = g
-                       }
+                           , probDomain = dom
+                           , probObjs = objs
+                           , probState = Set.fromList ini
+                           , probGoal = g
+                           , probTypes = Map.empty
+                           }
 
 plan :: Parser Plan
 plan = action `endBy` comments
@@ -190,39 +199,3 @@ tryParse ps str =
     case parse ps "" str of
         Left _  -> Nothing
         Right a -> Just a
-
--- actionSpecStr = unlines [ "(:action act"
---                         , ":parameters (?a)"
---                         , ":precondition (p ?a)"
---                         , ":effect (not (p ?a)) )"
---                         ]
---
--- domainSpecStr =
---     unlines [ "(define (domain test)"
---             , "(:requirements :strips)"
---             , "(:constants (A B))"
---             , "(:predicates (a ?x ?y))"
---             , actionSpecStr
---             , ")"
---             ]
-
--- problemSpecStr =
---     unlines [ "(define (problem prob)"
---             , "(:domain dom)"
---             , "(:objects x y)"
---             , "(:init (test1 x y))"
---             , "(:goal (test2 x y)) )"
---             ]
--- actionSpecRes = ActionSpec { asName    = "act"
---                            , asParas   = ["a"]
---                            , asPrecond = Predicate ("p", [Ref "a"])
---                            , asEffect  = Neg (Predicate ("p", [Ref "a"]))
---                            }
--- domainSpecRes =
---     PDDLDomain { dmName         = "test"
---            , dmPredicates   = [("a", ["x", "y"])]
---            , dmActionsSpecs = [actionSpecRes]
---            , dmConstants    = ["A", "B"]
---            }
-
--- p = parse parseDomain "unknown"

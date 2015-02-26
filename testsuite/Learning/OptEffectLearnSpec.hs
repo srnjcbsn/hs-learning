@@ -24,6 +24,8 @@ initActspec effects = ActionSpec
     , asParas = ["x", "y", "z"]
     , asPrecond = Con []
     , asEffect = Con effects
+    , asConstants = []
+    , asTypes = Map.empty
     }
 
 initDomain as = PDDLDomain
@@ -31,6 +33,7 @@ initDomain as = PDDLDomain
     , dmPredicates = [p id "x" "y"]
     , dmActionsSpecs = [as]
     , dmConstants = []
+    , dmTypes = []
     }
 
 actionPosEffects :: DomainHypothesis -> Name -> EffectKnowledge

@@ -7,8 +7,8 @@ import           Data.TupleSet (TupleSet)
 import Logic.Formula
 
 type Object = String
-type Name = String
-
+type Name   = String
+type Type   = String
 
 type GroundedPredicate = Predicate Object
 type State = Set GroundedPredicate

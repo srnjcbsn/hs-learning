@@ -24,11 +24,11 @@ import Logic.Formula
 
 -- | Finds the action spec of an action in a domain
 findActionSpec :: PDDLDomain -> Action -> ActionSpec
-findActionSpec domain (name, _) =
-    case actionSpec domain name of
+findActionSpec domain (n, _) =
+    case actionSpec domain n of
         Just aSpec -> aSpec
         Nothing    ->
-            error $  "Action specification with name " ++ name
+            error $  "Action specification with name " ++ n
                   ++ " does not exist in domain (action names: "
                   ++ names ++ ")"
             where names = intercalate ","
@@ -96,10 +96,10 @@ ground :: PDDLDomain
        -> Action
        -> Set FluentPredicate
        -> Set GroundedPredicate
-ground domain (name, args) fluents =
+ground domain (n, args) fluents =
     fst $ instantiateFormula domain (asParas aSpec) args
         (Con $ List.map Pred $ Set.toList fluents)
-        where aSpec = findActionSpec domain (name, args)
+        where aSpec = findActionSpec domain (n, args)
 
 -- | Takes an action, grounds it and then if the precondions are satisfied applies it to a state
 apply' :: PDDLDomain -> State -> Action -> Maybe State

@@ -69,7 +69,7 @@ pushCond adjPred goalPred [c, soko, from, to] =
         ]
 
 moveEff :: [Name] -> Formula Argument
-moveEff [from, to] = poss `conjunction` negateF negs where
+moveEff [from, to] = poss `conjunction` mapNegate negs where
     poss = con [ (sokobanAt, [to])
                , (clear, [from])
                ]
@@ -79,7 +79,7 @@ moveEff [from, to] = poss `conjunction` negateF negs where
                ]
 
 pushEffShared :: [Name] -> Formula Argument
-pushEffShared [c, soko, from, to] = poss `conjunction` negateF negs where
+pushEffShared [c, soko, from, to] = poss `conjunction` mapNegate negs where
     poss = con
             [ (sokobanAt, [from])
             , (at, [c, to])

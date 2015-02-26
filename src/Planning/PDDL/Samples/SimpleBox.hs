@@ -3,6 +3,8 @@ module Planning.PDDL.Samples.SimpleBox where
 import Planning.PDDL
 import Logic.Formula
 
+import qualified Data.Map as Map
+
 inside a = Predicate "inside" [a]
 pInside = Pred . inside
 
@@ -18,6 +20,8 @@ putIn = ActionSpec
     , asParas = [a]
     , asPrecond = pOutside ar
     , asEffect = Con [Neg $ pOutside ar,  pInside ar]
+    , asConstants = []
+    , asTypes = Map.empty
     }
 
 takeOut = ActionSpec
@@ -25,6 +29,8 @@ takeOut = ActionSpec
     , asParas = [a]
     , asPrecond = pInside ar
     , asEffect = Con [Neg $ pInside ar, pOutside ar]
+    , asConstants = []
+    , asTypes = Map.empty
     }
 
 sBDomain = PDDLDomain
@@ -32,4 +38,5 @@ sBDomain = PDDLDomain
     , dmPredicates = [inside a, outside a]
     , dmActionsSpecs = [putIn, takeOut]
     , dmConstants = []
+    , dmTypes = []
     }
