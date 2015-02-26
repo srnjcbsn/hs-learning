@@ -16,7 +16,8 @@ import qualified Data.Set      as Set
 import           Data.Tuple    (swap)
 import           Planning
 import           Planning.PDDL
-
+import           Graph.Search
+import           Graph
 import qualified Data.TupleSet as Set2
 import Logic.Formula
 
@@ -112,6 +113,19 @@ applyActionSpec aSpec args = (asName aSpec, args)
 isSatisfied :: Formula Name -> State -> Bool
 isSatisfied = evaluateCWA
 
+numberOfSatisfied :: Formula Name -> State -> Int
+numberOfSatisfied (Pred p) s | Set.member p s = 1
+                             | otherwise = 0
+
+numberOfSatisfied (Neg f) s | not $ isSatisfied f s = numberOfSatisfied f s
+                            | otherwise = 0
+numberOfSatisfied (Con fs) s = foldl (+) 0 $ map (`numberOfSatisfied` s) fs
+
+numberOfPredicates :: Formula Name -> Int
+numberOfPredicates (Pred _) = 1
+numberOfPredicates (Neg f) = numberOfPredicates f
+numberOfPredicates (Con fs) = foldl (+) 0 $ map (numberOfPredicates) fs
+
 instance ActionSpecification ActionSpec where
     name         = asName
     arity        = length . asParas
@@ -129,3 +143,16 @@ instance Problem PDDLProblem where
     initialState = probState
     isSolved     = isSatisfied . probGoal
     objects      = probObjs
+
+instance Graph PDDLGraph State Action where
+  adjacentEdges (PDDLGraph (dom, prob)) s =
+    let acts = actions dom
+     in concatMap (applicableActions prob s) acts
+  edgeCost _ _ _ = 1
+  adjacentVertex (PDDLGraph (dom, _)) s act = apply' dom s act
+
+
+instance ForwardSearchGraph PDDLGraph State Action where
+  goalReached (PDDLGraph (_, prob)) s = isSolved prob s
+  heuristicCostToGoal (PDDLGraph (_, prob)) s =
+    (numberOfPredicates (probGoal prob)) - (numberOfSatisfied (probGoal prob) s)

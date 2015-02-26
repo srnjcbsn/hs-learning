@@ -24,7 +24,6 @@ instance Env.Environment SokobanPDDL where
     toState = toState
     fromProblem = fromState . probState
     applyAction = applyAction
-    isGoalReached _ = isSolved . world
 
 data Adj = Adj (Object, Object) deriving Eq
 type Structure = ([Adj], [Adj])

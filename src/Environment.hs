@@ -5,4 +5,3 @@ class Environment env where
   toState :: env -> State
   fromProblem :: PDDLProblem -> env
   applyAction :: env -> Action -> Maybe env
-  isGoalReached :: PDDLProblem -> env -> Bool
