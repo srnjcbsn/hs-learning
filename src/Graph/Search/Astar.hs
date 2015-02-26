@@ -8,6 +8,7 @@ import Data.Map (Map)
 --import Data.Set (Set)
 import Data.PriorityQueue as PrioQ
 import Data.Maybe (mapMaybe)
+import Debug.Trace
 --type SearchNode v e = (v,[e])
 
 
@@ -41,7 +42,7 @@ astar graph explored (queue,vMap) =
      then return $ reverse path
      else
        let newFrontier = (q', Map.delete v vMap)
-           edges = adjacentEdges graph v
+           edges =trace (show (length $ adjacentEdges graph v)) adjacentEdges graph v
            etoN e = do adjV <- adjacentVertex graph v e
                        return (adjV, cost + edgeCost graph adjV e, e:path)
            nodes = mapMaybe etoN edges

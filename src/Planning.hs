@@ -1,7 +1,7 @@
 module Planning where
 
 import           Data.Set      (Set)
-
+import Control.Monad (replicateM)
 import           Data.TupleSet (TupleSet)
 
 import Logic.Formula
@@ -40,3 +40,13 @@ class ActionSpecification a where
     arity          :: a -> Int
     isApplicable   :: a -> State -> [Name] -> Bool
     effect         :: a -> [Name] -> TupleSet GroundedPredicate
+
+
+applications :: (ActionSpecification as, Problem p) => p -> as -> [Action]
+applications problem as =
+    map ((,) (name as)) $ replicateM (arity as) (objects problem)
+
+applicableActions :: (ActionSpecification as, Problem p)
+                  => p -> State ->  as -> [Action]
+applicableActions problem state as =
+    filter (isApplicable as state . aArgs) $ applications problem as

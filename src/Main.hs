@@ -13,24 +13,31 @@ import           Environment.Sokoban.SokobanDomain
 import           Learning
 import           Learning.OptEffectLearn
 import           Learning.OptPrecondLearn
-import           Planning.Planner.BFS
 import           Planning.Planner.FastDownward
-
+import           Graph.Search.Astar as Astar
+import           System.IO.Error
+import Planning
+import Planning.PDDL
 logPath = "./log.log"
+
+data Astar = Astar
+
+instance ExternalPlanner Astar PDDLDomain PDDLProblem ActionSpec where
+    makePlan _ d p = return $ Astar.search (PDDLGraph (d,p)) (initialState p)
 
 main :: IO ()
 main = do
-    removeFile logPath
+    catchIOError (removeFile logPath) (\_ -> return ())
     clearScreen
     setTitle "SOKOBAN!"
-    runnerVisualized bfs vis (logAction logPath) dom prob sokoEnv iniPreDomHyp iniEffDomHyp Nothing
+    runnerVisualized astar vis (logAction logPath) dom prob sokoEnv iniPreDomHyp iniEffDomHyp Nothing
     where
         vis _ = return () :: IO ()
         sokoWorld = SS.world
         sokoEnv = fromWorld sokoWorld
         dom = sokobanDomain
         prob = toProblem sokoWorld
+        astar = Astar
         -- fd = mkFastDownard dom prob
-        bfs = BFS
         iniPreDomHyp = initialPreDomainHyp dom
         iniEffDomHyp = initialHypothesis dom

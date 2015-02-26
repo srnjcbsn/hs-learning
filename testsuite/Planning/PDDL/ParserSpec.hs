@@ -14,7 +14,7 @@ import           Test.QuickCheck
 p f x = Predicate "p" [f x]
 pP x = Pred $ p Ref x
 
-a f x y = Predicate "p" [f x, f y]
+a f x y = Predicate "a" [f x, f y]
 aP x y = Pred $ a Ref x y
 
 actionSpecStr = unlines [ "(:action act"

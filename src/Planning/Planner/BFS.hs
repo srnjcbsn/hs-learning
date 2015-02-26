@@ -17,14 +17,6 @@ instance (Domain d as, Problem p) => ExternalPlanner BFS d p as where
 
 type Node = (State, [Action])
 
-applications :: (ActionSpecification as, Problem p) => as -> p -> [Action]
-applications as problem =
-    map ((,) (name as)) $ replicateM (arity as) (objects problem)
-
-applicableActions :: (ActionSpecification as, Problem p)
-                  => as -> p -> State -> [Action]
-applicableActions as problem state =
-    trace' "actions: " $ filter (isApplicable as state . aArgs) $ applications as problem
 
 toNode :: Domain d a => d -> Node -> Action -> Node
 toNode dom (s, rest) act = case apply dom s act of
@@ -52,7 +44,7 @@ search dom p =
     where bfs :: Set State -> Queue Node -> Maybe Node
           bfs explored queue = trace (show (Set.size explored)) $ trace ("state size " ++ (show (maxLength explored))) $ do
             (n@(s, _), queue') <- trace ("dequeue " ++ (show . length . Queue.toList) queue) $ Queue.dequeue queue
-            let actions' as = applicableActions as p s
+            let actions' as = applicableActions  p s as
                 apActs      = concatMap actions' (actions dom)
                 uExpl       = filter (not . isExplored explored)
                             $ map (toNode dom n) apActs

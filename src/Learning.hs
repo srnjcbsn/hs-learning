@@ -26,7 +26,6 @@ refine planner domain problem precondHyp effectHyp maybeCurPlan =
                . (`Pre.domainFromPrecondHypothesis` precondHyp)
      in if isNothing maybeCurPlan
         then do p' <- makePlan planner (uptDom domain) problem
-                putStrLn (ppShow p')
                 return p'
 
         else return maybeCurPlan
@@ -66,9 +65,11 @@ run planner domain problem env preHyp effHyp plan =
   do plan' <- refine planner domain problem preHyp effHyp plan
      putStrLn $ "running: refine returned plan: " ++ (show plan')
      case perform env plan' of
-       Left (env', trans, plan'') ->
+       Left (env', trans@(_,act,s'), plan'') ->
         let (preHyp', effHyp') = learn domain trans preHyp effHyp
-         in return $ Left (env', preHyp', effHyp', plan'')
+         in do putStrLn $ "running: did action " ++ (ppShow act)
+               putStrLn $ "running: new state: " ++ (ppShow s')
+               return $ Left (env', preHyp', effHyp', plan'')
        Right ans -> return $ Right ans
 
 runnerVisualized :: (ExternalPlanner ep PDDLDomain PDDLProblem ActionSpec, Environment env)

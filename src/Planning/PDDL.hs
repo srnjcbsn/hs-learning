@@ -18,6 +18,7 @@ module Planning.PDDL
     , ActionSpec (..)
     , paramNames
     , actionSpec
+    , PDDLGraph(..)
 
     -- * Grounded data
     , GroundedPredicate
@@ -96,6 +97,8 @@ data PDDLProblem = PDDLProblem
     , probState        :: State
     , probGoal         :: Formula Name
     } deriving (Show, Eq)
+
+data PDDLGraph = PDDLGraph (PDDLDomain, PDDLProblem)
 
 -- | A state transition is a the old state, the action that was applied to that
 --   state, and --- depending on the applicability of the action --- 'Just' an
