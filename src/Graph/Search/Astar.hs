@@ -49,10 +49,9 @@ astar graph explored (queue,vMap) =
         in astar graph (Set.insert v explored) frontier
 
 search :: (ForwardSearchGraph graph vertex edge)
-       => graph -> Maybe [edge]
-search graph = astar graph explored (queue, vMap)
+       => graph -> vertex -> Maybe [edge]
+search graph initV = astar graph explored (queue, vMap)
     where
-      initV = initialVertex graph
       explored = Set.empty
       queue = PrioQ.singleton 0 initV
       vMap = Map.singleton initV (0, [])
