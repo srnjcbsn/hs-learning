@@ -1,6 +1,7 @@
 module Planning.PDDL.ParserSpec (main, spec) where
 
 import           Data.Char
+import qualified Data.Map              as Map
 import qualified Data.Set              as Set
 import           Logic.Formula
 import           Planning.PDDL
@@ -23,10 +24,12 @@ actionSpecStr = unlines [ "(:action act"
                         , ":effect (not (p ?a)) )"
                         ]
 
-actionSpecRes = ActionSpec { asName    = "act"
-                           , asParas   = ["a"]
-                           , asPrecond = pP "a"
-                           , asEffect  = Neg (pP "a")
+actionSpecRes = ActionSpec { asName      = "act"
+                           , asParas     = ["a"]
+                           , asPrecond   = pP "a"
+                           , asEffect    = Neg (pP "a")
+                           , asConstants = []
+                           , asTypes     = Map.empty
                            }
 
 domainSpecStr =
@@ -43,6 +46,7 @@ domainSpecRes =
                , dmPredicates   = [a id "x" "y"]
                , dmActionsSpecs = [actionSpecRes]
                , dmConstants    = ["A", "B"]
+               , dmTypes        = []
                }
 
 problemSpecStr =
@@ -55,11 +59,12 @@ problemSpecStr =
 
 problemSpecRes =
     PDDLProblem { probName = "prob"
-            , probObjs = ["x", "y"]
-            , probDomain = "dom"
-            , probState = Set.singleton $ Predicate "test1" ["x", "y"]
-            , probGoal = Pred $ Predicate "test2" ["x", "y"]
-            }
+                , probObjs = ["x", "y"]
+                , probDomain = "dom"
+                , probState = Set.singleton $ Predicate "test1" ["x", "y"]
+                , probGoal = Pred $ Predicate "test2" ["x", "y"]
+                , probTypes = Map.empty
+                }
 
 testParsePredicateSpec :: Spec
 testParsePredicateSpec = do

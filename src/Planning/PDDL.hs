@@ -37,15 +37,13 @@ module Planning.PDDL
     , writeProblem
     ) where
 
+import           Logic.Formula
+import           Planning      as Plng
 
-import qualified Data.TupleSet as TSet
-import Data.TupleSet (TupleSet)
-import Planning as Plng
-import Logic.Formula
-
-import           Data.List (find, intercalate)
-import           Data.Set  (Set)
-import qualified Data.Set  as Set
+import           Data.List     (find, intercalate)
+import           Data.Map      (Map)
+import           Data.Set      (Set)
+import qualified Data.Set      as Set
 
 -- class ActionSpecification a => PDDLAction a where
 --     preConditions  :: a -> Formula
@@ -71,11 +69,12 @@ type GrFormula = Formula Name
 type UngrFormula = Formula Argument
 
 data ActionSpec = ActionSpec
-    { asName    :: String
-    , asParas   :: [Name]
-    , asPrecond :: Formula Argument
-    , asEffect  :: Formula Argument
+    { asName      :: String
+    , asParas     :: [Name]
+    , asPrecond   :: Formula Argument
+    , asEffect    :: Formula Argument
     , asConstants :: [Name]
+    , asTypes     :: Map Name Type
     } deriving (Show, Eq, Ord)
 
 type GroundedChanges = (Set GroundedPredicate, Set GroundedPredicate)
@@ -87,14 +86,16 @@ data PDDLDomain = PDDLDomain
     , dmPredicates   :: [PredicateSpec]
     , dmActionsSpecs :: [ActionSpec]
     , dmConstants    :: [Name]
+    , dmTypes        :: [Type]
     } deriving (Show, Eq)
 
 data PDDLProblem = PDDLProblem
-    { probName         :: String
-    , probObjs         :: [Object]
-    , probDomain       :: String
-    , probState        :: State
-    , probGoal         :: Formula Name
+    { probName   :: String
+    , probObjs   :: [Object]
+    , probDomain :: String
+    , probState  :: State
+    , probGoal   :: Formula Name
+    , probTypes  :: Map Name Type
     } deriving (Show, Eq)
 
 -- | A state transition is a the old state, the action that was applied to that

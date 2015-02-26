@@ -25,6 +25,8 @@ initActspec preconds = ActionSpec
     , asParas = ["x", "y", "z"]
     , asPrecond = Con preconds
     , asEffect = Con []
+    , asConstants = []
+    , asTypes = Map.empty
     }
 
 initDomain = PDDLDomain
@@ -32,6 +34,7 @@ initDomain = PDDLDomain
     , dmPredicates = [p id "x" "y"]
     , dmActionsSpecs = [initActspec []]
     , dmConstants = []
+    , dmTypes = []
     }
 
 expected :: PreKnowledge
