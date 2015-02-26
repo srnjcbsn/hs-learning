@@ -1,12 +1,13 @@
 module Planning.PDDL.Samples.SimpleBox where
 
 import Planning.PDDL
+import Logic.Formula
 
-inside a = ("inside", [a])
-pInside = Predicate . inside
+inside a = Predicate "inside" [a]
+pInside = Pred . inside
 
-outside a = ("outside", [a])
-pOutside = Predicate . outside
+outside a = Predicate "outside" [a]
+pOutside = Pred . outside
 
 
 a = "?a"

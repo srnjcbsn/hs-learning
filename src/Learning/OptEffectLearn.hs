@@ -1,17 +1,18 @@
 module Learning.OptEffectLearn where
 
-import           Data.Function      (on)
-import           Data.List          (deleteBy, unionBy)
-import           Data.Map           (Map, (!))
-import qualified Data.Map           as Map
-import           Data.Maybe         (catMaybes, fromJust)
-import           Data.Set           (Set, (\\))
-import qualified Data.Set           as Set
+import           Data.Function       (on)
+import           Data.List           (deleteBy, unionBy)
+import           Data.Map            (Map, (!))
+import qualified Data.Map            as Map
+import           Data.Maybe          (catMaybes, fromJust)
+import           Data.Set            (Set, (\\))
+import qualified Data.Set            as Set
 import           Debug.Trace
 
 import           Learning.Induction
-import           Planning.PDDL.Logic
+import           Logic.Formula
 import           Planning.PDDL
+import           Planning.PDDL.Logic
 
 -- | (unknown, known)
 type EffectKnowledge = (Set FluentPredicate, Set FluentPredicate)
@@ -43,8 +44,8 @@ addList aSpec action dom = fst $ snd $ instantiateAction aSpec action
 constructEffectSchema :: EffectHypothesis -> ActionSpec -> ActionSpec
 constructEffectSchema ak action  =
     let ((unkPosEff, knPosEff), (_, knNegEff)) = ak
-        addL = Set.map Predicate $ unkPosEff `Set.union` knPosEff
-        delL = Set.map (Neg . Predicate) knNegEff
+        addL = Set.map Pred $ unkPosEff `Set.union` knPosEff
+        delL = Set.map (Neg . Pred) knNegEff
         effect = Con $ Set.toList $ addL `Set.union` delL
     in action { asEffect = effect }
 

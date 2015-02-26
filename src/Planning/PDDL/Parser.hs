@@ -3,17 +3,18 @@ module Planning.PDDL.Parser
     , Text.ParserCombinators.Parsec.ParseError
     ) where
 
-import           Control.Applicative           ((*>), (<*))
-import           Control.Monad                 (liftM2)
+import           Control.Applicative           ((*>))
 import qualified Data.Set                      as Set
-import           Planning.PDDL
 import           Text.ParserCombinators.Parsec
+
+import           Logic.Formula
+import           Planning.PDDL
 
 acceptableRequirements :: [String]
 acceptableRequirements = [":strips"]
 
 parens :: Parser a -> Parser a
-parens p = between (char '(') (char ')') p
+parens = between (char '(') (char ')')
 
 -- | Parses a string starting with a ';' character and ending with a newline.
 -- Returns the string without the leading ';' character and the trailing newline.
@@ -34,6 +35,7 @@ parseName = do
     rest <- many (alphaNum <|> oneOf "-_")
     return $ first : rest
 
+parseArgRef :: Parser Name
 parseArgRef = char '?' >> parseName
 
 parseArgument :: Parser Argument
@@ -41,30 +43,37 @@ parseArgument =
         (parseName   >>= return . Const)
     <|> (parseArgRef >>= return . Ref)
 
-groundedNamed :: Parser (Name, [String])
+groundedNamed :: Parser GroundedPredicate
 groundedNamed = parens $ do
+    name <- parseName
+    spaces
+    params <- sepBy parseName spaces
+    return $ Predicate name params
+
+groundedPredicate :: Parser GroundedPredicate
+groundedPredicate = parens $ do
+    name <- parseName
+    spaces
+    params <- sepBy parseName spaces
+    return $ Predicate name params
+
+-- | Parse an action applied to a list of arguments.
+-- This is an alias for 'groundedNamed'
+action :: Parser Action
+action = parens $ do
     name <- parseName
     spaces
     params <- sepBy parseName spaces
     return (name, params)
 
--- | Parse a grounded predicate. This is an alias for 'groundedNamed'
-groundedPredicate :: Parser GroundedPredicate
-groundedPredicate = groundedNamed
-
--- | Parse an action applied to a list of arguments.
--- This is an alias for 'groundedNamed'
-action :: Parser Action
-action = groundedNamed
-
 parsePredicateSpec :: Parser PredicateSpec
 parsePredicateSpec = do
-    char '('
+    _ <- char '('
     name <- parseName
     spaces
     params <- sepBy parseArgRef space
-    char ')'
-    return (name, params)
+    _ <- char ')'
+    return $ Predicate name params
 
 parseFluent :: Parser FluentPredicate
 parseFluent =
@@ -72,27 +81,37 @@ parseFluent =
         name <- parseName
         spaces
         args <- parseArgument `sepBy` spaces
-        return (name, args)
+        return $ Predicate name args
 
-parseConjunction :: Parser Formula
-parseConjunction =
+parseConjunction :: (Show a, Ord a, Eq a)
+                 => Parser (Formula a)
+                 -> Parser (Formula a)
+parseConjunction f =
     parens $ string "and"
              >> spaces
-             >> parseFormula `sepBy` spaces
+             >> f `sepBy` spaces
              >>= return . Con
 
-parseNegation :: Parser Formula
-parseNegation =
+parseNegation :: (Show a, Ord a, Eq a) => Parser (Formula a) -> Parser (Formula a)
+parseNegation f =
     parens $ string "not"
              >> spaces
-             >> parseFormula
+             >> f
              >>= return . Neg
 
-parseFormula :: Parser Formula
+parseFormula :: Parser (Formula Argument)
 parseFormula =
-        try parseConjunction
-    <|> try parseNegation
-    <|> (parseFluent >>= return . Predicate)
+        try (parseConjunction parseFormula)
+    <|> try (parseNegation parseFormula)
+    <|> (parseFluent >>= return . Pred)
+
+
+
+groundedFormula :: Parser (Formula Name)
+groundedFormula =
+        try (parseConjunction groundedFormula)
+    <|> try (parseNegation groundedFormula)
+    <|> (groundedPredicate >>= return . Pred)
 
 
 parseActionSpec :: Parser ActionSpec
@@ -151,7 +170,7 @@ parseProblem =
         spaces
         ini <- parens $ string ":init " >> groundedPredicate `sepBy` comments
         spaces
-        g <- parens $ string ":goal " >> parseFormula
+        g <- parens $ string ":goal " >> groundedFormula
         _ <- comments
         return PDDLProblem { probName = name
                        , probDomain = dom
@@ -206,4 +225,4 @@ tryParse ps str =
 --            , dmConstants    = ["A", "B"]
 --            }
 
-p = parse parseDomain "unknown"
+-- p = parse parseDomain "unknown"

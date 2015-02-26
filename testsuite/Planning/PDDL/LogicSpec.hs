@@ -3,29 +3,27 @@ module Planning.PDDL.LogicSpec (main, spec) where
 import           Control.Exception
 import           Data.Set              (Set)
 import qualified Data.Set              as Set
-import           Planning.PDDL.Logic
+import           Logic.Formula
 import           Planning.PDDL
+import           Planning.PDDL.Logic
 
 import           Test.Hspec
 import           Test.Hspec.QuickCheck
 import           Test.QuickCheck
-
-
-
 
 getAction obj = ("testAction", [obj])
 
 getState :: [GroundedPredicate] -> State
 getState = Set.fromList
 
-getPred = Predicate ("testPred1", [Ref "x"])
+getPred = Pred $ Predicate "testPred1" [Ref "x"]
 
 getActSpec conds effects = ActionSpec { asName = "testAction"
                          , asParas = ["x"]
                          , asPrecond = Con conds
                          , asEffect = Con effects
                          }
-getGroundPred objs = ("testPred1", objs)
+getGroundPred objs = Predicate "testPred1" objs
 
 
 getGroundAct posCond negCond posEff negEff = ((getState posCond,getState negCond),(getState posEff,getState negEff))

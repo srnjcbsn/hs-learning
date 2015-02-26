@@ -38,39 +38,45 @@ module Planning.PDDL
     ) where
 
 
---import qualified Data.TupleSet as TSet
---import Data.TupleSet (TupleSet)
+import qualified Data.TupleSet as TSet
+import Data.TupleSet (TupleSet)
 import Planning as Plng
+import Logic.Formula
 
 import           Data.List (find, intercalate)
 import           Data.Set  (Set)
 import qualified Data.Set  as Set
 
-class ActionSpecification a => PDDLAction a where
-    preConditions  :: a -> Formula
-    effects        :: a -> Formula
+-- class ActionSpecification a => PDDLAction a where
+--     preConditions  :: a -> Formula
+--     effects        :: a -> Formula
 
 data Argument = Const Name
               | Ref Name
               deriving (Show, Eq, Ord)
 
-type FluentPredicate = (Name, [Argument])
+-- type FluentPredicate = (Name, [Argument])
+type FluentPredicate = Predicate Argument
 
-data Formula = Predicate FluentPredicate
-             | Neg Formula
-             | Con [Formula]
-             deriving (Ord, Eq, Show)
+-- data Formula = Predicate FluentPredicate
+--              | Neg Formula
+--              | Con [Formula]
+--              deriving (Ord, Eq, Show)
 
-type PredicateSpec = (Name, [Name])
+-- type PredicateSpec = (Name, [Name])
+type PredicateSpec = Predicate Name
+
+type GrFormula = Formula Name
+
+type UngrFormula = Formula Argument
 
 data ActionSpec = ActionSpec
     { asName    :: String
     , asParas   :: [Name]
-    , asPrecond :: Formula
-    , asEffect  :: Formula
+    , asPrecond :: Formula Argument
+    , asEffect  :: Formula Argument
     , asConstants :: [Name]
     } deriving (Show, Eq, Ord)
-
 
 type GroundedChanges = (Set GroundedPredicate, Set GroundedPredicate)
 
@@ -88,7 +94,7 @@ data PDDLProblem = PDDLProblem
     , probObjs         :: [Object]
     , probDomain       :: String
     , probState        :: State
-    , probGoal         :: Formula
+    , probGoal         :: Formula Name
     } deriving (Show, Eq)
 
 -- | A state transition is a the old state, the action that was applied to that
@@ -103,13 +109,13 @@ isActionValid s ((posCond, negCond), _) =
   Set.null (Set.intersection negCond s)
 
 pName :: FluentPredicate -> Name
-pName = fst
+pName (Predicate name _) = name
 
 pArgs :: FluentPredicate -> [Argument]
-pArgs = snd
+pArgs (Predicate _ args) = args
 
 paramNames :: PredicateSpec -> [Name]
-paramNames = snd
+paramNames (Predicate _ params) = params
 
 -- | Returns the action specification with the given name in the domain,
 --   or 'Nothing' if it could not be found.
@@ -131,29 +137,34 @@ writeParameterList :: [String] -> String
 writeParameterList ps = writeArgumentList $ map Ref ps
 
 writeFluentPredicate :: FluentPredicate -> String
-writeFluentPredicate (name, as) =
+writeFluentPredicate (Predicate name as) =
     "(" ++ name ++ " " ++ writeArgumentList as ++ ")"
 
 writeGroundedPredicate :: GroundedPredicate -> String
-writeGroundedPredicate (n, objs) =
-    "(" ++ n ++ " " ++ unwords objs  ++ ")"
+writeGroundedPredicate (Predicate name objs) =
+    "(" ++ name ++ " " ++ unwords objs  ++ ")"
 
 writePredicateSpec :: PredicateSpec -> String
-writePredicateSpec (name, ps) =
+writePredicateSpec (Predicate name ps) =
     "(" ++ name ++ " " ++ writeArgumentList (map Ref ps) ++ ")"
 
 writeActionSpec :: ActionSpec -> String
 writeActionSpec as =
     "(:action " ++ asName as
     ++ "\t:parameters (" ++ writeParameterList (asParas as) ++ ")\n"
-    ++ "\t:precondition " ++ writeFormula (asPrecond as) ++ "\n"
-    ++ "\t:effect " ++ writeFormula (asEffect as) ++ "\n"
+    ++ "\t:precondition " ++ writeUngrFormula (asPrecond as) ++ "\n"
+    ++ "\t:effect " ++ writeUngrFormula (asEffect as) ++ "\n"
     ++ ")"
 
-writeFormula :: Formula -> String
-writeFormula (Predicate f) = writeFluentPredicate f
-writeFormula (Neg f) = "(not " ++ writeFormula f ++ ")"
-writeFormula (Con fs) = "(and " ++ unwords (map writeFormula fs) ++ ")"
+writeUngrFormula :: UngrFormula -> String
+writeUngrFormula (Pred p) = writeFluentPredicate p
+writeUngrFormula (Neg f) = "(not " ++ writeUngrFormula f ++ ")"
+writeUngrFormula (Con fs) = "(and " ++ unwords (map writeUngrFormula fs) ++ ")"
+
+writeGrFormula :: GrFormula -> String
+writeGrFormula (Pred p) = writeGroundedPredicate p
+writeGrFormula (Neg f) = "(not " ++ writeGrFormula f ++ ")"
+writeGrFormula (Con fs) = "(and " ++ unwords (map writeGrFormula fs) ++ ")"
 
 writeProblem :: PDDLProblem -> String
 writeProblem prob =
@@ -161,17 +172,17 @@ writeProblem prob =
         domStr    = "(:domain " ++ probDomain prob ++ ")"
         objsStr   = "(:objects " ++ unwords (probObjs prob) ++ ")"
         initStr   = "(:init " ++ writeState (probState prob) ++ ")"
-        goalStr   = "(:goal " ++ writeFormula (probGoal prob) ++ ")"
+        goalStr   = "(:goal " ++ writeGrFormula (probGoal prob) ++ ")"
     in intercalate "\n\t" [defineStr, domStr, objsStr, initStr, goalStr] ++ ")"
 
 
 writeDomain :: PDDLDomain -> String
 writeDomain domain =
     let defineStr = "(define (domain " ++ dmName domain ++ ")"
-        reqsStr = "(:requirements :strips)"
-        consts = dmConstants domain
+        reqsStr   = "(:requirements :strips)"
+        consts    = dmConstants domain
         constsStr = "(:constants " ++ unwords consts ++ ")"
-        preds = dmPredicates domain
-        predsStr = "(:predicates " ++ unwords (map writePredicateSpec preds) ++ ")"
-        actions = unwords $ map writeActionSpec $ dmActionsSpecs domain
-    in intercalate "\n\t" [defineStr, reqsStr, constsStr, predsStr, actions] ++ ")"
+        preds     = dmPredicates domain
+        predsStr  = "(:predicates " ++ unwords (map writePredicateSpec preds) ++ ")"
+        aSpecs    = unwords $ map writeActionSpec $ dmActionsSpecs domain
+    in intercalate "\n\t" [defineStr, reqsStr, constsStr, predsStr, aSpecs] ++ ")"

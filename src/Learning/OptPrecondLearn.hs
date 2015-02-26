@@ -1,14 +1,15 @@
 module Learning.OptPrecondLearn where
 
 import           Learning.Induction
-import           Planning.PDDL.Logic
+import           Logic.Formula
 import           Planning.PDDL
+import           Planning.PDDL.Logic
 
-import           Data.Map           (Map, (!))
-import qualified Data.Map           as Map
-import           Data.Set           (Set, (\\))
-import qualified Data.Set           as Set
-import qualified Data.TupleSet      as TSet
+import           Data.Map            (Map, (!))
+import qualified Data.Map            as Map
+import           Data.Set            (Set, (\\))
+import qualified Data.Set            as Set
+import qualified Data.TupleSet       as TSet
 
 type CNF = Set (Set FluentPredicate, Set FluentPredicate)
 -- | (unknowns, knowns)
@@ -39,11 +40,11 @@ initialPreDomainHyp dom =
 constructPrecondSchema :: PreKnowledge -> ActionSpec -> ActionSpec
 constructPrecondSchema ((_, posKnown), (_, negKnown), cnf) aSpec =
     aSpec { asPrecond = Con predList }
-    where negPredList (poss,negs) =  Set.toList (Set.map Predicate negs)
-                                  ++ Set.toList (Set.map (Neg . Predicate) poss)
+    where negPredList (poss,negs) =  Set.toList (Set.map Pred negs)
+                                  ++ Set.toList (Set.map (Neg . Pred) poss)
           orList = Neg . Con . negPredList
-          predList =  Set.toList (Set.map Predicate posKnown)
-                   ++ Set.toList (Set.map (Neg . Predicate) negKnown)
+          predList =  Set.toList (Set.map Pred posKnown)
+                   ++ Set.toList (Set.map (Neg . Pred) negKnown)
                    ++ Set.toList (Set.map orList cnf)
 
 domainFromPrecondHypothesis :: PDDLDomain -> PreDomainHypothesis -> PDDLDomain

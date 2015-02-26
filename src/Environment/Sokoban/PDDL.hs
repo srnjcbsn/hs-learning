@@ -1,18 +1,18 @@
 module Environment.Sokoban.PDDL where
 
+import qualified Environment         as Env
 import           Environment.Sokoban hiding (Object)
+import           Logic.Formula
 import           Planning.PDDL
--- import Environment (Environment(..))
-import qualified Environment as Env
 
-import           Data.Char                    (isDigit)
-import           Data.List                    (partition)
-import qualified Data.List                    as List
-import           Data.Map                     (Map, member, (!))
-import qualified Data.Map                     as Map
-import           Data.Maybe                   (mapMaybe)
-import           Data.Set                     (Set)
-import qualified Data.Set                     as Set
+import           Data.Char           (isDigit)
+import           Data.List           (partition)
+import qualified Data.List           as List
+import           Data.Map            (Map, member, (!))
+import qualified Data.Map            as Map
+import           Data.Maybe          (mapMaybe)
+import           Data.Set            (Set)
+import qualified Data.Set            as Set
 
 data SokobanPDDL = SokobanPDDL
     { world           :: World
@@ -38,28 +38,28 @@ vAdjName = "vAdj"
 atGoalName = "atGoal"
 
 pSokobanAt :: Location -> GroundedPredicate
-pSokobanAt loc = ("sokobanAt", [loc])
+pSokobanAt loc = Predicate "sokobanAt" [loc]
 
 pAt :: Crate -> Location -> GroundedPredicate
-pAt crate loc = ("at", [crate, loc])
+pAt crate loc = Predicate "at" [crate, loc]
 
 pHAdj :: Location -> Location -> GroundedPredicate
-pHAdj loc loc2 = (hAdjName, [loc, loc2])
+pHAdj loc loc2 = Predicate hAdjName [loc, loc2]
 
 pVAdj :: Location -> Location -> GroundedPredicate
-pVAdj loc loc2 = (vAdjName, [loc, loc2])
+pVAdj loc loc2 = Predicate vAdjName [loc, loc2]
 
 pAtGoal :: Crate -> GroundedPredicate
-pAtGoal crate = (atGoalName, [crate])
+pAtGoal crate = Predicate atGoalName [crate]
 
 pClear :: Location -> GroundedPredicate
-pClear loc = ("clear", [loc])
+pClear loc = Predicate "clear" [loc]
 
 pGoal :: Location -> GroundedPredicate
-pGoal loc = ("goal", [loc])
+pGoal loc = Predicate "goal" [loc]
 
 pNotGoal :: Location -> GroundedPredicate
-pNotGoal loc = ("notGoal", [loc])
+pNotGoal loc = Predicate "notGoal" [loc]
 
 directionFromObjs :: SokobanPDDL -> Location -> Location -> Direction
 directionFromObjs pddlw from to =
@@ -192,7 +192,7 @@ applyAction pddlw ("push-v-goal", [c, soko, cLoc, toLoc])
 applyAction _ act = error ("Unknown action: " ++ show act)
 
 isStructurePred :: GroundedPredicate -> Bool
-isStructurePred (name, _)
+isStructurePred (Predicate name _)
     | name == vAdjName = True
     | name == hAdjName = True
     | otherwise        = False
@@ -208,13 +208,10 @@ writeLocation :: Coord -> Location
 writeLocation (Coord (x, y)) = ('b' : show x) ++ ('x' : show y)
 
 statePred :: GroundedPredicate -> Maybe StatePred
-statePred ("goal", [a]) = Just $ Goal a
-statePred ("at", [c, l]) = Just $ CrateLoc c l
-statePred ("sokobanAt", [l]) = Just $ SokobanLoc l
--- statePred (name, [a, b])
---     | name == hAdjName || name == vAdjName = Structure (min a b) (max a b)
-statePred p = Nothing -- error $ "Could not understand predicate " ++ show p
-
+statePred (Predicate "goal" [a])      = Just $ Goal a
+statePred (Predicate "at" [c, l])     = Just $ CrateLoc c l
+statePred (Predicate "sokobanAt" [l]) = Just $ SokobanLoc l
+statePred p = Nothing
 
 data StatePred = Structure Location Location
                | CrateLoc Crate Location
@@ -225,14 +222,14 @@ fromState :: State -> SokobanPDDL
 fromState state = pddl where
     (structPreds, rest) = partition isStructurePred $ Set.toList state
 
-    goalPreds    = [ gp  | gp@("goal", _) <- rest ]
-    notGoalPreds = [ ngp | ngp@("notGoal", _) <- rest ]
+    goalPreds    = [ gp  | gp@(Predicate "goal" _) <- rest ]
+    notGoalPreds = [ ngp | ngp@(Predicate "notGoal" _) <- rest ]
 
     coordMap = Map.fromList
              $ Set.toList
              $ Set.map (\n -> (n, parseLocation n))
              $ Set.unions
-             $ map (\(_, args) -> Set.fromList args) structPreds
+             $ map (\(Predicate _ args) -> Set.fromList args) structPreds
 
     dataList = mapMaybe statePred rest
     -- If this is an empty list, we throw an error, as we wouldn't be able
@@ -311,7 +308,7 @@ toProblem :: World -> PDDLProblem
 toProblem pWorld =
     let crateObjs = [ t | Box t <- Map.elems (coordMap pWorld) ]
         structObjs = map writeLocation $ Map.keys (coordMap pWorld)
-        goalPred c = Predicate (atGoalName, [Const c])
+        goalPred c = Pred $ Predicate atGoalName [c]
         goalsF = Con $ map goalPred (crateObjs ++ structObjs)
     in PDDLProblem
         { probName   = "sokobanProb"
