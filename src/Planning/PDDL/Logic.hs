@@ -7,7 +7,8 @@ module Planning.PDDL.Logic
     , applyAction
     , groundPreconditions
     ) where
-import           Data.List     (intercalate)
+
+import           Data.List     (intercalate, permutations)
 import qualified Data.List     as List
 import           Data.Map      (Map, (!))
 import qualified Data.Map      as Map
@@ -122,6 +123,14 @@ numberOfPredicates (Pred _) = 1
 numberOfPredicates (Neg f) = numberOfPredicates f
 numberOfPredicates (Con fs) = sum $ map numberOfPredicates fs
 
+applicableActions' :: PDDLProblem -> State -> ActionSpec -> [Action]
+applicableActions' prob s aSpec =
+    filter (isApplicable aSpec s . aArgs) apps
+    where update m (k, a) = Map.insertWith (++) k [a] m
+          probTs = foldl update Map.empty $ Map.toList (probTypes prob)
+          candidates = map (probTs !) (map snd $ typeList aSpec)
+          apps = map ((,) (asName aSpec)) (sequence candidates)
+
 instance ActionSpecification ActionSpec where
     name         = asName
     arity        = length . asParas
@@ -141,8 +150,7 @@ instance Problem PDDLProblem where
 
 instance Graph PDDLGraph State Action where
   adjacentEdges (PDDLGraph (dom, prob)) s =
-    let acts = actions dom
-     in concatMap (applicableActions prob s) acts
+      concatMap (applicableActions' prob s) (actions dom)
   edgeCost _ _ _ = 1
   adjacentVertex (PDDLGraph (dom, _)) s act = apply' dom s act
 

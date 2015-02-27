@@ -19,6 +19,7 @@ module Planning.PDDL
     , paramNames
     , actionSpec
     , PDDLGraph(..)
+    , typeList
 
     -- * Grounded data
     , GroundedPredicate
@@ -43,6 +44,8 @@ import           Planning      as Plng
 
 import           Data.List     (find, intercalate)
 import           Data.Map      (Map)
+import qualified Data.Map      as Map
+import           Data.Maybe    (fromMaybe)
 import           Data.Set      (Set)
 import qualified Data.Set      as Set
 
@@ -98,6 +101,14 @@ data PDDLProblem = PDDLProblem
     , probGoal   :: Formula Name
     , probTypes  :: Map Name Type
     } deriving (Show, Eq)
+
+baseType :: Type
+baseType = "object"
+
+typeList :: ActionSpec -> [(Name, Type)]
+typeList aSpec = zip (asParas aSpec)
+               $ map (fromMaybe baseType . flip Map.lookup (asTypes aSpec))
+               $ asParas aSpec
 
 data PDDLGraph = PDDLGraph (PDDLDomain, PDDLProblem)
 
