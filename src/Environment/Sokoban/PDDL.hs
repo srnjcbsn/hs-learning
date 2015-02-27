@@ -21,7 +21,7 @@ data SokobanPDDL = SokobanPDDL
     } deriving(Show)
 
 instance Env.Environment SokobanPDDL where
-    toState = toState
+    toState     = toState
     fromProblem = fromState . probState
     applyAction = applyAction
 
@@ -78,12 +78,6 @@ directionFromObjs pddlw from to =
 applyFromLoc :: SokobanPDDL -> Location -> Location -> SokobanPDDL
 applyFromLoc pddlw from to =
     pddlw { world = move (world pddlw) $ directionFromObjs pddlw from to }
-    --   case move (world pddlw) $ directionFromObjs pddlw from to of
-    --     Just world' -> Just pddlw { world = world' }
-    --     Nothing -> Nothing
-
--- type Assert = (World -> Bool)
--- asserts :: [World -> Bool]
 
 locToCoord :: SokobanPDDL -> Location -> Coord
 locToCoord pddl loc = locMap pddl ! loc
@@ -92,32 +86,38 @@ locationExists :: Location -> SokobanPDDL -> Bool
 locationExists loc pddl = member loc (locMap pddl)
 
 sokobanAt :: Location -> SokobanPDDL -> Bool
-sokobanAt loc pddl =
+sokobanAt loc pddl = locationExists loc pddl &&
     locMap pddl ! loc == (sokoban . world $ pddl)
 
+location :: SokobanPDDL -> Location -> Coord
+location pddl loc = case Map.lookup loc (locMap pddl) of
+                          Just c -> c
+                          Nothing -> error $ "Tried to look up location "
+                                             ++ loc ++ " which does not exist."
+
 hAdj, vAdj :: Location -> Location -> SokobanPDDL -> Bool
-hAdj a b pddl =
-    case (locMap pddl ! a) - (locMap pddl ! b) of
+hAdj a b pddl = locationExists a pddl && locationExists b pddl &&
+    case location pddl a - location pddl b of
         Coord (-1, 0) -> True
         Coord (1 , 0) -> True
         _             -> False
 
-vAdj a b pddl =
-    case (locMap pddl ! a) - (locMap pddl ! b) of
+vAdj a b pddl = locationExists a pddl && locationExists b pddl &&
+    case location pddl a - location pddl b of
         Coord (0, -1) -> True
         Coord (0,  1) -> True
         _             -> False
 
 tileClear :: Location -> Assertion
-tileClear loc pddl =
-    case coordMap (world pddl) ! coord of
+tileClear loc pddl = locationExists loc pddl &&
+    case coord (world pddl) coord' of
         Clear -> not $ sokobanAt loc pddl
         Box _ -> False
-    where coord = locMap pddl ! loc
+    where coord' = location pddl loc
 
 crateAt :: Crate -> Location -> Assertion
-crateAt c loc pddl =
-    case (coordMap . world) pddl ! (locMap pddl ! loc) of
+crateAt c loc pddl = locationExists loc pddl &&
+    case coord (world pddl) (location pddl loc)  of -- ! (locMap pddl ! loc) of
         Box c' -> c == c'
         _      -> False
 
@@ -125,13 +125,12 @@ goal :: Location -> Assertion
 goal loc pddl = (locMap pddl ! loc) `elem` (goals . world) pddl
 
 notGoal :: Location -> Assertion
-notGoal loc pddl = not $ goal loc pddl
+notGoal loc pddl = locationExists loc pddl && not (goal loc pddl)
 
 type Assertion = SokobanPDDL -> Bool
 
 asserts :: SokobanPDDL -> [SokobanPDDL -> Bool] -> Bool
 asserts pddl = all (\f -> f pddl)
-
 
 applyAction :: SokobanPDDL -> Action -> Maybe SokobanPDDL
 applyAction pddlw ("move-h", [from, to])
@@ -167,7 +166,7 @@ applyAction pddlw ("push-v", [c, soko, cLoc, toLoc])
                            ]
 
 applyAction pddlw ("push-h-goal", [c, soko, cLoc, toLoc])
-    | asserts pddlw conditions = Just $ applyFromLoc pddlw soko toLoc
+    | asserts pddlw conditions = Just $ applyFromLoc pddlw soko cLoc
     | otherwise = Nothing
         where conditions = [ sokobanAt soko
                            , crateAt c cLoc
@@ -178,7 +177,7 @@ applyAction pddlw ("push-h-goal", [c, soko, cLoc, toLoc])
                            ]
 
 applyAction pddlw ("push-v-goal", [c, soko, cLoc, toLoc])
-    | asserts pddlw conditions = Just $ applyFromLoc pddlw soko toLoc
+    | asserts pddlw conditions = Just $ applyFromLoc pddlw soko cLoc
     | otherwise = Nothing
         where conditions = [ sokobanAt soko
                            , crateAt c cLoc
@@ -260,13 +259,13 @@ worldPreds world = Set.insert sokLoc tilePreds where
     sokLoc = pSokobanAt $ writeLocation $ sokoban world
     -- The tilemap minus the tile sokoban is standing on
     tileMap' = Map.delete (sokoban world) (coordMap world)
-    tilePreds = Set.fromList $ map (uncurry tilePred) $ Map.toList tileMap'
+    tilePreds = Set.fromList $ concatMap (uncurry tilePred) $ Map.toList tileMap'
 
-    tilePred :: Coord -> Tile -> GroundedPredicate
-    tilePred coord Clear = pClear $ writeLocation coord
+    tilePred :: Coord -> Tile -> [GroundedPredicate]
+    tilePred coord Clear = [pClear $ writeLocation coord]
     tilePred coord (Box n)
-        | coord `elem` goals world = pAtGoal n
-        | otherwise = pAt n $ writeLocation coord
+        | coord `elem` goals world = [pAtGoal n, pAt n $ writeLocation coord]
+        | otherwise = [pAt n $ writeLocation coord]
 
 toState :: SokobanPDDL -> State
 toState pddl =
@@ -308,7 +307,7 @@ toProblem pWorld =
     let crateObjs = [ t | Box t <- Map.elems (coordMap pWorld) ]
         structObjs = map writeLocation $ Map.keys (coordMap pWorld)
         goalPred c = Pred $ Predicate atGoalName [c]
-        goalsF = Con $ map goalPred (crateObjs ++ structObjs)
+        goalsF = Con $ map goalPred crateObjs
     in PDDLProblem
         { probName   = "sokobanProb"
         , probObjs   = crateObjs ++ structObjs

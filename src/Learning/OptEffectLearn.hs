@@ -104,8 +104,12 @@ updateEffectHyp domain ak (oldState, action, Just newState) =
 
         in ak'
 
-effectHypothesis :: DomainHypothesis -> Action -> EffectHypothesis
-effectHypothesis dmKnowledge (actName, _) = dmKnowledge ! actName
+effectHypothesis :: DomainHypothesis -> Name -> EffectHypothesis
+effectHypothesis dmKnowledge actName =
+    case Map.lookup actName dmKnowledge of
+         Just ehyp -> ehyp
+         Nothing -> error $ "Tried to retrieve effect hypothesis for action "
+                            ++ actName ++ " which does not exist."
 
 
 -- update the domain by inserting the given action specification
@@ -119,7 +123,7 @@ updateDomain dom as =
 -- | Changes all the domain's action specs effect based on the hypothesis
 domainFromKnowledge :: PDDLDomain -> DomainHypothesis -> PDDLDomain
 domainFromKnowledge dom dHyp =
-    dom { dmActionsSpecs = map (\as -> constructEffectSchema (dHyp ! asName as) as)
+    dom { dmActionsSpecs = map (\as -> constructEffectSchema (effectHypothesis dHyp (asName as)) as)
                          $ dmActionsSpecs dom
         }
 
@@ -142,7 +146,7 @@ updateEffectHypHelper :: PDDLDomain
                       -> DomainHypothesis
 updateEffectHypHelper dom dHyp transition = Map.insert (aName action) aHyp' dHyp
     where (_, action, _) = transition
-          aHyp = effectHypothesis dHyp action
+          aHyp = effectHypothesis dHyp (aName action)
           aHyp' = updateEffectHyp dom aHyp transition
 
 -- | If application of the action in the provided transition would yield the
