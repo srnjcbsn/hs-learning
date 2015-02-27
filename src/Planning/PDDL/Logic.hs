@@ -20,6 +20,7 @@ import           Graph.Search
 import           Logic.Formula
 import           Planning
 import           Planning.PDDL
+import           Data.Maybe
 
 
 -- | Finds the action spec of an action in a domain
@@ -36,8 +37,9 @@ findActionSpec domain (n, _) = case actionSpec domain n of
 
 -- | Instantiates a formula into the actual positive and negative changes
 insForm :: Map Argument Object -> Formula Argument -> GroundedChanges
-insForm m (Pred p) = (Set.singleton (fmap (m !) p), Set.empty)
-insForm m (Neg f)  = swap $ insForm m f
+insForm m (Pred p) =
+    (Set.singleton (Predicate (pName p) (mapMaybe (`Map.lookup` m) $ pArgs p)), Set.empty)
+insForm m (Neg f) = swap $ insForm m f
 insForm m (Con fs) =
     List.foldl (\changes f -> TSet.union changes $ insForm m f ) TSet.empty fs
 
