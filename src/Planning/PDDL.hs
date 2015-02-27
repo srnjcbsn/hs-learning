@@ -106,13 +106,11 @@ data PDDLGraph = PDDLGraph (PDDLDomain, PDDLProblem)
 --   an updated state with the actions effects applied, or 'Nothing'.
 type Transition = (State, Action, Maybe State)
 
-
-
 pName :: FluentPredicate -> Name
-pName (Predicate name _) = name
+pName = predName
 
 pArgs :: FluentPredicate -> [Argument]
-pArgs (Predicate _ args) = args
+pArgs = predArgs
 
 paramNames :: PredicateSpec -> [Name]
 paramNames (Predicate _ params) = params
@@ -120,7 +118,7 @@ paramNames (Predicate _ params) = params
 -- | Returns the action specification with the given name in the domain,
 --   or 'Nothing' if it could not be found.
 actionSpec :: PDDLDomain -> Name -> Maybe ActionSpec
-actionSpec domain name = find ((== name) . asName) (dmActionsSpecs domain)
+actionSpec domain n = find ((== n) . asName) (dmActionsSpecs domain)
 
 writeState :: State -> String
 writeState state =
