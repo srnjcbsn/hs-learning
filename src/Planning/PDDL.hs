@@ -3,6 +3,7 @@ module Planning.PDDL
     -- * Basic Types
       Name
     , Object
+    , baseType
 
     -- * Formulae
     , Formula (..)
@@ -49,23 +50,11 @@ import           Data.Maybe    (fromMaybe)
 import           Data.Set      (Set)
 import qualified Data.Set      as Set
 
--- class ActionSpecification a => PDDLAction a where
---     preConditions  :: a -> Formula
---     effects        :: a -> Formula
-
 data Argument = Const Name
               | Ref Name
               deriving (Show, Eq, Ord)
 
--- type FluentPredicate = (Name, [Argument])
 type FluentPredicate = Predicate Argument
-
--- data Formula = Predicate FluentPredicate
---              | Neg Formula
---              | Con [Formula]
---              deriving (Ord, Eq, Show)
-
--- type PredicateSpec = (Name, [Name])
 type PredicateSpec = Predicate Name
 
 type GrFormula = Formula Name

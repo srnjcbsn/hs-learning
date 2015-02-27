@@ -23,6 +23,8 @@ import           Planning
 import           Planning.PDDL
 import           Data.Maybe
 
+import Debug.Trace
+import Text.Show.Pretty (ppShow)
 
 -- | Finds the action spec of an action in a domain
 findActionSpec :: PDDLDomain -> Action -> ActionSpec
@@ -126,10 +128,17 @@ numberOfPredicates (Con fs) = sum $ map numberOfPredicates fs
 applicableActions' :: PDDLProblem -> State -> ActionSpec -> [Action]
 applicableActions' prob s aSpec =
     filter (isApplicable aSpec s . aArgs) apps
-    where update m (k, a) = Map.insertWith (++) k [a] m
+    where update m (k, a) = Map.insertWith (++) a [k] m
           probTs = foldl update Map.empty $ Map.toList (probTypes prob)
-          candidates = map (probTs !) (map snd $ typeList aSpec)
+          candidates = map (extractType . snd) (typeList aSpec)
           apps = map ((,) (asName aSpec)) (sequence candidates)
+          extractType el =
+              case Map.lookup el probTs of
+                   Just ls -> ls
+                   Nothing -> error $ "applicableActions: attempted to look up "
+                                      ++ show el ++ " in problem type map."
+                                      ++ show probTs ++ show (typeList aSpec)
+
 
 instance ActionSpecification ActionSpec where
     name         = asName
