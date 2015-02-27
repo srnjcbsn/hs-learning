@@ -8,10 +8,8 @@ module Logic.Formula
     , evaluateCWA
     ) where
 
-import Data.Set (Set)
+import           Data.Set (Set)
 import qualified Data.Set as Set
-import Data.Map (Map, (!))
-import qualified Data.Map as Map
 
 type Name = String
 
@@ -37,6 +35,8 @@ instance Functor Formula where
     fmap f (Neg n)  = Neg  $ fmap f n
     fmap f (Con fs) = Con  $ fmap (fmap f) fs
 
+-- | Evaluate a formula with respect to a knowledge base under the closed-
+--   world assumption
 evaluateCWA :: Ord a => Formula a -> Set (Predicate a) -> Bool
 evaluateCWA (Pred p) s = Set.member p s
 evaluateCWA (Neg f)  s = not $ evaluateCWA f s
@@ -48,7 +48,8 @@ evaluateCWA (Con fs) s = all (`evaluateCWA` s) fs
 -- flatten f                    = f
 
 -- | Negate a 'Formula'. If the given 'Formula' is a conjunction, the contained
---   'Formula'e are negated recursively.
+--   'Formula'e are negated recursively. Note that
+--   @mapNegate (Con fs) =/= Neg (Con fs)@
 mapNegate :: (Eq a, Ord a, Show a) => Formula a -> Formula a
 mapNegate (Con fs) = Con $ map Neg fs
 mapNegate (Neg f)  = f

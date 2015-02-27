@@ -2,7 +2,6 @@ module Planning.PDDL.Logic
     ( isActionValid
     , apply
     , findActionSpec
-    , instantiateFormula
     , instantiateAction
     , ground
     , applyAction
@@ -15,12 +14,12 @@ import qualified Data.Map      as Map
 import           Data.Set      (Set)
 import qualified Data.Set      as Set
 import           Data.Tuple    (swap)
+import qualified Data.TupleSet as TSet
+import           Graph
+import           Graph.Search
+import           Logic.Formula
 import           Planning
 import           Planning.PDDL
-import           Graph.Search
-import           Graph
-import qualified Data.TupleSet as Set2
-import Logic.Formula
 
 
 -- | Finds the action spec of an action in a domain
@@ -31,32 +30,17 @@ findActionSpec domain (n, _) = case actionSpec domain n of
         error $  "Action specification with name " ++ n
               ++ " does not exist in domain (action names: "
               ++ names ++ ")"
-        where names = intercalate ","
+        where names = intercalate ", "
                     $ map asName (dmActionsSpecs domain)
 
 
 -- | Instantiates a formula into the actual positive and negative changes
 insForm :: Map Argument Object -> Formula Argument -> GroundedChanges
 insForm m (Pred p) =
-    (Set.singleton (Predicate (pName p) (List.map (m Map.!) $ pArgs p)), Set.empty)
+    (Set.singleton (Predicate (pName p) (map (m !) $ pArgs p)), Set.empty)
 insForm m (Neg f) = swap $ insForm m f
 insForm m (Con fs) =
-    List.foldl (\changes f -> Set2.union changes $ insForm m f ) (Set.empty,Set.empty) fs
-
--- | instantiates an Action into the actual precondions and the actual effect
-insAct :: Map Argument Object -> ActionSpec -> Action -> GroundedAction
-insAct m as act = ga
-  where
-    pairs = List.zip (List.map Ref $ asParas as) (aArgs act)
-    paraMap = Map.fromList pairs
-    fullMap = Map.union paraMap m
-    ga = (groundPreconditions as (aArgs act), insForm fullMap (asEffect as))
-
--- | Checks if the preconditions of a grounded action are satisfied
---isActionValid :: State -> GroundedAction -> Bool
---isActionValid s ((posCond, negCond), _) =
---  Set.isSubsetOf posCond s &&
---  Set.null (Set.intersection negCond s)
+    List.foldl (\changes f -> TSet.union changes $ insForm m f ) TSet.empty fs
 
 -- | Checks if the preconditions of a grounded action are satisfied
 isActionValid :: State -> GroundedAction -> Bool
@@ -68,24 +52,9 @@ applyAction s act@(_,(posEff,negEff))
     | isActionValid s act = Just $ Set.union (Set.difference s negEff) posEff
     | otherwise           = Nothing
 
-domainMap :: PDDLDomain -> Map Argument Object
-domainMap domain = constMap (dmConstants domain)
-
 constMap :: [Name] -> Map Argument Object
 constMap consts =
     Map.fromList $ List.map (\n -> (Const n, n)) consts
-
--- | Instantiates a formula into the actual positive and negative changes
-instantiateFormula :: PDDLDomain
-                   -> [Name]          -- ^ Parameters
-                   -> [Name]          -- ^ Arguments
-                   -> Formula Argument
-                   -> GroundedChanges
-instantiateFormula domain paras args form = insForm fullMap form
-    where pairs = List.zip (List.map Ref paras) args
-          paraMap = Map.fromList pairs
-          fullMap = Map.union paraMap $ domainMap domain
-
 
 -- | Instantiates a formula into the actual positive and negative changes
 instantiateAction :: ActionSpec -> Action -> GroundedAction
@@ -96,14 +65,26 @@ instantiateAction as a = ga where
     fullMap = Map.union paraMap m
     ga = (groundPreconditions as (aArgs a), insForm fullMap (asEffect as))
 
+
+substMap :: [Name] -> [Name] -> Map Name Name
+substMap paras args = Map.fromList $ zip paras args
+
+subst :: Map Name Name -> Argument -> Name
+subst m (Ref r)   = m ! r
+subst _ (Const c) = c
+
+substitute :: [Name] -> [Name] -> Argument -> Name
+substitute paras args = subst $ substMap paras args
+
+ground' :: [Name] -> [Name] -> Set FluentPredicate -> Set GroundedPredicate
+ground' paras args = Set.map (fmap $ substitute paras args)
+
 ground :: PDDLDomain
        -> Action
        -> Set FluentPredicate
        -> Set GroundedPredicate
-ground domain (n, args) fluents =
-    fst $ instantiateFormula domain (asParas aSpec) args
-        (Con $ List.map Pred $ Set.toList fluents)
-        where aSpec = findActionSpec domain (n, args)
+ground domain (n, args) = ground' (asParas as) args where
+    as = findActionSpec domain (n, args)
 
 -- | Takes an action, grounds it and then if the precondions are satisfied applies it to a state
 apply' :: PDDLDomain -> State -> Action -> Maybe State
@@ -118,17 +99,11 @@ applyActionSpec aSpec args = (asName aSpec, args)
 isSatisfied :: Formula Name -> State -> Bool
 isSatisfied = evaluateCWA
 
-groundFormula ::Map Name Name -> Formula Argument -> Formula Name
-groundFormula refMap form = (fmap subst form) where
-    subst (Const c) = c
-    subst (Ref r)   = refMap ! r
-
 groundPreconditions :: ActionSpec -> [Name] -> Formula Name
-groundPreconditions as args = groundFormula refMap (asPrecond as) where
-    refMap = Map.fromList $ zip (asParas as) args
+groundPreconditions as args = fmap (substitute (asParas as) args) (asPrecond as)
 
 evaluateFormuala :: Formula Name -> State -> Bool
-evaluateFormuala form s = evaluateCWA form s
+evaluateFormuala = evaluateCWA
 
 applicable :: ActionSpec -> State -> [Name] -> Bool
 applicable as s args = evaluateCWA (groundPreconditions as args) s
