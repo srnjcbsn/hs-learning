@@ -8,6 +8,8 @@ import Data.Map (Map)
 --import Data.Set (Set)
 import Data.PriorityQueue as PrioQ
 import Data.Maybe (mapMaybe)
+import Debug.Trace
+
 --type SearchNode v e = (v,[e])
 
 

@@ -9,6 +9,7 @@ import           Data.Set            (Set, (\\))
 import qualified Data.Set            as Set
 import           Debug.Trace
 
+import           Text.Show.Pretty (ppShow)
 import           Learning.Induction
 import           Logic.Formula
 import           Planning.PDDL

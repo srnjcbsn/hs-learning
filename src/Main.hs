@@ -21,6 +21,8 @@ import Planning.PDDL
 import Planning.PDDL.Samples.SimpleBox
 import           Text.Show.Pretty
 import Data.Map ((!))
+import Data.Maybe
+import Planning.PDDL.Logic
 logPath = "./log.log"
 
 data Astar = Astar
@@ -40,26 +42,35 @@ main = do
     clearScreen
     setTitle "SOKOBAN!"
     putStrLn (ppShow $ initialState prob)
-    outp <- runn env iniPreDomHyp iniEffDomHyp Nothing
-    outp2 <- continue outp
-    printOut outp
+    putStrLn (ppShow (toFormula dom iniPreDomHyp))
+    --outp <- runn env iniPreDomHyp iniEffDomHyp Nothing
+    -- case outp of
+    --   Left (env',preHyp,_,_) ->
+    --     let as = fromJust $ actionSpecification dom "move-v"
+    --         as' = constructPrecondSchema (preHyp ! "move-v") as
+    --       in putStr (ppShow (groundPreconditions as' ["b0x1", "b0x0"]))
+    fenv <- runv env iniPreDomHyp iniEffDomHyp Nothing
+    putStr (ppShow fenv)
+    return ()
+    --outp2 <- continue outp
+    --printOut outp
+    --printOut outp2
     where
         vis _ = return () :: IO ()
         sokoWorld = SS.world
         sokoEnv = fromWorld sokoWorld
-        runn = run astar dom prob
-        continue outp =
-          case outp of
-            Left (env',preHyp,effHyp,plan) -> runn env' preHyp effHyp plan
-            Right eror -> error ("stopped " ++ show eror)
-        printOut outp =
-          case outp of
-           Left (env,preHyp,_,_) ->
-            do putStrLn (ppShow (toFormula dom iniPreDomHyp))
-
-               putStrLn (ppShow (toFormula dom preHyp))
-           Right True -> putStrLn ("Success")
-           Right False -> putStrLn ("failed")
+        --runn = run astar dom prob
+        runv = runnerVisualized astar vis vis dom prob
+        -- continue outp =
+        --   case outp of
+        --     Left (env',preHyp,effHyp,plan) -> runn env' preHyp effHyp plan
+        --     Right eror -> error ("stopped " ++ show eror)
+        -- printOut outp =
+        --   case outp of
+        --    Left (env,preHyp,effHyp,_) ->
+        --     do putStrLn ("preconds: " ++ (ppShow effHyp))
+        --    Right True -> putStrLn ("Success")
+        --    Right False -> putStrLn ("failed")
         env = sokoEnv
         dom = sokobanDomain
         prob = toProblem sokoWorld

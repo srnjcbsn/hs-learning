@@ -18,7 +18,7 @@ data SokobanPDDL = SokobanPDDL
     { world           :: World
     , locMap          :: Map Location Coord
     , persistentState :: Set GroundedPredicate
-    }
+    } deriving(Show)
 
 instance Env.Environment SokobanPDDL where
     toState = toState
@@ -315,4 +315,5 @@ toProblem pWorld =
         , probDomain = "sokobanDom"
         , probState  = (toState . fromWorld) pWorld
         , probGoal   = goalsF
+        , probTypes  = Map.empty
         }

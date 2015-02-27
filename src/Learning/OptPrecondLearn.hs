@@ -75,7 +75,9 @@ isSingleton :: (Set FluentPredicate, Set FluentPredicate) -> Bool
 isSingleton = (== 1) . TSet.size
 
 removeSetsWithKnowns :: CNF -> (Set FluentPredicate, Set FluentPredicate) -> CNF
-removeSetsWithKnowns cnfs kns = Set.filter (not . TSet.isSubSetOf kns) cnfs
+removeSetsWithKnowns cnfs kns
+    | TSet.size kns > 0 = Set.filter (not . TSet.isSubSetOf kns) cnfs
+    | otherwise = cnfs
 
 extractKnowns :: CNF -> (Set FluentPredicate, Set FluentPredicate, CNF)
 extractKnowns cnfs = (posKns, negKns, newCnfs')

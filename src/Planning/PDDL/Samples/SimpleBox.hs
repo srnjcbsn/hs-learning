@@ -52,8 +52,8 @@ sBProblem = PDDLProblem
     }
 newtype SBEnvironment =  SBEnvironment (State, PDDLDomain)
 
-instance Environment SBEnvironment where
-  toState (SBEnvironment (s,_)) = s
-  applyAction (SBEnvironment (s,dom)) action =
-    do s' <- apply dom s action
-       return $ SBEnvironment (s', dom)
+-- instance Environment SBEnvironment where
+--   toState (SBEnvironment (s,_)) = s
+--   applyAction (SBEnvironment (s,dom)) action =
+--     do s' <- apply dom s action
+--        return $ SBEnvironment (s', dom)

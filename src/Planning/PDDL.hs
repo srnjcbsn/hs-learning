@@ -80,7 +80,7 @@ data ActionSpec = ActionSpec
 
 type GroundedChanges = (Set GroundedPredicate, Set GroundedPredicate)
 
-type GroundedAction = (GroundedChanges, GroundedChanges)
+type GroundedAction = (GrFormula, GroundedChanges)
 
 data PDDLDomain = PDDLDomain
     { dmName         :: Name
@@ -106,11 +106,7 @@ data PDDLGraph = PDDLGraph (PDDLDomain, PDDLProblem)
 --   an updated state with the actions effects applied, or 'Nothing'.
 type Transition = (State, Action, Maybe State)
 
--- | Checks if the preconditions of a grounded action are satisfied
-isActionValid :: State -> GroundedAction -> Bool
-isActionValid s ((posCond, negCond), _) =
-  Set.isSubsetOf posCond s &&
-  Set.null (Set.intersection negCond s)
+
 
 pName :: FluentPredicate -> Name
 pName (Predicate name _) = name

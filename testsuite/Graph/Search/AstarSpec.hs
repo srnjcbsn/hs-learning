@@ -74,6 +74,20 @@ testAstarSpec = do
                             ]
          in actualPath `shouldBe` Just expectedPath
 
+      it "can faild if no plan exsists" $
+         let edges = [   (1,2), (1,5)
+                     ,   (2,3)
+                     ,   (11,12)
+                     ]
+             startNode = 1
+             goalNode = 12
+             goal = (== goalNode)
+             graph = ofList edges goal
+             actualPath = search graph startNode
+             expectedPath = Nothing
+          in actualPath `shouldBe` expectedPath
+
+
 
 spec :: Spec
 spec = testAstarSpec

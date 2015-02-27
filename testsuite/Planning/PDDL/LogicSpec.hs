@@ -29,7 +29,7 @@ getActSpec conds effects = ActionSpec { asName = "testAction"
 getGroundPred objs = Predicate "testPred1" objs
 
 
-getGroundAct posCond negCond posEff negEff = ((getState posCond,getState negCond),(getState posEff,getState negEff))
+getGroundAct preCond posEff negEff = (preCond,(getState posEff,getState negEff))
 
 getDomain as = PDDLDomain { dmName = "testDomain"
                       , dmPredicates = []
@@ -79,20 +79,20 @@ testLogicSpec = do
     describe "isActionValid" $ do
       it "can check if a positive precondition is in the state" $
         let initState = getState [getGroundPred [testObj]]
-            groundAct = getGroundAct [getGroundPred [testObj]] [] [] [] in
+            groundAct = getGroundAct (Pred $ getGroundPred [testObj]) [] [] in
           isActionValid initState groundAct `shouldBe` True
 
       it "can check if a positive precondition is not in the state" $
-        let groundAct = getGroundAct [getGroundPred [testObj]] [] [] [] in
+        let groundAct = getGroundAct (Pred $ getGroundPred [testObj]) [] [] in
           isActionValid emptyState groundAct `shouldBe` False
 
       it "can check if a negative precondition is in the state" $
         let initState = getState [getGroundPred [testObj]]
-            groundAct = getGroundAct [] [getGroundPred [testObj]] [] [] in
+            groundAct = getGroundAct (Neg $ Pred $ getGroundPred [testObj]) [] [] in
           isActionValid initState groundAct `shouldBe` False
 
       it "can check if a negative precondition is not in the state" $
-        let groundAct = getGroundAct [] [getGroundPred [testObj]] [] [] in
+        let groundAct = getGroundAct (Neg $ Pred $ getGroundPred [testObj]) [] [] in
           isActionValid emptyState groundAct `shouldBe` True
 spec :: Spec
 spec = testLogicSpec

@@ -3,6 +3,7 @@ module Environment.Sokoban.SokobanDomain where
 import           Logic.Formula
 import           Planning.PDDL
 import           Planning.PDDL.Logic ()
+import qualified Data.Map as Map
 
 fluentPredicate :: PredicateSpec -> [Name] -> FluentPredicate
 fluentPredicate (Predicate name _) ns = Predicate name $ map Ref ns
@@ -21,6 +22,7 @@ mkActionSpec name paras conds effs =
                , asParas   = paras
                , asPrecond = conds paras
                , asEffect  = effs paras
+               , asTypes   = Map.empty
                }
 con :: [(PredicateSpec, [Name])] -> Formula Argument
 con = Con . map (Pred . uncurry fluentPredicate)
@@ -112,6 +114,7 @@ sokobanDomain :: PDDLDomain
 sokobanDomain = PDDLDomain
     { dmName = "sokobanDom"
     , dmPredicates = [hAdj, vAdj, sokobanAt, at, atGoal, clear, goal, notGoal]
-    , dmActionsSpecs = [moveV] -- [moveH, moveV, pushH, pushV, pushHGoal, pushVGoal]
+    , dmActionsSpecs = [moveH, moveV, pushH, pushV, pushHGoal, pushVGoal]
     , dmConstants = []
+    , dmTypes = []
     }

@@ -6,6 +6,7 @@ module Planning.PDDL.Logic
     , instantiateAction
     , ground
     , applyAction
+    , groundPreconditions
     ) where
 import           Data.List     (intercalate)
 import qualified Data.List     as List
@@ -49,13 +50,17 @@ insAct m as act = ga
     pairs = List.zip (List.map Ref $ asParas as) (aArgs act)
     paraMap = Map.fromList pairs
     fullMap = Map.union paraMap m
-    ga = (insForm fullMap (asPrecond as), insForm fullMap (asEffect as))
+    ga = (groundPreconditions as (aArgs act), insForm fullMap (asEffect as))
+
+-- | Checks if the preconditions of a grounded action are satisfied
+--isActionValid :: State -> GroundedAction -> Bool
+--isActionValid s ((posCond, negCond), _) =
+--  Set.isSubsetOf posCond s &&
+--  Set.null (Set.intersection negCond s)
 
 -- | Checks if the preconditions of a grounded action are satisfied
 isActionValid :: State -> GroundedAction -> Bool
-isActionValid s ((posCond, negCond), _) =
-  Set.isSubsetOf posCond s &&
-  Set.null (Set.intersection negCond s)
+isActionValid s (gForm, _) = evaluateFormuala gForm s
 
 -- | Applies the grounded actions to a state, if the action is not valid nothing is returned
 applyAction :: State -> GroundedAction -> Maybe State
@@ -89,7 +94,7 @@ instantiateAction as a = ga where
     pairs = List.zip (List.map Ref $ asParas as) (aArgs a)
     paraMap = Map.fromList pairs
     fullMap = Map.union paraMap m
-    ga = (insForm fullMap (asPrecond as), insForm fullMap (asEffect as))
+    ga = (groundPreconditions as (aArgs a), insForm fullMap (asEffect as))
 
 ground :: PDDLDomain
        -> Action
@@ -113,11 +118,20 @@ applyActionSpec aSpec args = (asName aSpec, args)
 isSatisfied :: Formula Name -> State -> Bool
 isSatisfied = evaluateCWA
 
-applicable :: ActionSpec -> State -> [Name] -> Bool
-applicable as s args = evaluateCWA (fmap subst (asPrecond as)) s where
+groundFormula ::Map Name Name -> Formula Argument -> Formula Name
+groundFormula refMap form = (fmap subst form) where
     subst (Const c) = c
     subst (Ref r)   = refMap ! r
+
+groundPreconditions :: ActionSpec -> [Name] -> Formula Name
+groundPreconditions as args = groundFormula refMap (asPrecond as) where
     refMap = Map.fromList $ zip (asParas as) args
+
+evaluateFormuala :: Formula Name -> State -> Bool
+evaluateFormuala form s = evaluateCWA form s
+
+applicable :: ActionSpec -> State -> [Name] -> Bool
+applicable as s args = evaluateCWA (groundPreconditions as args) s
 
 numberOfSatisfied :: Formula Name -> State -> Int
 numberOfSatisfied (Pred p) s | Set.member p s = 1
