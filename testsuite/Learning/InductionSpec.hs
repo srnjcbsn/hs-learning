@@ -1,17 +1,19 @@
 module Learning.InductionSpec (main, spec) where
 
-import qualified Data.List             as List
-import           Data.Set              (Set)
 import qualified Data.Set              as Set
 import           Learning.Induction
+import           Logic.Formula
 import           Planning.PDDL
 import           Test.Hspec
-import           Test.Hspec.QuickCheck
-import           Test.QuickCheck
 
+p f x y = Predicate "p" [f x,f y]
+pP x y = Pred $ p Ref x y
 
-getArgs = List.map snd
-getNames = List.map fst
+q f x y = Predicate "q" [f x,f y]
+qP x y = Pred $ q Ref x y
+
+getArgs  = map predArgs
+getNames = map predName
 
 testLogicSpec :: Spec
 testLogicSpec = do
@@ -51,22 +53,30 @@ testLogicSpec = do
 
     describe "unambiguate" $ do
       it "can find that a predicate is unambigous" $
-        let allPreds = Set.fromList [("p",[Ref "x", Ref "y"]), ("p",[Ref "y", Ref "y"])]
-            checkingPreds = Set.fromList [("p",[Ref "x", Ref "y"]), ("p",[Ref "x", Ref "x"])]
+        let allPreds = Set.fromList [p Ref "x" "y", p Ref "y" "y"]
+            checkingPreds = Set.fromList [ p Ref "x" "y"
+                                         , p Ref "x" "x"]
             actual = unambiguate allPreds checkingPreds in
-            actual `shouldBe` Left ("p",[Ref "x", Ref "y"])
+            actual `shouldBe` Left (p Ref "x" "y")
 
       it "can find that a predicate is not unambigous" $
-        let allPreds = Set.fromList [("p",[Ref "x", Ref "y"]), ("p",[Ref "y", Ref "y"])]
-            checkingPreds = Set.fromList [("p",[Ref "x", Ref "y"]), ("p",[Ref "y", Ref "y"])]
+        let allPreds = Set.fromList [p Ref "x" "y", p Ref "y" "y"]
+            checkingPreds = Set.fromList [p Ref "x" "y", p Ref "y" "y"]
             actual = unambiguate allPreds checkingPreds in
             actual `shouldBe` Right checkingPreds
 
     describe "reducePossibilities" $ do
       it "can reduce the set of possibilities using a list all the ungrounded predicates" $
-        let allPreds = Set.fromList [("p",[Ref "x", Ref "y"]), ("q",[Ref "y", Ref "y"]),  ("p",[Ref "x", Ref "x"])]
-            predsToRemove = [Set.fromList [("p",[Ref "x", Ref "y"])], Set.fromList [("q",[Ref "y", Ref "y"])]]
-            expected = Set.fromList [("p",[Ref "x", Ref "x"])]
+        let allPreds = Set.fromList [ p Ref "x" "y"
+                                    , q Ref "y" "y"
+                                    , p Ref "x" "x"
+                                    ]
+
+            predsToRemove = [Set.fromList [ p Ref "x" "y"
+                                          , q Ref "y" "y"
+                                          ]
+                            ]
+            expected = Set.fromList [p Ref "x" "x"]
             actual = reducePossibilities allPreds predsToRemove in
             actual `shouldBe` expected
 

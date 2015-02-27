@@ -1,18 +1,22 @@
 module Planning.PDDL.ParserSpec (main, spec) where
 
 import           Data.Char
+import qualified Data.Map              as Map
 import qualified Data.Set              as Set
+import           Logic.Formula
 import           Planning.PDDL
 import           Planning.PDDL.Parser
 import           Test.Hspec
 import           Test.Hspec.QuickCheck
 import           Test.QuickCheck
 
-predStrA = "(a ?x Y)"
-predResA = ("a", [Ref "x", Const "Y"])
 
-predStrB = "(b ?z V)"
-predResB = ("b", [Ref "z", Const "V"])
+
+p f x = Predicate "p" [f x]
+pP x = Pred $ p Ref x
+
+a f x y = Predicate "a" [f x, f y]
+aP x y = Pred $ a Ref x y
 
 actionSpecStr = unlines [ "(:action act"
                         , ":parameters (?a)"
@@ -20,10 +24,12 @@ actionSpecStr = unlines [ "(:action act"
                         , ":effect (not (p ?a)) )"
                         ]
 
-actionSpecRes = ActionSpec { asName    = "act"
-                           , asParas   = ["a"]
-                           , asPrecond = Predicate ("p", [Ref "a"])
-                           , asEffect  = Neg (Predicate ("p", [Ref "a"]))
+actionSpecRes = ActionSpec { asName      = "act"
+                           , asParas     = ["a"]
+                           , asPrecond   = pP "a"
+                           , asEffect    = Neg (pP "a")
+                           , asConstants = []
+                           , asTypes     = Map.empty
                            }
 
 domainSpecStr =
@@ -37,10 +43,11 @@ domainSpecStr =
 
 domainSpecRes =
     PDDLDomain { dmName         = "test"
-           , dmPredicates   = [("a", ["x", "y"])]
-           , dmActionsSpecs = [actionSpecRes]
-           , dmConstants    = ["A", "B"]
-           }
+               , dmPredicates   = [a id "x" "y"]
+               , dmActionsSpecs = [actionSpecRes]
+               , dmConstants    = ["A", "B"]
+               , dmTypes        = []
+               }
 
 problemSpecStr =
     unlines [ "(define (problem prob)"
@@ -52,11 +59,12 @@ problemSpecStr =
 
 problemSpecRes =
     PDDLProblem { probName = "prob"
-            , probObjs = ["x", "y"]
-            , probDomain = "dom"
-            , probState = Set.singleton ("test1", ["x", "y"])
-            , probGoal = Predicate ("test2", [Const "x", Const "y"])
-            }
+                , probObjs = ["x", "y"]
+                , probDomain = "dom"
+                , probState = Set.singleton $ Predicate "test1" ["x", "y"]
+                , probGoal = Pred $ Predicate "test2" ["x", "y"]
+                , probTypes = Map.empty
+                }
 
 testParsePredicateSpec :: Spec
 testParsePredicateSpec = do
@@ -73,10 +81,10 @@ testParsePredicateSpec = do
 
     describe "Predicate specification parser" $ do
         it "can parse predicate specifications" $
-            tryParse parsePredicateSpec "(a ?x ?y)" `shouldBe` Just ("a", ["x", "y"])
+            tryParse parsePredicateSpec "(a ?x ?y)" `shouldBe` Just (a id "x" "y")
         it "can parse predicate specs with no parameters" $ do
-            tryParse parsePredicateSpec "(a)"  `shouldBe` Just ("a", [])
-            tryParse parsePredicateSpec "(a )" `shouldBe` Just ("a", [])
+            tryParse parsePredicateSpec "(a)"  `shouldBe` Just (Predicate "a" [])
+            tryParse parsePredicateSpec "(a )" `shouldBe` Just (Predicate "a" [])
 
     describe "Argument reference parser" $ do
         it "requires a '?' prefix" $
@@ -93,18 +101,28 @@ testParsePredicateSpec = do
             tryParse parseArgument "A" `shouldBe` Just (Const "A")
 
     describe "Fluent parser" $ do
-        it "can parse fluents with 'Argument's" $
+        it "can parse fluents with 'Argument's" $ do
+            let predStrA = "(a ?x Y)"
+                predResA = Predicate "a" [Ref "x", Const "Y"]
+
+                predStrB = "(b ?z V)"
+                predResB = Predicate "b" [Ref "z", Const "V"]
             tryParse parseFluent predStrA `shouldBe` Just predResA
 
     describe "Formula parser" $ do
+        let predStrA = "(a ?x Y)"
+            predResA = Predicate "a" [Ref "x", Const "Y"]
+
+            predStrB = "(b ?z V)"
+            predResB = Predicate "b" [Ref "z", Const "V"]
         it "can parse fluents" $
-            tryParse parseFormula predStrA `shouldBe` Just (Predicate predResA)
+            tryParse parseFormula predStrA `shouldBe` Just (Pred predResA)
         it "can parse negated formulae" $
             tryParse parseFormula ("(not" ++ predStrA ++ ")")
-                `shouldBe` Just (Neg (Predicate predResA))
+                `shouldBe` Just (Neg (Pred predResA))
         it "can parse conjunctions" $
             tryParse parseFormula ("(and " ++ predStrA ++ " " ++ predStrB ++ ")")
-                `shouldBe` Just (Con [Predicate predResA, Predicate predResB])
+                `shouldBe` Just (Con [Pred predResA, Pred predResB])
 
     describe "Plan parser" $ do
         it "can parse simple plans (as produced by fast-downward)" $

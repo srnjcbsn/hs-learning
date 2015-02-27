@@ -12,20 +12,28 @@ import           Learning.OptPrecondLearn (PreDomainHypothesis)
 import qualified Learning.OptPrecondLearn as Pre
 import           Planning.PDDL
 import           Planning
+import Data.Map ((!))
+import Debug.Trace
+import System.IO
+
+
 
 refine  :: ExternalPlanner ep PDDLDomain PDDLProblem ActionSpec
         => ep
         -> PDDLDomain
         -> PDDLProblem
-        -> PreDomainHypothesis
-        -> DomainHypothesis
         -> Maybe Plan
         -> IO (Maybe Plan)
-refine planner domain problem precondHyp effectHyp maybeCurPlan =
-    let uptDom = (`Eff.domainFromKnowledge` effectHyp)
-               . (`Pre.domainFromPrecondHypothesis` precondHyp)
+refine planner domain problem maybeCurPlan =
+    let
      in if isNothing maybeCurPlan
-        then makePlan planner (uptDom domain) problem
+        then do
+                -- putStrLn $ "planning: "
+                -- putStrLn $ "using domain: " ++ (ppShow domain)
+                -- putStrLn $ "using problem: " ++ (ppShow problem)
+                -- hFlush stdout
+                p' <- makePlan planner domain problem
+                return p'
         else return maybeCurPlan
 
 learn :: PDDLDomain
@@ -33,16 +41,18 @@ learn :: PDDLDomain
       -> PreDomainHypothesis
       -> DomainHypothesis
       -> (PreDomainHypothesis, DomainHypothesis)
-learn domain trans preHyp effHyp  =
+learn domain trans@(_,act@(name,_),_) preHyp effHyp  =
   let effectHyp' = Eff.updateDomainHyp domain effHyp trans
       precondHyp' = Pre.updatePreDomainHyp domain preHyp trans
    in (precondHyp', effectHyp')
+        --trace ("learned(" ++ show act ++ "): " ++ (ppShow $ precondHyp' ! name))
+        --    (precondHyp', effectHyp')
 
 perform :: (Environment env)
         => env
         -> Maybe Plan
         -> Either (env, Transition, Maybe Plan) Bool
-perform env (Just fullPlan@(action:restPlan)) =
+perform env (Just (action:restPlan)) =
   let trans s' = (Env.toState env, action, s')
    in case Env.applyAction env action of
         Just env' -> Left (env', trans $ Just $ Env.toState env', Just restPlan)
@@ -59,14 +69,19 @@ run :: (ExternalPlanner ep PDDLDomain PDDLProblem ActionSpec, Environment env)
     -> DomainHypothesis
     -> Maybe Plan
     -> IO (Either (env, PreDomainHypothesis, DomainHypothesis, Maybe Plan) Bool)
-run planner domain problem env preHyp effHyp plan =
-  do plan' <- refine planner domain problem preHyp effHyp plan
-     putStrLn $ "running: refine returned plan: " ++ (show plan')
-     case perform env plan' of
-       Left (env', trans, plan'') ->
-        let (preHyp', effHyp') = learn domain trans preHyp effHyp
-         in return $ Left (env', preHyp', effHyp', plan'')
-       Right ans -> return $ Right ans
+run planner oldDomain problem env preHyp effHyp plan =
+  let uptDom = (`Eff.domainFromKnowledge` effHyp)
+             . (`Pre.domainFromPrecondHypothesis` preHyp)
+      newDom = uptDom oldDomain
+  in do plan' <- refine planner newDom problem plan
+        case (perform env plan') of
+         Left (env', trans@(_,act,s'), plan'') ->
+          let (preHyp', effHyp') = learn newDom trans preHyp effHyp
+           in do putStrLn $ "running: did action " ++ (ppShow act)
+                 putStrLn $ "running: new state: " ++ (ppShow s')
+                 hFlush stdout
+                 return $ Left (env', preHyp', effHyp', plan'')
+         Right ans -> return $ Right ans
 
 runnerVisualized :: (ExternalPlanner ep PDDLDomain PDDLProblem ActionSpec, Environment env)
                  => ep
@@ -78,7 +93,7 @@ runnerVisualized :: (ExternalPlanner ep PDDLDomain PDDLProblem ActionSpec, Envir
                  -> PreDomainHypothesis
                  -> DomainHypothesis
                  -> Maybe Plan
-                 -> IO ()
+                 -> IO (env)
 runnerVisualized planr visual logger dom prob env preHyp effHyp plan =
   do
     logger plan
@@ -90,6 +105,7 @@ runnerVisualized planr visual logger dom prob env preHyp effHyp plan =
            visual env'
            runnerVisualized planr visual logger dom prob' env' preHyp' effHyp' plan'
       Right True ->
-        unless   (Env.isGoalReached prob env)
-               $ error "Planner says problem is solved, environment does not"
+        if (isSolved prob (Env.toState env))
+        then return env
+        else error "Planner says problem is solved, environment does not"
       Right False -> error "Cannot solve problem, planner found no plan"

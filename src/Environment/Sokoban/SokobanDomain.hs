@@ -1,53 +1,66 @@
 module Environment.Sokoban.SokobanDomain where
 
-import Planning.PDDL
-import Planning.PDDL.Logic
+import           Logic.Formula
+import           Planning.PDDL
+import           Planning.PDDL.Logic ()
+import qualified Data.Map as Map
 
 fluentPredicate :: PredicateSpec -> [Name] -> FluentPredicate
-fluentPredicate (name, _) ns = (name, map Ref ns)
+fluentPredicate (Predicate name _) ns = Predicate name $ map Ref ns
+
+groundedPredicate :: PredicateSpec -> [Name] -> GroundedPredicate
+groundedPredicate (Predicate name _) = Predicate name
 
 mkActionSpec :: Name
              -> [Name]
-             -> ([Name] -> Formula)
-             -> ([Name] -> Formula)
+             -> ([Name] -> Formula Argument)
+             -> ([Name] -> Formula Argument)
              -> ActionSpec
 mkActionSpec name paras conds effs =
-    ActionSpec { asName    = name
+    ActionSpec { asConstants  = []
+               , asName    = name
                , asParas   = paras
                , asPrecond = conds paras
                , asEffect  = effs paras
+               , asTypes   = Map.empty
                }
-con :: [(PredicateSpec, [Name])] -> Formula
-con = Con . map (Predicate . uncurry fluentPredicate)
+con :: [(PredicateSpec, [Name])] -> Formula Argument
+con = Con . map (Pred . uncurry fluentPredicate)
 
-negCon :: [(PredicateSpec, [Name])] -> Formula
-negCon = Con . map (Neg . Predicate . uncurry fluentPredicate)
+conGrounded :: [(PredicateSpec, [Name])] -> Formula Name
+conGrounded = Con . map (Pred . uncurry groundedPredicate)
+
+negCon :: [(PredicateSpec, [Name])] -> Formula Argument
+negCon = Con . map (Neg . Pred . uncurry fluentPredicate)
+
+negConGrounded :: [(PredicateSpec, [Name])] -> Formula Name
+negConGrounded = Con . map (Neg . Pred . uncurry groundedPredicate)
 
 hAdj, vAdj, sokobanAt, at, atGoal, clear, goal, notGoal :: PredicateSpec
-hAdj      = ("hAdj", ["from", "to"])
-vAdj      = ("vAdj", ["from", "to"])
-sokobanAt = ("sokobanAt", ["l"])
-at        = ("at", ["c", "l"])
-atGoal    = ("atGoal", ["c"])
-clear     = ("clear", ["l"])
-goal      = ("goal", ["l"])
-notGoal   = ("notGoal", ["l"])
+hAdj      = Predicate "hAdj" ["from", "to"]
+vAdj      = Predicate "vAdj" ["from", "to"]
+sokobanAt = Predicate "sokobanAt" ["l"]
+at        = Predicate "at" ["c", "l"]
+atGoal    = Predicate "atGoal" ["c"]
+clear     = Predicate "clear" ["l"]
+goal      = Predicate "goal" ["l"]
+notGoal   = Predicate "notGoal" ["l"]
 
 moveParas, pushParas :: [Name]
 moveParas = ["from", "to"]
 pushParas = ["c", "sokoban", "from", "to"]
 
-predicate :: PredicateSpec -> [Name] -> Formula
-predicate ps paras = Predicate $ fluentPredicate ps paras
+predicate :: PredicateSpec -> [Name] -> Formula Argument
+predicate ps paras = Pred $ fluentPredicate ps paras
 
-moveCond :: PredicateSpec -> [Name] -> Formula
+moveCond :: PredicateSpec -> [Name] -> Formula Argument
 moveCond adjPred [from, to] =
     con [ (sokobanAt, [from])
         , (adjPred, [from, to])
         , (clear, [to])
         ]
 
-pushCond :: PredicateSpec -> PredicateSpec -> [Name] -> Formula
+pushCond :: PredicateSpec -> PredicateSpec -> [Name] -> Formula Argument
 pushCond adjPred goalPred [c, soko, from, to] =
     con [ (sokobanAt, [from])
         , (at, [c, from])
@@ -57,8 +70,8 @@ pushCond adjPred goalPred [c, soko, from, to] =
         , (goalPred, [to])
         ]
 
-moveEff :: [Name] -> Formula
-moveEff [from, to] = poss `conjunction` negateF negs where
+moveEff :: [Name] -> Formula Argument
+moveEff [from, to] = poss `conjunction` mapNegate negs where
     poss = con [ (sokobanAt, [to])
                , (clear, [from])
                ]
@@ -67,25 +80,27 @@ moveEff [from, to] = poss `conjunction` negateF negs where
                , (clear, [to])
                ]
 
-pushEffShared :: [Name] -> Formula
-pushEffShared [c, soko, from, to] = poss `conjunction` negateF negs where
-    poss = con [ (sokobanAt, [from])
-               , (at, [c, to])
-               , (clear, [soko])
-               ]
+pushEffShared :: [Name] -> Formula Argument
+pushEffShared [c, soko, from, to] = poss `conjunction` mapNegate negs where
+    poss = con
+            [ (sokobanAt, [from])
+            , (at, [c, to])
+            , (clear, [soko])
+            ]
 
-    negs = con [ (sokobanAt, [soko])
-               , (at, [c, from])
-               , (clear, [to])
-               ]
+    negs = con
+            [ (sokobanAt, [soko])
+            , (at, [c, from])
+            , (clear, [to])
+            ]
 
-pushEffGoal :: [Name] -> Formula
+pushEffGoal :: [Name] -> Formula Argument
 pushEffGoal paras@(c : _) = pushEffShared paras `conjunction` gPred
-    where gPred = Predicate (fluentPredicate atGoal [c])
+    where gPred = Pred (fluentPredicate atGoal [c])
 
-pushEffNotGoal :: [Name] -> Formula
+pushEffNotGoal :: [Name] -> Formula Argument
 pushEffNotGoal paras@(c : _) = pushEffShared paras `conjunction` ngPred
-    where ngPred = Neg $ Predicate (fluentPredicate atGoal [c])
+    where ngPred = Neg $ Pred (fluentPredicate atGoal [c])
 
 moveH, moveV, pushH, pushV, pushHGoal, pushVGoal :: ActionSpec
 moveH     = mkActionSpec "move-h" moveParas (moveCond hAdj) moveEff
@@ -101,4 +116,5 @@ sokobanDomain = PDDLDomain
     , dmPredicates = [hAdj, vAdj, sokobanAt, at, atGoal, clear, goal, notGoal]
     , dmActionsSpecs = [moveH, moveV, pushH, pushV, pushHGoal, pushVGoal]
     , dmConstants = []
+    , dmTypes = []
     }

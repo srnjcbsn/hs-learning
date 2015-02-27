@@ -1,14 +1,15 @@
 module Learning.OptPrecondLearn where
 
 import           Learning.Induction
-import           Planning.PDDL.Logic
+import           Logic.Formula
 import           Planning.PDDL
+import           Planning.PDDL.Logic
 
-import           Data.Map           (Map, (!))
-import qualified Data.Map           as Map
-import           Data.Set           (Set, (\\))
-import qualified Data.Set           as Set
-import qualified Data.TupleSet      as TSet
+import           Data.Map            (Map, (!))
+import qualified Data.Map            as Map
+import           Data.Set            (Set, (\\))
+import qualified Data.Set            as Set
+import qualified Data.TupleSet       as TSet
 
 type CNF = Set (Set FluentPredicate, Set FluentPredicate)
 -- | (unknowns, knowns)
@@ -36,15 +37,19 @@ initialPreDomainHyp dom =
 
     in Map.fromList $ fmap mapper (dmActionsSpecs dom)
 
-constructPrecondSchema :: PreKnowledge -> ActionSpec -> ActionSpec
-constructPrecondSchema ((_, posKnown), (_, negKnown), cnf) aSpec =
-    aSpec { asPrecond = Con predList }
-    where negPredList (poss,negs) =  Set.toList (Set.map Predicate negs)
-                                  ++ Set.toList (Set.map (Neg . Predicate) poss)
+constructPrecondFormula :: PreKnowledge -> Formula Argument
+constructPrecondFormula ((_, posKnown), (_, negKnown), cnf) =
+    Con predList
+    where negPredList (poss,negs) =  Set.toList (Set.map Pred negs)
+                                  ++ Set.toList (Set.map (Neg . Pred) poss)
           orList = Neg . Con . negPredList
-          predList =  Set.toList (Set.map Predicate posKnown)
-                   ++ Set.toList (Set.map (Neg . Predicate) negKnown)
+          predList =  Set.toList (Set.map Pred posKnown)
+                   ++ Set.toList (Set.map (Neg . Pred) negKnown)
                    ++ Set.toList (Set.map orList cnf)
+
+constructPrecondSchema :: PreKnowledge -> ActionSpec -> ActionSpec
+constructPrecondSchema preKnow aSpec =
+    aSpec { asPrecond = constructPrecondFormula preKnow }
 
 domainFromPrecondHypothesis :: PDDLDomain -> PreDomainHypothesis -> PDDLDomain
 domainFromPrecondHypothesis dom dHyp =
@@ -70,7 +75,9 @@ isSingleton :: (Set FluentPredicate, Set FluentPredicate) -> Bool
 isSingleton = (== 1) . TSet.size
 
 removeSetsWithKnowns :: CNF -> (Set FluentPredicate, Set FluentPredicate) -> CNF
-removeSetsWithKnowns cnfs kns = Set.filter (not . TSet.isSubSetOf kns) cnfs
+removeSetsWithKnowns cnfs kns
+    | TSet.size kns > 0 = Set.filter (not . TSet.isSubSetOf kns) cnfs
+    | otherwise = cnfs
 
 extractKnowns :: CNF -> (Set FluentPredicate, Set FluentPredicate, CNF)
 extractKnowns cnfs = (posKns, negKns, newCnfs')

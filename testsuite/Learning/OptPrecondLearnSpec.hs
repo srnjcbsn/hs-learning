@@ -12,18 +12,19 @@ import           Test.QuickCheck
 
 import qualified Data.TupleSet                   as TSet
 import           Learning.OptPrecondLearn
+import           Logic.Formula
 import           Planning.PDDL
-import           Planning.PDDL.Logic
-import           Planning.PDDL.Samples.SimpleBox
 
-p f x y = ("p", [f x,f y])
-pP x y = Predicate $ p Ref x y
+p f x y = Predicate "p" [f x,f y]
+pP x y = Pred $ p Ref x y
 
 initActspec preconds = ActionSpec
     { asName = "as"
     , asParas = ["x", "y", "z"]
     , asPrecond = Con preconds
     , asEffect = Con []
+    , asConstants = []
+    , asTypes = Map.empty
     }
 
 initDomain = PDDLDomain
@@ -31,6 +32,7 @@ initDomain = PDDLDomain
     , dmPredicates = [p id "x" "y"]
     , dmActionsSpecs = [initActspec []]
     , dmConstants = []
+    , dmTypes = []
     }
 
 expected :: PreKnowledge

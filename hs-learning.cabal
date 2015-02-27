@@ -27,9 +27,15 @@ library
                  , Learning.OptPrecondLearn
                  , Planning.Planner.FastDownward
                  , Data.TupleSet
+                 , Data.Queue
+                 , Data.PriorityQueue
+                 , Graph
+                 , Graph.Search
+                 , Graph.Search.Astar
                  , Environment.Sokoban
                  , Environment.Sokoban.PDDL
                  , Environment.Sokoban.ConsoleView
+                 , Logic.Formula
   default-extensions: MultiParamTypeClasses
                     , FlexibleContexts
                     , FlexibleInstances
@@ -87,6 +93,11 @@ test-suite tests
                  , filepath
     ghc-prof-options: -fprof-auto -with-rtsopts=-xc
     default-language: Haskell2010
+    default-extensions: MultiParamTypeClasses
+                      , FlexibleContexts
+                      , FlexibleInstances
+                      , FunctionalDependencies
+                      , MultiWayIf
     hs-source-dirs:   testsuite
     main-is:          Spec.hs
     type:             exitcode-stdio-1.0
