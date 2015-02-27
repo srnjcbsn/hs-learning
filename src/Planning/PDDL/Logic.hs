@@ -18,6 +18,7 @@ import qualified Data.Set      as Set
 import           Data.Tuple    (swap)
 import           Planning
 import           Planning.PDDL
+import           Data.Maybe
 
 import qualified Data.TupleSet as Set2
 
@@ -57,7 +58,7 @@ findActionSpec domain (name, _) =
 
 -- | Instantiates a formula into the actual positive and negative changes
 insForm :: Map Argument Object -> Formula -> GroundedChanges
-insForm m (Predicate p) = (Set.singleton (pName p, List.map (m Map.!) $ pArgs p), Set.empty)
+insForm m (Predicate p) = (Set.singleton (pName p, mapMaybe (`Map.lookup` m) $ pArgs p), Set.empty)
 insForm m (Neg f) = swap $ insForm m f
 insForm m (Con fs) = List.foldl (\changes f -> Set2.union changes $ insForm m f ) (Set.empty,Set.empty) fs
 
