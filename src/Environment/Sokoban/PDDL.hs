@@ -3,6 +3,7 @@ module Environment.Sokoban.PDDL where
 import qualified Environment         as Env
 import           Environment.Sokoban hiding (Object)
 import           Logic.Formula
+import           Planning
 import           Planning.PDDL
 
 import           Data.Char           (isDigit)
@@ -18,7 +19,7 @@ data SokobanPDDL = SokobanPDDL
     { world           :: World
     , locMap          :: Map Location Coord
     , persistentState :: Set GroundedPredicate
-    } deriving(Show)
+    } deriving (Show)
 
 instance Env.Environment SokobanPDDL where
     toState     = toState
@@ -30,6 +31,10 @@ type Structure = ([Adj], [Adj])
 
 type Location = Object
 type Crate = Object
+
+crateType, locType :: Type
+crateType = "crate"
+locType = "location"
 
 hAdjName, vAdjName, atGoalName :: String
 hAdjName = "hAdj"
@@ -308,11 +313,13 @@ toProblem pWorld =
         structObjs = map writeLocation $ Map.keys (coordMap pWorld)
         goalPred c = Pred $ Predicate atGoalName [c]
         goalsF = Con $ map goalPred crateObjs
+        boxMap = zip crateObjs (repeat crateType)
+        structMap = zip structObjs (repeat locType)
     in PDDLProblem
         { probName   = "sokobanProb"
         , probObjs   = crateObjs ++ structObjs
         , probDomain = "sokobanDom"
         , probState  = (toState . fromWorld) pWorld
         , probGoal   = goalsF
-        , probTypes  = Map.empty
+        , probTypes  = Map.fromList $ boxMap ++ structMap
         }

@@ -1,9 +1,11 @@
 module Environment.Sokoban.SokobanDomain where
 
+import           Data.Map            (Map)
+import qualified Data.Map            as Map
 import           Logic.Formula
+import           Planning
 import           Planning.PDDL
 import           Planning.PDDL.Logic ()
-import qualified Data.Map as Map
 
 fluentPredicate :: PredicateSpec -> [Name] -> FluentPredicate
 fluentPredicate (Predicate name _) ns = Predicate name $ map Ref ns
@@ -13,16 +15,17 @@ groundedPredicate (Predicate name _) = Predicate name
 
 mkActionSpec :: Name
              -> [Name]
+             -> Map Name Type
              -> ([Name] -> Formula Argument)
              -> ([Name] -> Formula Argument)
              -> ActionSpec
-mkActionSpec name paras conds effs =
+mkActionSpec name paras t conds effs =
     ActionSpec { asConstants  = []
                , asName    = name
                , asParas   = paras
                , asPrecond = conds paras
                , asEffect  = effs paras
-               , asTypes   = Map.empty
+               , asTypes   = t
                }
 con :: [(PredicateSpec, [Name])] -> Formula Argument
 con = Con . map (Pred . uncurry fluentPredicate)
@@ -49,6 +52,14 @@ notGoal   = Predicate "notGoal" ["l"]
 moveParas, pushParas :: [Name]
 moveParas = ["from", "to"]
 pushParas = ["c", "sokoban", "from", "to"]
+
+crateType, locType :: Type
+crateType = "crate"
+locType = "location"
+
+moveTypes, pushTypes :: Map Name Type
+moveTypes = Map.fromList $ zip moveParas [locType, locType]
+pushTypes = Map.fromList $ zip pushParas [crateType, locType, locType, locType]
 
 predicate :: PredicateSpec -> [Name] -> Formula Argument
 predicate ps paras = Pred $ fluentPredicate ps paras
@@ -103,12 +114,12 @@ pushEffNotGoal paras@(c : _) = pushEffShared paras `conjunction` ngPred
     where ngPred = Neg $ Pred (fluentPredicate atGoal [c])
 
 moveH, moveV, pushH, pushV, pushHGoal, pushVGoal :: ActionSpec
-moveH     = mkActionSpec "move-h" moveParas (moveCond hAdj) moveEff
-moveV     = mkActionSpec "move-v" moveParas (moveCond vAdj) moveEff
-pushH     = mkActionSpec "push-h" pushParas (pushCond hAdj notGoal) pushEffNotGoal
-pushV     = mkActionSpec "push-v" pushParas (pushCond vAdj notGoal) pushEffNotGoal
-pushHGoal = mkActionSpec "push-h-goal" pushParas (pushCond hAdj goal) pushEffGoal
-pushVGoal = mkActionSpec "push-v-goal" pushParas (pushCond vAdj goal) pushEffGoal
+moveH     = mkActionSpec "move-h" moveParas moveTypes (moveCond hAdj) moveEff
+moveV     = mkActionSpec "move-v" moveParas moveTypes (moveCond vAdj) moveEff
+pushH     = mkActionSpec "push-h" pushParas pushTypes (pushCond hAdj notGoal) pushEffNotGoal
+pushV     = mkActionSpec "push-v" pushParas pushTypes (pushCond vAdj notGoal) pushEffNotGoal
+pushHGoal = mkActionSpec "push-h-goal" pushParas pushTypes (pushCond hAdj goal) pushEffGoal
+pushVGoal = mkActionSpec "push-v-goal" pushParas pushTypes (pushCond vAdj goal) pushEffGoal
 
 sokobanDomain :: PDDLDomain
 sokobanDomain = PDDLDomain

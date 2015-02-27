@@ -3,6 +3,7 @@ module Planning.PDDL
     -- * Basic Types
       Name
     , Object
+    , baseType
 
     -- * Formulae
     , Formula (..)
@@ -19,6 +20,7 @@ module Planning.PDDL
     , paramNames
     , actionSpec
     , PDDLGraph(..)
+    , typeList
 
     -- * Grounded data
     , GroundedPredicate
@@ -43,26 +45,16 @@ import           Planning      as Plng
 
 import           Data.List     (find, intercalate)
 import           Data.Map      (Map)
+import qualified Data.Map      as Map
+import           Data.Maybe    (fromMaybe)
 import           Data.Set      (Set)
 import qualified Data.Set      as Set
-
--- class ActionSpecification a => PDDLAction a where
---     preConditions  :: a -> Formula
---     effects        :: a -> Formula
 
 data Argument = Const Name
               | Ref Name
               deriving (Show, Eq, Ord)
 
--- type FluentPredicate = (Name, [Argument])
 type FluentPredicate = Predicate Argument
-
--- data Formula = Predicate FluentPredicate
---              | Neg Formula
---              | Con [Formula]
---              deriving (Ord, Eq, Show)
-
--- type PredicateSpec = (Name, [Name])
 type PredicateSpec = Predicate Name
 
 type GrFormula = Formula Name
@@ -98,6 +90,14 @@ data PDDLProblem = PDDLProblem
     , probGoal   :: Formula Name
     , probTypes  :: Map Name Type
     } deriving (Show, Eq)
+
+baseType :: Type
+baseType = "object"
+
+typeList :: ActionSpec -> [(Name, Type)]
+typeList aSpec = zip (asParas aSpec)
+               $ map (fromMaybe baseType . flip Map.lookup (asTypes aSpec))
+               $ asParas aSpec
 
 data PDDLGraph = PDDLGraph (PDDLDomain, PDDLProblem)
 
