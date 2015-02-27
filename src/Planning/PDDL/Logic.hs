@@ -122,6 +122,8 @@ numberOfPredicates (Pred _) = 1
 numberOfPredicates (Neg f) = numberOfPredicates f
 numberOfPredicates (Con fs) = sum $ map numberOfPredicates fs
 
+
+
 instance ActionSpecification ActionSpec where
     name         = asName
     arity        = length . asParas
@@ -140,9 +142,8 @@ instance Problem PDDLProblem where
     objects      = probObjs
 
 instance Graph PDDLGraph State Action where
-  adjacentEdges (PDDLGraph (dom, prob)) s =
-    let acts = actions dom
-     in concatMap (applicableActions prob s) acts
+  adjacentEdges (PDDLGraph (dom, prob)) s = allApplicableActions dom prob s
+
   edgeCost _ _ _ = 1
   adjacentVertex (PDDLGraph (dom, _)) s act = apply' dom s act
 

@@ -25,10 +25,13 @@ import Data.Maybe
 import Planning.PDDL.Logic
 logPath = "./log.log"
 
-data Astar = Astar
+data Astar = Astar (Int)
+
+instance BoundedPlanner Astar where
+  setBound (Astar _) = Astar
 
 instance ExternalPlanner Astar PDDLDomain PDDLProblem ActionSpec where
-    makePlan _ d p = return $ Astar.search (PDDLGraph (d,p)) (initialState p)
+    makePlan (Astar bound) d p = return $ Astar.searchBounded (PDDLGraph (d,p)) (initialState p) bound
 
 toFormula :: PDDLDomain -> PreDomainHypothesis -> [(String, Formula Argument)]
 toFormula dom dHyp =
@@ -75,7 +78,7 @@ main = do
         dom = sokobanDomain
         prob = toProblem sokoWorld
         --env = SBEnvironment (initialState prob, dom)
-        astar = Astar
+        astar = Astar 1
         -- fd = mkFastDownard dom prob
         iniPreDomHyp = initialPreDomainHyp dom
         iniEffDomHyp = initialHypothesis dom

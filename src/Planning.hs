@@ -22,6 +22,9 @@ aArgs = snd
 aName :: Action -> Name
 aName = fst
 
+class BoundedPlanner p where
+    setBound :: p -> Int -> p
+
 class (Domain d as, Problem p) => ExternalPlanner ep d p as where
     makePlan :: ep -> d -> p -> IO (Maybe Plan)
 
@@ -50,3 +53,8 @@ applicableActions :: (ActionSpecification as, Problem p)
                   => p -> State ->  as -> [Action]
 applicableActions problem state as =
     filter (isApplicable as state . aArgs) $ applications problem as
+
+allApplicableActions :: (Domain dom as, Problem prob) => dom -> prob -> State -> [Action]
+allApplicableActions  dom prob s =
+  let acts = actions dom
+  in concatMap (applicableActions prob s) acts
