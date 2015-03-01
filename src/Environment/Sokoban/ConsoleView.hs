@@ -1,17 +1,12 @@
 module Environment.Sokoban.ConsoleView where
 
-import           Control.Monad                (forM_)
-import           Data.Map                     (assocs, keys)
+import           Data.Map                 (Map)
+import qualified Data.Map                 as Map
+import           Data.Maybe               (fromMaybe)
 import           System.Console.ANSI
-import           Text.Show.Pretty             (ppShow)
 
-
-import           Environment.Sokoban.PDDL
 import           Environment.Sokoban
-
-setCursorPosition' :: Integer -> Integer -> IO ()
-setCursorPosition' x y =
-    setCursorPosition (fromIntegral x) (fromIntegral y)
+import           Environment.Sokoban.PDDL
 
 goalSymbol, sokobanSymbol :: Char
 goalSymbol = 'X'
@@ -21,45 +16,23 @@ tileSymbol :: Tile -> Char
 tileSymbol Clear   = '+'
 tileSymbol (Box _) = '#'
 
-showAt :: Coord -> Char -> IO ()
-showAt (Coord (x, y)) s =
-    setCursorPosition' x y >> putChar s
+vis :: Int -> String -> String
+vis width str = take width str ++ "\n" ++ vis width (drop width str)
 
-visTile :: Coord -> Tile -> IO ()
-visTile c t = showAt c $ tileSymbol t
+visTile :: Map Coord Char -> Coord -> String
+visTile m c | xCoord c == 0 = ['\n', t]
+            | otherwise = [t]
+                where t = fromMaybe ' ' $ Map.lookup c m
 
-visGoal :: Coord -> IO ()
-visGoal c = showAt c goalSymbol
-
-visSokoban :: Coord -> IO ()
-visSokoban c = showAt c sokobanSymbol
-
--- | Print a seperator beneath the map.
-visSeparator :: Int -> Int -> IO ()
-visSeparator width height = do
-    setCursorPosition 0 (height + 1)
-    putStrLn $ replicate width '='
-
--- | Prints a textual listing of the state below the map
-visState :: World -> IO ()
-visState world' = do
-    visSeparator width height
-    setCursorPosition 0 (height + 3)
-    putStrLn (ppShow world')
-    where width  = maximum $ map xCoord coords
-          height = maximum $ map yCoord coords
-          coords = keys $ coordMap world'
-
--- | Displays the state of the sokkoban environment in the console.
---   Draws a map of the sokoban world, and pretty prints the state
---   below it.
 visualize :: SokobanPDDL -> IO ()
-visualize pddl = do
-    -- clearScreen
-    forM_ tileCoords (uncurry visTile)
-    forM_ goalCoords visGoal
-    visSokoban sokoCoord
-    -- visState (world pddl)
-    where tileCoords = assocs $ (coordMap . world) pddl
-          goalCoords = (goals . world) pddl
-          sokoCoord  = (sokoban . world) pddl
+visualize pddl = clearScreen >> putStrLn worldStr where
+    w = world pddl
+    tileMap = Map.map tileSymbol (coordMap w)
+    upd symb m k = Map.adjust symb k m
+    tileMap' = foldl (upd (const goalSymbol)) tileMap (goals w)
+    tileMap'' = upd (const sokobanSymbol) tileMap' (sokoban w)
+    coords = Map.keys $ coordMap w
+    width = fromIntegral $ maximum $ map xCoord coords
+    height = fromIntegral $ maximum $ map yCoord coords
+    coords' = [Coord (x, y) | y <- [0 .. height], x <- [0 .. width]]
+    worldStr = concatMap (visTile tileMap'') coords'

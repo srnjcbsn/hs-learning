@@ -4,25 +4,26 @@ import           System.Console.ANSI
 import           System.Directory                         (removeFile)
 
 import           ActionViewer
-import           Environment as Env
+import           Data.Map                                 ((!))
+import           Data.Maybe
+import           Environment                              as Env
 import           Environment.Sokoban.ConsoleView          (visualize)
 import           Environment.Sokoban.PDDL
 import qualified Environment.Sokoban.Samples.SimpleSample as SS
 import qualified Environment.Sokoban.Samples.WikiSample   as WS
 import           Environment.Sokoban.SokobanDomain
+import           Graph.Search.Astar                       as Astar
 import           Learning
 import           Learning.OptEffectLearn
 import           Learning.OptPrecondLearn
+import           Planning
+import           Planning.PDDL
+import           Planning.PDDL.Logic
+import           Planning.PDDL.Samples.SimpleBox
 import           Planning.Planner.FastDownward
-import           Graph.Search.Astar as Astar
 import           System.IO.Error
-import Planning
-import Planning.PDDL
-import Planning.PDDL.Samples.SimpleBox
 import           Text.Show.Pretty
-import Data.Map ((!))
-import Data.Maybe
-import Planning.PDDL.Logic
+
 logPath = "./log.log"
 
 data Astar = Astar (Int)
@@ -59,11 +60,12 @@ main = do
     --printOut outp
     --printOut outp2
     where
-        vis _ = return () :: IO ()
+        envVis = visualize
         sokoWorld = SS.world
+        planVis _ = return () :: IO ()
         sokoEnv = fromWorld sokoWorld
         --runn = run astar dom prob
-        runv = runnerVisualized astar vis vis dom prob
+        runv = runnerVisualized astar envVis planVis dom prob
         -- continue outp =
         --   case outp of
         --     Left (env',preHyp,effHyp,plan) -> runn env' preHyp effHyp plan

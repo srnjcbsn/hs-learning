@@ -101,9 +101,9 @@ run planner oldDomain problem env preHyp effHyp plan bound triedActions =
               newPlan | isNothing s' = Nothing
                       | bound == 1 && planIsDone = Nothing
                       | otherwise = plan''
-           in do putStrLn $ "running: did action " ++ (ppShow act)
-                 putStrLn $ "running: new state: " ++ (ppShow s')
-                 hFlush stdout
+           in do --putStrLn $ "running: did action " ++ (ppShow act)
+                 --putStrLn $ "running: new state: " ++ (ppShow s')
+                 --hFlush stdout
                  return $ Left (env', preHyp', effHyp', newPlan, newBound, triedActions')
          Right ans -> return $ Right ans
 
