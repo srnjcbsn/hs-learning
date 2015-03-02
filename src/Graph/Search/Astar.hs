@@ -8,7 +8,7 @@ import Data.Map (Map)
 --import Data.Set (Set)
 import Data.PriorityQueue as PrioQ
 import Data.Maybe (mapMaybe,fromMaybe)
---import Debug.Trace
+import Debug.Trace
 import Control.Monad (liftM)
 
 --type SearchNode v e = (v,[e])
@@ -52,7 +52,6 @@ astar graph explored maxDepth (queue,vMap) =
            frontier = foldl (updateFrontier graph explored) newFrontier nodes
         in  astar graph (Set.insert v explored) maxDepth frontier
 
-
 internalSearch :: (ForwardSearchGraph graph vertex edge)
        => graph -> vertex -> Maybe Int -> Maybe [edge]
 internalSearch graph initV maybeDepth = astar graph explored maybeDepth (queue, vMap)
@@ -69,10 +68,3 @@ searchBounded graph initV maxDepth = internalSearch graph initV (Just maxDepth)
 search :: (ForwardSearchGraph graph vertex edge)
        => graph -> vertex -> Maybe [edge]
 search graph initV = internalSearch graph initV Nothing
-
-
-
-
-
---(initialVertex g, [])
---

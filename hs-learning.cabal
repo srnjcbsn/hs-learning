@@ -34,7 +34,7 @@ library
                  , Graph.Search.Astar
                  , Environment.Sokoban
                  , Environment.Sokoban.PDDL
-                 , Environment.Sokoban.ConsoleView
+                 , Environment.Sokoban.SokobanView
                  , Logic.Formula
   default-extensions: MultiParamTypeClasses
                     , FlexibleContexts
@@ -60,7 +60,7 @@ library
 
 executable hs-learning
   main-is:             Main.hs
-  ghc-options: -O2 -threaded -eventlog
+  ghc-options: -O2 -threaded
   default-extensions: MultiParamTypeClasses
                     , FlexibleContexts
                     , FlexibleInstances

@@ -48,7 +48,6 @@ refine planner domain problem maybeCurPlan bound applications = outp where
          | isNothing maybeCurPlan =
             liftM (flip (,) applications) $ makePlan planner' domain problem
 
-
          | otherwise =  return (maybeCurPlan, applications)
 
 
