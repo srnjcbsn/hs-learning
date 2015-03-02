@@ -61,7 +61,7 @@ main = do
     --printOut outp2
     where
         envVis = visualize
-        sokoWorld = SS.world
+        sokoWorld = WS.world
         planVis _ = return () :: IO ()
         sokoEnv = fromWorld sokoWorld
         --runn = run astar dom prob
