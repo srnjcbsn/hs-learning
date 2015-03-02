@@ -60,7 +60,7 @@ library
 
 executable hs-learning
   main-is:             Main.hs
-  -- other-modules:
+  ghc-options: -O2 -threaded -eventlog
   default-extensions: MultiParamTypeClasses
                     , FlexibleContexts
                     , FlexibleInstances

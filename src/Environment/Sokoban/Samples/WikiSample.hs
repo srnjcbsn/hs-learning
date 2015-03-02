@@ -14,6 +14,7 @@ worldmap = [ [e,e,e,e,e,e,e,e]
            , [e,c,e,e,b,c,e,e]
            , [e,c,e,c,c,c,e,e]
            , [e,b,c,b,b,b,c,e]
+           , [e,c,c,c,c,c,c,e]
            , [e,e,e,e,e,e,e,e]
            ]
 

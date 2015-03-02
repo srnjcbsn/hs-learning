@@ -126,8 +126,7 @@ numberOfPredicates (Neg f) = numberOfPredicates f
 numberOfPredicates (Con fs) = sum $ map numberOfPredicates fs
 
 applicableActions' :: PDDLProblem -> State -> ActionSpec -> [Action]
-applicableActions' prob s aSpec =
-    filter (isApplicable aSpec s . aArgs) apps
+applicableActions' prob s aSpec = filter (isApplicable aSpec s . aArgs) apps
     where update m (k, a) = Map.insertWith (++) a [k] m
           probTs = foldl update Map.empty $ Map.toList (probTypes prob)
           candidates = map (extractType . snd) (typeList aSpec)
@@ -159,6 +158,7 @@ instance Problem PDDLProblem where
     initialState = probState
     isSolved     = isSatisfied . probGoal
     objects      = probObjs
+    setInitialState prob s = prob { probState = s } 
 
 instance Graph PDDLGraph State Action where
   adjacentEdges (PDDLGraph (dom, prob)) s = allApplicableActions dom prob s

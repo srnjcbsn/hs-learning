@@ -7,12 +7,14 @@ import           Data.Maybe
 import           Environment              (Environment)
 import qualified Environment              as Env
 import           Planning
+import Planning.Viewing
+
 --import Data.Map ((!))
-import Data.Set (Set)
+--import Data.Set (Set)
 --import Debug.Trace
 --import System.IO
-import qualified Data.Set as Set
-import Data.List(find)
+--import qualified Data.Set as Set
+--import Data.List(find)
 
 class Domain dom p as => DomainHypothesis dh dom p as | dh -> dom p as where
     update :: dh -> dom -> Transition -> dh
@@ -33,27 +35,21 @@ refine  :: ( BoundedPlanner ep
         -> prob
         -> Maybe Plan
         -> Int
-        -> Set Action
-        -> IO (Maybe Plan, Set Action)
-refine planner domain problem maybeCurPlan bound triedActs =
-    let planner' = setBound planner bound
-        s = initialState problem
-        outp | isNothing maybeCurPlan && bound == 1 =
-                case allApplicableActions domain problem s of
-                  acts@(_:_) ->
-                    let found = find (not . flip Set.member triedActs) acts
-                    in case found of
-                      Just act -> return  (Just [act], Set.insert act triedActs)
-                      Nothing -> return (Nothing, triedActs)
-                  [] -> return (Nothing, triedActs)
-             | isNothing maybeCurPlan =
-                -- do putStrLn $ "planning: "
-                -- putStrLn $ "using domain: " ++ (ppShow domain)
-                -- putStrLn $ "using problem: " ++ (ppShow problem)
-                -- hFlush stdout
-                liftM (flip (,) triedActs) $ makePlan planner' domain problem
-             | otherwise =  return (maybeCurPlan, triedActs)
-     in outp
+        -> [Action]
+        -> IO (Maybe Plan, [Action])
+refine planner domain problem maybeCurPlan bound applications = outp where
+    planner' = setBound planner bound
+    s = initialState problem
+    outp | isNothing maybeCurPlan && bound == 1 =
+             case applications of
+                (act : rest) -> return (Just [act], rest)
+                []           -> refine planner domain problem maybeCurPlan 1
+                                $ allApplicableActions domain problem s
+         | isNothing maybeCurPlan =
+            liftM (flip (,) applications) $ makePlan planner' domain problem
+
+
+         | otherwise =  return (maybeCurPlan, applications)
 
 
 perform :: (Environment env)
@@ -73,16 +69,17 @@ run :: ( BoundedPlanner ep
        , ExternalPlanner ep dom prob as
        , Environment env)
     => ep
+    -> View env
     -> dom
     -> prob
     -> env
     -> Maybe Plan
     -> Int
-    -> Set Action
-    -> IO (Either (env, dom, Maybe Plan, Int, Set Action) Bool)
-run planner oldDomain problem env plan bound triedActions =
+    -> [Action]
+    -> IO (Either (env, dom, Maybe Plan, Int, [Action]) Bool)
+run planner view oldDomain problem  env plan bound apps =
   let
-  in do (plan',triedActions') <- refine planner oldDomain problem plan bound triedActions
+  in do (plan',apps') <- refine planner oldDomain problem plan bound apps
         case perform env plan' of
          Left (env', trans@(s,act,s'), plan'') ->
           let planState = apply oldDomain s act
@@ -90,17 +87,23 @@ run planner oldDomain problem env plan bound triedActions =
                                         $ liftM2 (==) planState  s'
               planIsDone = fromMaybe False (liftM null plan'')
               planRunning = fromMaybe False (liftM ((> 0) . length ) plan'')
-              newBound | planStateIsSameAsNewState && planIsDone =  bound * 2
+              newBound | planStateIsSameAsNewState && planIsDone  = bound * 2
                        | planStateIsSameAsNewState && planRunning = bound
-                       | otherwise = 1
+                       | isJust s' && bound == 1                  = 2
+                       | otherwise                                = 1
+
               newDom = learn oldDomain trans
               newPlan | isNothing s' = Nothing
                       | bound == 1 && planIsDone = Nothing
                       | otherwise = plan''
-           in    --do putStrLn $ "running: did action " ++ (ppShow act)
+
+              apps'' | planStateIsSameAsNewState = []
+                     | otherwise                 = apps'
+           in do --putStrLn $ "running: did action " ++ (ppShow act)
                  --putStrLn $ "running: new state: " ++ (ppShow s')
                  --hFlush stdout
-                 return $ Left (env', newDom, newPlan, newBound, triedActions')
+                 actionPerformed view act (isJust s')
+                 return $ Left (env', newDom, newPlan, newBound, apps'')
          Right ans -> return $ Right ans
 
 runnerVisualized :: ( BoundedPlanner ep
@@ -109,30 +112,29 @@ runnerVisualized :: ( BoundedPlanner ep
                     , ExternalPlanner ep dom prob as
                     , Environment env)
                  => ep
-                 -> (env -> IO ())
-                 -> (Maybe Plan -> IO ())
+                 -> View env
                  -> dom
                  -> prob
                  -> env
                  -> Maybe Plan
                  -> IO env
-runnerVisualized planr visual logger dom prob env plan =
+runnerVisualized planr view dom prob env plan =
   let solved sp senv = isSolved sp (Env.toState senv)
       runv rdom rprob renv rplan bound tried =
         if solved rprob renv
         then return renv
         else
-          do logger plan
-             res <- run planr rdom rprob renv rplan bound tried
+          do planMade view plan
+             res <- run planr view rdom rprob renv rplan bound tried
              case res of
                Left (env', dom', plan', bound', tried') ->
                  let prob' = setInitialState prob (Env.toState env')
                   in do
-                      visual env'
+                      envChanged view env'
                       runv  dom' prob' env' plan' bound' tried'
                Right True -> error "Planner says problem is solved, environment does not"
                Right False -> error "Cannot solve problem, planner found no plan"
-    in runv dom prob env plan 1 Set.empty
+    in envChanged view env >> runv dom prob env plan 1 []
 
 
 newtype (Domain dom p as, DomainHypothesis dh dom p as) =>

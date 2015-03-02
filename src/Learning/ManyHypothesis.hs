@@ -5,15 +5,17 @@ import Planning.PDDL.Logic()
 import Learning
 
 data HypBox =
-  forall hyp. (DomainHypothesis hyp PDDLDomain PDDLProblem ActionSpec) => HypBox [hyp]
+  forall hyp. (DomainHypothesis hyp PDDLDomain PDDLProblem ActionSpec) => HypBox hyp
 
 newtype ManyHypothesis = ManyHypothesis [HypBox]
 
 instance DomainHypothesis ManyHypothesis PDDLDomain PDDLProblem ActionSpec where
       update (ManyHypothesis (hyps)) domain trans  =
-        let updater dom t hyp  =  update hyp dom t
+        let updater dom t (HypBox hyp)  = HypBox (update hyp dom t)
          in ManyHypothesis (  map ((updater domain trans)) hyps )
-      adjustDomain (ManyHypothesis hyps) dom  = foldl (flip adjustDomain) dom hyps
+      adjustDomain (ManyHypothesis hyps) dom  =
+          let folder (HypBox hyp) d = adjustDomain hyp d 
+           in foldl (flip folder) dom hyps
 
       fromDomain _ = error "Cant make a ManyHypothesis from a domain, as Hypothesises are unknown"
 --
