@@ -126,8 +126,7 @@ numberOfPredicates (Neg f) = numberOfPredicates f
 numberOfPredicates (Con fs) = sum $ map numberOfPredicates fs
 
 applicableActions' :: PDDLProblem -> State -> ActionSpec -> [Action]
-applicableActions' prob s aSpec =
-    filter (isApplicable aSpec s . aArgs) apps
+applicableActions' prob s aSpec = filter (isApplicable aSpec s . aArgs) apps
     where update m (k, a) = Map.insertWith (++) a [k] m
           probTs = foldl update Map.empty $ Map.toList (probTypes prob)
           candidates = map (extractType . snd) (typeList aSpec)

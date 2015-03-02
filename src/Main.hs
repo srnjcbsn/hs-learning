@@ -5,6 +5,7 @@ import           System.Directory                         (removeFile)
 
 import           ActionViewer
 import           Data.Map                                 ((!))
+import Planning.Viewing
 import           Data.Maybe
 import           Environment                              as Env
 import           Environment.Sokoban.ConsoleView          (visualize)
@@ -60,12 +61,10 @@ main = do
     --printOut outp
     --printOut outp2
     where
-        envVis = visualize
         sokoWorld = WS.world
-        planVis _ = return () :: IO ()
         sokoEnv = fromWorld sokoWorld
         --runn = run astar dom prob
-        runv = runnerVisualized astar envVis planVis dom prob
+        runv = runnerVisualized astar (defaultView "log.log") dom prob
         -- continue outp =
         --   case outp of
         --     Left (env',preHyp,effHyp,plan) -> runn env' preHyp effHyp plan

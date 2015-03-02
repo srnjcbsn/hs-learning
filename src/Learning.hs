@@ -12,6 +12,8 @@ import           Learning.OptPrecondLearn (PreDomainHypothesis)
 import qualified Learning.OptPrecondLearn as Pre
 import           Planning.PDDL
 import           Planning
+import Planning.Viewing
+
 import Data.Map ((!))
 import Data.Set (Set)
 import Debug.Trace
@@ -35,7 +37,7 @@ refine planner domain problem maybeCurPlan bound triedActs =
                   acts@(_:_) ->
                     let found = find (not . flip Set.member triedActs) acts
                     in case found of
-                      Just act -> return  (Just [act], Set.insert act triedActs)
+                      Just act -> return (Just [act], Set.insert act triedActs)
                       Nothing -> return (Nothing, triedActs)
                   [] -> return (Nothing, triedActs)
              | isNothing maybeCurPlan =
@@ -73,6 +75,7 @@ perform _ Nothing = Right False
 
 run :: (BoundedPlanner ep, ExternalPlanner ep PDDLDomain PDDLProblem ActionSpec, Environment env)
     => ep
+    -> View
     -> PDDLDomain
     -> PDDLProblem
     -> env
@@ -82,7 +85,7 @@ run :: (BoundedPlanner ep, ExternalPlanner ep PDDLDomain PDDLProblem ActionSpec,
     -> Int
     -> Set Action
     -> IO (Either (env, PreDomainHypothesis, DomainHypothesis, Maybe Plan, Int, Set Action) Bool)
-run planner oldDomain problem env preHyp effHyp plan bound triedActions =
+run planner view oldDomain problem env preHyp effHyp plan bound triedActions =
   let uptDom = (`Eff.domainFromKnowledge` effHyp)
              . (`Pre.domainFromPrecondHypothesis` preHyp)
       newDom = uptDom oldDomain
@@ -104,13 +107,15 @@ run planner oldDomain problem env preHyp effHyp plan bound triedActions =
            in do --putStrLn $ "running: did action " ++ (ppShow act)
                  --putStrLn $ "running: new state: " ++ (ppShow s')
                  --hFlush stdout
+                 actionPerformed view act (isJust s')
                  return $ Left (env', preHyp', effHyp', newPlan, newBound, triedActions')
          Right ans -> return $ Right ans
 
 runnerVisualized :: (BoundedPlanner ep, ExternalPlanner ep PDDLDomain PDDLProblem ActionSpec, Environment env)
                  => ep
-                 -> (env -> IO ())
-                 -> (Maybe Plan -> IO ())
+                --  -> (env -> IO ())
+                --  -> (Maybe Plan -> IO ())
+                 -> View
                  -> PDDLDomain
                  -> PDDLProblem
                  -> env
@@ -118,19 +123,19 @@ runnerVisualized :: (BoundedPlanner ep, ExternalPlanner ep PDDLDomain PDDLProble
                  -> DomainHypothesis
                  -> Maybe Plan
                  -> IO env
-runnerVisualized planr visual logger dom prob env preHyp effHyp plan =
+runnerVisualized planr view dom prob env preHyp effHyp plan =
   let solved sp senv = isSolved sp (Env.toState senv)
       runv rprob renv rpreHyp reffHyp rplan bound tried =
         if solved rprob renv
         then return renv
         else
-          do logger plan
-             res <- run planr dom rprob renv rpreHyp reffHyp rplan bound tried
+          do planMade view plan
+             res <- run planr view dom rprob renv rpreHyp reffHyp rplan bound tried
              case res of
                Left (env', preHyp', effHyp', plan', bound', tried') ->
                  let prob' = prob { probState = Env.toState env'}
                   in do
-                      visual env'
+                    --   visual env'
                       runv prob' env' preHyp' effHyp' plan' bound' tried'
                Right True -> error "Planner says problem is solved, environment does not"
                Right False -> error "Cannot solve problem, planner found no plan"

@@ -4,6 +4,8 @@ import           Learning.Induction
 import           Logic.Formula
 import           Planning.PDDL
 import           Planning.PDDL.Logic
+import Debug.Trace
+import Text.Show.Pretty (ppShow)
 
 import           Data.Map            (Map, (!))
 import qualified Data.Map            as Map
@@ -49,6 +51,7 @@ constructPrecondFormula ((_, posKnown), (_, negKnown), cnf) =
 
 constructPrecondSchema :: PreKnowledge -> ActionSpec -> ActionSpec
 constructPrecondSchema preKnow aSpec =
+    --trace ("precondForm (" ++ asName aSpec ++ "): " ++ ppShow preKnow)
     aSpec { asPrecond = constructPrecondFormula preKnow }
 
 domainFromPrecondHypothesis :: PDDLDomain -> PreDomainHypothesis -> PDDLDomain
