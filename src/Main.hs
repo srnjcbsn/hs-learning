@@ -7,7 +7,7 @@ import           Data.Map                                 ((!))
 import Planning.Viewing
 import           Data.Maybe
 import           Environment                              as Env
-import           Environment.Sokoban.ConsoleView          (visualize)
+import           Environment.Sokoban.SokobanView          
 import           Environment.Sokoban.PDDL
 import qualified Environment.Sokoban.Samples.SimpleSample as SS
 import qualified Environment.Sokoban.Samples.LargeSample  as LS
@@ -27,7 +27,7 @@ import           Text.Show.Pretty
 
 logPath = "./log.log"
 
-data Astar = Astar (Int)
+data Astar = Astar Int
 
 instance BoundedPlanner Astar where
   setBound (Astar _) = Astar
@@ -61,7 +61,7 @@ main = do
     --printOut outp
     --printOut outp2
     where
-        sokoWorld = LS.world
+        sokoWorld = WS.world
         sokoEnv = fromWorld sokoWorld
         --runn = run astar dom prob
         runv = runnerVisualized astar (sokobanView "log.log") dom prob
