@@ -10,6 +10,7 @@ import qualified Data.Map            as Map
 import           Data.Set            (Set, (\\))
 import qualified Data.Set            as Set
 import qualified Data.TupleSet       as TSet
+import qualified Learning as Lrn
 
 type CNF = Set (Set FluentPredicate, Set FluentPredicate)
 -- | (unknowns, knowns)
@@ -19,6 +20,14 @@ type Knowledge = (Set FluentPredicate, Set FluentPredicate)
 type PreKnowledge = (Knowledge, Knowledge, CNF)
 
 type PreDomainHypothesis = Map Name PreKnowledge
+
+newtype OptPreHypothesis = OptPreHypothesis PreDomainHypothesis
+
+instance Lrn.DomainHypothesis OptPreHypothesis PDDLDomain PDDLProblem ActionSpec where
+      update (OptPreHypothesis eff) dom trans  =
+        OptPreHypothesis (updatePreDomainHyp dom eff trans)
+      adjustDomain (OptPreHypothesis eff) dom  = domainFromPrecondHypothesis dom eff
+      fromDomain dom = OptPreHypothesis ( initialPreDomainHyp dom )
 
 initialPreKnowledge :: [Name] -> [PredicateSpec] -> [Name] -> PreKnowledge
 initialPreKnowledge consts allPs paras =

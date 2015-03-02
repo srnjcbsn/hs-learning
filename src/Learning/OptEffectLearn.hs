@@ -1,4 +1,4 @@
-module Learning.OptEffectLearn where
+module Learning.OptEffectLearn (OptEffHypothesis) where
 
 import           Data.Function       (on)
 import           Data.List           (deleteBy, unionBy)
@@ -14,7 +14,7 @@ import           Learning.Induction
 import           Logic.Formula
 import           Planning.PDDL
 import           Planning.PDDL.Logic
-
+import qualified Learning as Lrn
 -- | (unknown, known)
 type EffectKnowledge = (Set FluentPredicate, Set FluentPredicate)
 
@@ -23,7 +23,13 @@ type EffectHypothesis = (EffectKnowledge, EffectKnowledge)
 
 type DomainHypothesis = Map Name EffectHypothesis
 
+newtype OptEffHypothesis = OptEffHypothesis DomainHypothesis
 
+instance Lrn.DomainHypothesis OptEffHypothesis PDDLDomain PDDLProblem ActionSpec where
+      update (OptEffHypothesis eff) dom trans  =
+        OptEffHypothesis (updateDomainHyp dom eff trans)
+      adjustDomain (OptEffHypothesis eff) dom  = domainFromKnowledge dom eff
+      fromDomain dom = OptEffHypothesis ( initialHypothesis dom )
 
 -- | Takes a set of uknowns, a pair of unambiguous/ambiguous to add to,
 --   and a set of fluents which is suspected to be unambiguous.

@@ -23,7 +23,7 @@ data SokobanPDDL = SokobanPDDL
 
 instance Env.Environment SokobanPDDL where
     toState     = toState
-    fromProblem = fromState . probState
+    --fromProblem = fromState . probState
     applyAction = applyAction
 
 data Adj = Adj (Object, Object) deriving Eq

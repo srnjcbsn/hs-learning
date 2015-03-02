@@ -148,7 +148,7 @@ instance ActionSpecification ActionSpec PDDLProblem where
     applicableActions = applicableActions'
 
 
-instance Domain PDDLDomain ActionSpec PDDLProblem where
+instance Domain PDDLDomain PDDLProblem ActionSpec where
     actionSpecification = actionSpec
     actions             = dmActionsSpecs
     apply               = apply'

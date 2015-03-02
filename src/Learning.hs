@@ -2,27 +2,35 @@ module Learning where
 
 import           Control.Monad
 import           Data.Maybe
-import           Text.Show.Pretty
+--import           Text.Show.Pretty
 
 import           Environment              (Environment)
 import qualified Environment              as Env
-import           Learning.OptEffectLearn  (DomainHypothesis)
-import qualified Learning.OptEffectLearn  as Eff
-import           Learning.OptPrecondLearn (PreDomainHypothesis)
-import qualified Learning.OptPrecondLearn as Pre
-import           Planning.PDDL
 import           Planning
-import Data.Map ((!))
+--import Data.Map ((!))
 import Data.Set (Set)
-import Debug.Trace
-import System.IO
+--import Debug.Trace
+--import System.IO
 import qualified Data.Set as Set
 import Data.List(find)
 
-refine  :: (BoundedPlanner ep, ExternalPlanner ep PDDLDomain PDDLProblem ActionSpec)
+class Domain dom p as => DomainHypothesis dh dom p as | dh -> dom p as where
+    update :: dh -> dom -> Transition -> dh
+    adjustDomain :: dh -> dom -> dom
+    fromDomain :: dom -> dh
+
+class Domain d p as => LearningDomain d p as | d -> p as where
+   learn :: d -> Transition -> d
+
+
+refine  :: ( BoundedPlanner ep
+           , Domain dom prob as
+           , Problem prob
+           , ExternalPlanner ep dom prob as
+           )
         => ep
-        -> PDDLDomain
-        -> PDDLProblem
+        -> dom
+        -> prob
         -> Maybe Plan
         -> Int
         -> Set Action
@@ -47,17 +55,6 @@ refine planner domain problem maybeCurPlan bound triedActs =
              | otherwise =  return (maybeCurPlan, triedActs)
      in outp
 
-learn :: PDDLDomain
-      -> Transition
-      -> PreDomainHypothesis
-      -> DomainHypothesis
-      -> (PreDomainHypothesis, DomainHypothesis)
-learn domain trans@(_,act@(name,_),_) preHyp effHyp  =
-  let effectHyp' = Eff.updateDomainHyp domain effHyp trans
-      precondHyp' = Pre.updatePreDomainHyp domain preHyp trans
-   in (precondHyp', effectHyp')
-        --trace ("learned(" ++ show act ++ "): " ++ (ppShow $ precondHyp' ! name))
-        --    (precondHyp', effectHyp')
 
 perform :: (Environment env)
         => env
@@ -71,25 +68,24 @@ perform env (Just (action:restPlan)) =
 perform _ (Just []) = Right True
 perform _ Nothing = Right False
 
-run :: (BoundedPlanner ep, ExternalPlanner ep PDDLDomain PDDLProblem ActionSpec, Environment env)
+run :: ( BoundedPlanner ep
+       , LearningDomain dom prob as
+       , ExternalPlanner ep dom prob as
+       , Environment env)
     => ep
-    -> PDDLDomain
-    -> PDDLProblem
+    -> dom
+    -> prob
     -> env
-    -> PreDomainHypothesis
-    -> DomainHypothesis
     -> Maybe Plan
     -> Int
     -> Set Action
-    -> IO (Either (env, PreDomainHypothesis, DomainHypothesis, Maybe Plan, Int, Set Action) Bool)
-run planner oldDomain problem env preHyp effHyp plan bound triedActions =
-  let uptDom = (`Eff.domainFromKnowledge` effHyp)
-             . (`Pre.domainFromPrecondHypothesis` preHyp)
-      newDom = uptDom oldDomain
-  in do (plan',triedActions') <- refine planner newDom problem plan bound triedActions
+    -> IO (Either (env, dom, Maybe Plan, Int, Set Action) Bool)
+run planner oldDomain problem env plan bound triedActions =
+  let
+  in do (plan',triedActions') <- refine planner oldDomain problem plan bound triedActions
         case perform env plan' of
          Left (env', trans@(s,act,s'), plan'') ->
-          let planState = apply newDom s act
+          let planState = apply oldDomain s act
               planStateIsSameAsNewState = fromMaybe False
                                         $ liftM2 (==) planState  s'
               planIsDone = fromMaybe False (liftM null plan'')
@@ -97,41 +93,68 @@ run planner oldDomain problem env preHyp effHyp plan bound triedActions =
               newBound | planStateIsSameAsNewState && planIsDone =  bound * 2
                        | planStateIsSameAsNewState && planRunning = bound
                        | otherwise = 1
-              (preHyp', effHyp') = learn newDom trans preHyp effHyp
+              newDom = learn oldDomain trans
               newPlan | isNothing s' = Nothing
                       | bound == 1 && planIsDone = Nothing
                       | otherwise = plan''
-           in do --putStrLn $ "running: did action " ++ (ppShow act)
+           in    --do putStrLn $ "running: did action " ++ (ppShow act)
                  --putStrLn $ "running: new state: " ++ (ppShow s')
                  --hFlush stdout
-                 return $ Left (env', preHyp', effHyp', newPlan, newBound, triedActions')
+                 return $ Left (env', newDom, newPlan, newBound, triedActions')
          Right ans -> return $ Right ans
 
-runnerVisualized :: (BoundedPlanner ep, ExternalPlanner ep PDDLDomain PDDLProblem ActionSpec, Environment env)
+runnerVisualized :: ( BoundedPlanner ep
+                    , LearningDomain dom prob as
+                    , Problem prob
+                    , ExternalPlanner ep dom prob as
+                    , Environment env)
                  => ep
                  -> (env -> IO ())
                  -> (Maybe Plan -> IO ())
-                 -> PDDLDomain
-                 -> PDDLProblem
+                 -> dom
+                 -> prob
                  -> env
-                 -> PreDomainHypothesis
-                 -> DomainHypothesis
                  -> Maybe Plan
                  -> IO env
-runnerVisualized planr visual logger dom prob env preHyp effHyp plan =
+runnerVisualized planr visual logger dom prob env plan =
   let solved sp senv = isSolved sp (Env.toState senv)
-      runv rprob renv rpreHyp reffHyp rplan bound tried =
+      runv rdom rprob renv rplan bound tried =
         if solved rprob renv
         then return renv
         else
           do logger plan
-             res <- run planr dom rprob renv rpreHyp reffHyp rplan bound tried
+             res <- run planr rdom rprob renv rplan bound tried
              case res of
-               Left (env', preHyp', effHyp', plan', bound', tried') ->
-                 let prob' = prob { probState = Env.toState env'}
+               Left (env', dom', plan', bound', tried') ->
+                 let prob' = setInitialState prob (Env.toState env')
                   in do
                       visual env'
-                      runv prob' env' preHyp' effHyp' plan' bound' tried'
+                      runv  dom' prob' env' plan' bound' tried'
                Right True -> error "Planner says problem is solved, environment does not"
                Right False -> error "Cannot solve problem, planner found no plan"
-    in runv prob env preHyp effHyp plan 1 Set.empty
+    in runv dom prob env plan 1 Set.empty
+
+
+newtype (Domain dom p as, DomainHypothesis dh dom p as) =>
+      LearningDomain' dom dh p as =  LearningDomain' (dom, dh)
+
+instance (Domain dom p as, DomainHypothesis dh dom p as)
+         => Domain (LearningDomain' dom dh p as) p as where
+    actionSpecification  (LearningDomain' (dom, _)) = actionSpecification dom
+    actions              (LearningDomain' (dom, _)) = actions dom
+    apply                (LearningDomain' (dom, _)) = apply dom
+    allApplicableActions (LearningDomain' (dom, _)) = allApplicableActions dom
+
+instance (Domain dom p as, DomainHypothesis dh dom p as) =>
+        LearningDomain (LearningDomain' dom dh p as) p as where
+    learn (LearningDomain' (dom, dh)) trans =
+      let dh'  = update dh dom trans
+          dom' = adjustDomain dh' dom
+       in LearningDomain' (dom', dh')
+
+toLearningDomain :: ( Domain domain p as
+                    , DomainHypothesis domainHypothesis domain p as)
+                 => domainHypothesis
+                 -> domain
+                 -> LearningDomain' domain domainHypothesis p as
+toLearningDomain dHyp dom = LearningDomain' (dom, dHyp)

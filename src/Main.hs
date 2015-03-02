@@ -1,3 +1,4 @@
+
 module Main where
 
 import           System.Console.ANSI
@@ -19,10 +20,10 @@ import           Learning.OptPrecondLearn
 import           Planning
 import           Planning.PDDL
 import           Planning.PDDL.Logic
-import           Planning.PDDL.Samples.SimpleBox
 import           Planning.Planner.FastDownward
 import           System.IO.Error
 import           Text.Show.Pretty
+import           Learning.ManyHypothesis
 
 logPath = "./log.log"
 
@@ -31,8 +32,8 @@ data Astar = Astar (Int)
 instance BoundedPlanner Astar where
   setBound (Astar _) = Astar
 
-instance ExternalPlanner Astar PDDLDomain PDDLProblem ActionSpec where
-    makePlan (Astar bound) d p = return $ Astar.searchBounded (PDDLGraph (d,p)) (initialState p) bound
+instance ExternalPlanner Astar (LearningDomain' PDDLDomain ManyHypothesis PDDLProblem ActionSpec) PDDLProblem ActionSpec where
+    makePlan (Astar bound) (LearningDomain' (d,_)) p = return $ Astar.searchBounded (PDDLGraph (d,p)) (initialState p) bound
 
 toFormula :: PDDLDomain -> PreDomainHypothesis -> [(String, Formula Argument)]
 toFormula dom dHyp =
@@ -46,14 +47,14 @@ main = do
     clearScreen
     setTitle "SOKOBAN!"
     putStrLn (ppShow $ initialState prob)
-    putStrLn (ppShow (toFormula dom iniPreDomHyp))
+    --putStrLn (ppShow (toFormula dom iniPreDomHyp))
     --outp <- runn env iniPreDomHyp iniEffDomHyp Nothing
     -- case outp of
     --   Left (env',preHyp,_,_) ->
     --     let as = fromJust $ actionSpecification dom "move-v"
     --         as' = constructPrecondSchema (preHyp ! "move-v") as
     --       in putStr (ppShow (groundPreconditions as' ["b0x1", "b0x0"]))
-    fenv <- runv env iniPreDomHyp iniEffDomHyp Nothing
+    fenv <- runv env Nothing
     putStr (ppShow fenv)
     return ()
     --outp2 <- continue outp
@@ -65,7 +66,7 @@ main = do
         planVis _ = return () :: IO ()
         sokoEnv = fromWorld sokoWorld
         --runn = run astar dom prob
-        runv = runnerVisualized astar envVis planVis dom prob
+        runv = runnerVisualized astar envVis planVis learnDom prob
         -- continue outp =
         --   case outp of
         --     Left (env',preHyp,effHyp,plan) -> runn env' preHyp effHyp plan
@@ -82,5 +83,8 @@ main = do
         --env = SBEnvironment (initialState prob, dom)
         astar = Astar 1
         -- fd = mkFastDownard dom prob
-        iniPreDomHyp = initialPreDomainHyp dom
-        iniEffDomHyp = initialHypothesis dom
+        iniPreDomHyp = fromDomain dom :: OptPreHypothesis
+        iniEffDomHyp = fromDomain dom :: OptEffHypothesis
+
+        manyhyp = ManyHypothesis [iniPreDomHyp, iniEffDomHyp] :: ManyHypothesis
+        learnDom = toLearningDomain manyhyp dom

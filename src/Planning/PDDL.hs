@@ -101,10 +101,7 @@ typeList aSpec = zip (asParas aSpec)
 
 data PDDLGraph = PDDLGraph (PDDLDomain, PDDLProblem)
 
--- | A state transition is a the old state, the action that was applied to that
---   state, and --- depending on the applicability of the action --- 'Just' an
---   an updated state with the actions effects applied, or 'Nothing'.
-type Transition = (State, Action, Maybe State)
+
 
 pName :: FluentPredicate -> Name
 pName = predName
