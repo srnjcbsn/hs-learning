@@ -3,7 +3,6 @@ module Main where
 import           System.Console.ANSI
 import           System.Directory                         (removeFile)
 
-import           ActionViewer
 import           Data.Map                                 ((!))
 import Planning.Viewing
 import           Data.Maybe
@@ -11,6 +10,7 @@ import           Environment                              as Env
 import           Environment.Sokoban.ConsoleView          (visualize)
 import           Environment.Sokoban.PDDL
 import qualified Environment.Sokoban.Samples.SimpleSample as SS
+import qualified Environment.Sokoban.Samples.LargeSample  as LS
 import qualified Environment.Sokoban.Samples.WikiSample   as WS
 import           Environment.Sokoban.SokobanDomain
 import           Graph.Search.Astar                       as Astar
@@ -61,10 +61,10 @@ main = do
     --printOut outp
     --printOut outp2
     where
-        sokoWorld = WS.world
+        sokoWorld = LS.world
         sokoEnv = fromWorld sokoWorld
         --runn = run astar dom prob
-        runv = runnerVisualized astar (defaultView "log.log") dom prob
+        runv = runnerVisualized astar (sokobanView "log.log") dom prob
         -- continue outp =
         --   case outp of
         --     Left (env',preHyp,effHyp,plan) -> runn env' preHyp effHyp plan
