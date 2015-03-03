@@ -1,54 +1,73 @@
 module Planning.PDDL.ParserSpec (main, spec) where
 
 import           Data.Char
-import qualified Data.Map              as Map
-import qualified Data.Set              as Set
+import qualified Data.Map             as Map
+import           Data.Maybe           (isNothing)
+import qualified Data.Set             as Set
 import           Logic.Formula
 import           Planning.PDDL
 import           Planning.PDDL.Parser
 import           Test.Hspec
-import           Test.Hspec.QuickCheck
 import           Test.QuickCheck
 
-
-
+p :: (t -> a) -> t -> Predicate a
 p f x = Predicate "p" [f x]
+
+a :: (t -> a) -> t -> t -> Predicate a
+a f x y = Predicate "a" [f x, f y]
+
+pP :: Name -> Formula Argument
 pP x = Pred $ p Ref x
 
-a f x y = Predicate "a" [f x, f y]
+aP :: Name -> Name -> Formula Argument
 aP x y = Pred $ a Ref x y
 
+predStrA, predStrB :: String
+predStrA = "(a ?x Y)"
+predStrB = "(b ?z V)"
+
+predResA, predResB :: Predicate Argument
+predResA = Predicate "a" [Ref "x", Const "Y"]
+predResB = Predicate "b" [Ref "z", Const "V"]
+
+actionSpecStr :: String
 actionSpecStr = unlines [ "(:action act"
                         , ":parameters (?a)"
                         , ":precondition (p ?a)"
                         , ":effect (not (p ?a)) )"
                         ]
 
+actionSpecRes :: ActionSpec
 actionSpecRes = ActionSpec { asName      = "act"
                            , asParas     = ["a"]
                            , asPrecond   = pP "a"
                            , asEffect    = Neg (pP "a")
                            , asConstants = []
-                           , asTypes     = Map.empty
+                           , asTypes     = Map.singleton "a" baseType
                            }
-
+domainSpecStr :: String
 domainSpecStr =
     unlines [ "(define (domain test)"
             , "(:requirements :strips)"
+            , "(:types )"
             , "(:constants A B)"
             , "(:predicates (a ?x ?y))"
             , actionSpecStr
             , ")"
             ]
 
+domainSpecRes :: PDDLDomain
 domainSpecRes =
     PDDLDomain { dmName         = "test"
-               , dmPredicates   = [a id "x" "y"]
+               , dmPredicates   = [Predicate "a" [ ("x", baseType)
+                                                 , ("y", baseType)]
+                                  ]
                , dmActionsSpecs = [actionSpecRes]
                , dmConstants    = ["A", "B"]
                , dmTypes        = []
                }
 
+problemSpecStr :: String
 problemSpecStr =
     unlines [ "(define (problem prob)"
             , "(:domain dom)"
@@ -57,13 +76,14 @@ problemSpecStr =
             , "(:goal (test2 x y)) )"
             ]
 
+problemSpecRes :: PDDLProblem
 problemSpecRes =
     PDDLProblem { probName = "prob"
                 , probObjs = ["x", "y"]
                 , probDomain = "dom"
                 , probState = Set.singleton $ Predicate "test1" ["x", "y"]
                 , probGoal = Pred $ Predicate "test2" ["x", "y"]
-                , probTypes = Map.empty
+                , probTypes = Map.fromList [("x", baseType), ("y", baseType)]
                 }
 
 testParsePredicateSpec :: Spec
@@ -77,11 +97,12 @@ testParsePredicateSpec = do
         it "can only start with a letter" $ property $
             \c -> let parsed = tryParse parseName (c : "a")
                   in  if isLetter c then parsed == Just (c : "a")
-                      else parsed == Nothing
+                      else isNothing parsed
 
     describe "Predicate specification parser" $ do
         it "can parse predicate specifications" $
-            tryParse parsePredicateSpec "(a ?x ?y)" `shouldBe` Just (a id "x" "y")
+            tryParse parsePredicateSpec "(a ?x ?y)" `shouldBe`
+                Just (Predicate "a" [("x", baseType), ("y", baseType)])
         it "can parse predicate specs with no parameters" $ do
             tryParse parsePredicateSpec "(a)"  `shouldBe` Just (Predicate "a" [])
             tryParse parsePredicateSpec "(a )" `shouldBe` Just (Predicate "a" [])
@@ -91,7 +112,7 @@ testParsePredicateSpec = do
             tryParse parseArgRef "a" `shouldBe` Nothing
         it "throws away the prefix" $
             tryParse parseArgRef "?a" `shouldBe` Just "a"
-        it "requires a letter after the '?'" $ do
+        it "requires a letter after the '?'" $
             tryParse parseArgRef "?" `shouldBe` Nothing
 
     describe "Argument parser" $ do
@@ -100,21 +121,11 @@ testParsePredicateSpec = do
         it "parses a string starting with a capital letter as a constant" $
             tryParse parseArgument "A" `shouldBe` Just (Const "A")
 
-    describe "Fluent parser" $ do
-        it "can parse fluents with 'Argument's" $ do
-            let predStrA = "(a ?x Y)"
-                predResA = Predicate "a" [Ref "x", Const "Y"]
-
-                predStrB = "(b ?z V)"
-                predResB = Predicate "b" [Ref "z", Const "V"]
+    describe "Fluent parser" $
+        it "can parse fluents with 'Argument's" $
             tryParse parseFluent predStrA `shouldBe` Just predResA
 
     describe "Formula parser" $ do
-        let predStrA = "(a ?x Y)"
-            predResA = Predicate "a" [Ref "x", Const "Y"]
-
-            predStrB = "(b ?z V)"
-            predResB = Predicate "b" [Ref "z", Const "V"]
         it "can parse fluents" $
             tryParse parseFormula predStrA `shouldBe` Just (Pred predResA)
         it "can parse negated formulae" $
@@ -124,7 +135,23 @@ testParsePredicateSpec = do
             tryParse parseFormula ("(and " ++ predStrA ++ " " ++ predStrB ++ ")")
                 `shouldBe` Just (Con [Pred predResA, Pred predResB])
 
-    describe "Plan parser" $ do
+    describe "Typed list parser" $ do
+        it "can parse an untyped list as objects" $
+            tryParse (typedList parseName) "a b c" `shouldBe`
+                Just [ ("a", baseType)
+                     , ("b", baseType)
+                     , ("c", baseType)
+                     ]
+
+        it "can parse a list mixed types" $
+            tryParse (typedList parseName) "a b - t1 c - t2 d" `shouldBe`
+                Just [ ("a", "t1")
+                     , ("b", "t1")
+                     , ("c", "t2")
+                     , ("d", baseType)
+                     ]
+
+    describe "Plan parser" $
         it "can parse simple plans (as produced by fast-downward)" $
             let planStr = unlines [ "(push-h b0x0 b0x0 b1x0 b2x0)"
                                   , "(push-h b2x1 b2x2 boxat1x0 boxat2x1)"
@@ -135,7 +162,7 @@ testParsePredicateSpec = do
                                ]
             in tryParse plan planStr `shouldBe` Just expectedPlan
 
-    describe "Action specification parser" $ do
+    describe "Action specification parser" $
         it "can parse basic action specifications" $
             tryParse parseActionSpec actionSpecStr `shouldBe` Just actionSpecRes
 
@@ -145,8 +172,8 @@ testParsePredicateSpec = do
         it "parses a domain D converted to a string as D" $
             tryParse parseDomain (writeDomain domainSpecRes) `shouldBe` Just domainSpecRes
 
-    describe "Problem specification parser" $ do
-        it "can parse simple problems" $ do
+    describe "Problem specification parser" $
+        it "can parse simple problems" $
             tryParse parseProblem problemSpecStr `shouldBe` Just problemSpecRes
 
 

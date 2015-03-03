@@ -55,7 +55,7 @@ data Argument = Const Name
               deriving (Show, Eq, Ord)
 
 type FluentPredicate = Predicate Argument
-type PredicateSpec = Predicate Name
+type PredicateSpec = Predicate (Name, Type)
 
 type GrFormula = Formula Name
 
@@ -110,7 +110,7 @@ pArgs :: FluentPredicate -> [Argument]
 pArgs = predArgs
 
 paramNames :: PredicateSpec -> [Name]
-paramNames (Predicate _ params) = params
+paramNames (Predicate _ params) = map fst params
 
 -- | Returns the action specification with the given name in the domain,
 --   or 'Nothing' if it could not be found.
@@ -128,28 +128,38 @@ writeArgument (Const c) = c
 writeArgumentList :: [Argument] -> String
 writeArgumentList as = unwords (map writeArgument as)
 
-writeParameterList :: [String] -> String
-writeParameterList ps = writeArgumentList $ map Ref ps
+-- writeParameterList :: [String] -> String
+-- writeParameterList ps = writeArgumentList $ map Ref ps
+
+writeTypedParameterList :: [(Name, Type)] -> String
+writeTypedParameterList ts@((_, t) : _) = sameList ++ " - " ++ t ++ " " ++ rest
+    where sameList = unwords $ map (writeArgument . Ref . fst) same
+          (same, different) = span ((t ==) . snd) ts
+          rest = writeTypedParameterList different
+writeTypedParameterList [] = ""
 
 writeFluentPredicate :: FluentPredicate -> String
-writeFluentPredicate (Predicate name as) =
-    "(" ++ name ++ " " ++ writeArgumentList as ++ ")"
+writeFluentPredicate (Predicate pname as) =
+    "(" ++ pname ++ " " ++ writeArgumentList as ++ ")"
 
 writeGroundedPredicate :: GroundedPredicate -> String
-writeGroundedPredicate (Predicate name objs) =
-    "(" ++ name ++ " " ++ unwords objs  ++ ")"
+writeGroundedPredicate (Predicate pname objs) =
+    "(" ++ pname ++ " " ++ unwords objs  ++ ")"
 
 writePredicateSpec :: PredicateSpec -> String
-writePredicateSpec (Predicate name ps) =
-    "(" ++ name ++ " " ++ writeArgumentList (map Ref ps) ++ ")"
+writePredicateSpec (Predicate pname ps) =
+    "(" ++ pname ++ " " ++ writeTypedParameterList ps ++ ")"
 
 writeActionSpec :: ActionSpec -> String
 writeActionSpec as =
     "(:action " ++ asName as
-    ++ "\t:parameters (" ++ writeParameterList (asParas as) ++ ")\n"
-    ++ "\t:precondition " ++ writeUngrFormula (asPrecond as) ++ "\n"
-    ++ "\t:effect " ++ writeUngrFormula (asEffect as) ++ "\n"
+    ++ "\t:parameters (" ++ params ++ ")\n"
+    ++ "\t:precondition " ++ precond ++ "\n"
+    ++ "\t:effect " ++ eff ++ "\n"
     ++ ")"
+        where params  = writeTypedParameterList (Map.toList (asTypes as))
+              precond = writeUngrFormula (asPrecond as)
+              eff     = writeUngrFormula (asEffect as)
 
 writeUngrFormula :: UngrFormula -> String
 writeUngrFormula (Pred p) = writeFluentPredicate p
@@ -174,10 +184,17 @@ writeProblem prob =
 writeDomain :: PDDLDomain -> String
 writeDomain domain =
     let defineStr = "(define (domain " ++ dmName domain ++ ")"
-        reqsStr   = "(:requirements :strips)"
+        reqsStr   = "(:requirements :strips :typing)"
+        typesStr  = "(:types " ++ unwords (dmTypes domain) ++ ")"
         consts    = dmConstants domain
         constsStr = "(:constants " ++ unwords consts ++ ")"
         preds     = dmPredicates domain
         predsStr  = "(:predicates " ++ unwords (map writePredicateSpec preds) ++ ")"
         aSpecs    = unwords $ map writeActionSpec $ dmActionsSpecs domain
-    in intercalate "\n\t" [defineStr, reqsStr, constsStr, predsStr, aSpecs] ++ ")"
+    in intercalate "\n\t" [ defineStr
+                          , reqsStr
+                          , typesStr
+                          , constsStr
+                          , predsStr
+                          , aSpecs
+                          ] ++ ")"

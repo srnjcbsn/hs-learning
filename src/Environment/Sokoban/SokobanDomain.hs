@@ -40,14 +40,14 @@ negConGrounded :: [(PredicateSpec, [Name])] -> Formula Name
 negConGrounded = Con . map (Neg . Pred . uncurry groundedPredicate)
 
 hAdj, vAdj, sokobanAt, at, atGoal, clear, goal, notGoal :: PredicateSpec
-hAdj      = Predicate "hAdj" ["from", "to"]
-vAdj      = Predicate "vAdj" ["from", "to"]
-sokobanAt = Predicate "sokobanAt" ["l"]
-at        = Predicate "at" ["c", "l"]
-atGoal    = Predicate "atGoal" ["c"]
-clear     = Predicate "clear" ["l"]
-goal      = Predicate "goal" ["l"]
-notGoal   = Predicate "notGoal" ["l"]
+hAdj      = Predicate "hAdj" $ zip ["from", "to"] $ repeat locType
+vAdj      = Predicate "vAdj" $ zip ["from", "to"] $ repeat locType
+sokobanAt = Predicate "sokobanAt" [("l", locType)]
+at        = Predicate "at" [("c", crateType), ("l", locType)]
+atGoal    = Predicate "atGoal" [("c", crateType)]
+clear     = Predicate "clear" [("l", locType)]
+goal      = Predicate "goal" [("l", locType)]
+notGoal   = Predicate "notGoal" [("l", locType)]
 
 moveParas, pushParas :: [Name]
 moveParas = ["from", "to"]

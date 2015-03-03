@@ -3,18 +3,18 @@ module Planning.PDDL.Parser
     , Text.ParserCombinators.Parsec.ParseError
     ) where
 
-import           Control.Applicative           ((*>))
+import           Control.Applicative           ((<*), (*>))
 import           Control.Monad                 (liftM)
 import qualified Data.Map                      as Map
 import qualified Data.Set                      as Set
 import           Text.ParserCombinators.Parsec
 
 import           Logic.Formula
-import           Planning                      ()
+import           Planning
 import           Planning.PDDL
 
 acceptableRequirements :: [String]
-acceptableRequirements = [":strips", ":typing"]
+acceptableRequirements = [":typing", ":strips"]
 
 parens :: Parser a -> Parser a
 parens = between (char '(') (char ')')
@@ -30,7 +30,7 @@ comments :: Parser [String]
 comments = spaces *> endBy comment spaces
 
 parseRequirement :: Parser String
-parseRequirement = choice $ map string acceptableRequirements
+parseRequirement = choice $ map (try . string) acceptableRequirements
 
 parseName :: Parser String
 parseName = do
@@ -41,72 +41,77 @@ parseName = do
 parseArgRef :: Parser Name
 parseArgRef = char '?' >> parseName
 
+typeSep :: Parser Char
+typeSep = char '-'
+
+-- many1Till :: Parser a -> Parser b -> Parser a
+-- many1Till p q = notFollowedBy
+
+typeString :: Parser Type
+typeString = char '-' >> spaces >> parseName <* spaces
+
+sameTypedList :: Parser a -> Parser [(a, Type)]
+sameTypedList p = do
+    ps <- many1 (p <* spaces)
+    t <- option baseType typeString
+    return $ map (flip (,) t) ps
+
+typedList :: Parser a -> Parser [(a, Type)]
+typedList p = liftM concat $ many (sameTypedList p)
+
 parseArgument :: Parser Argument
 parseArgument =
         liftM Const parseName
     <|> liftM Ref   parseArgRef
---
--- groundedNamed :: Parser GroundedPredicate
--- groundedNamed = parens $ do
---     name <- parseName
---     spaces
---     params <- sepBy parseName spaces
---     return $ Predicate name params
 
 groundedPredicate :: Parser GroundedPredicate
 groundedPredicate = parens $ do
-    name <- parseName
+    gname <- parseName
     spaces
     params <- sepBy parseName spaces
-    return $ Predicate name params
+    return $ Predicate gname params
 
 -- | Parse an action applied to a list of arguments.
 -- This is an alias for 'groundedNamed'
 action :: Parser Action
 action = parens $ do
-    name <- parseName
+    aname <- parseName
     spaces
     params <- sepBy parseName spaces
-    return (name, params)
+    return (aname, params)
 
 parsePredicateSpec :: Parser PredicateSpec
 parsePredicateSpec = do
     _ <- char '('
-    name <- parseName
+    pname <- parseName
     spaces
-    params <- sepBy parseArgRef space
+    params <- typedList parseArgRef -- sepBy parseArgRef space
     _ <- char ')'
-    return $ Predicate name params
+    return $ Predicate pname params
 
 parseFluent :: Parser FluentPredicate
 parseFluent =
     parens $ do
-        name <- parseName
+        fname <- parseName
         spaces
         args <- parseArgument `sepBy` spaces
-        return $ Predicate name args
+        return $ Predicate fname args
 
 parseConjunction :: (Show a, Ord a, Eq a)
                  => Parser (Formula a)
                  -> Parser (Formula a)
 parseConjunction f =
-    parens $ string "and"
-             >> spaces
-             >> f `sepBy` spaces
-             >>= return . Con
+    parens $ liftM Con $ string "and" >> spaces >> f `sepBy` spaces
 
 parseNegation :: (Show a, Ord a, Eq a) => Parser (Formula a) -> Parser (Formula a)
 parseNegation f =
-    parens $ string "not"
-             >> spaces
-             >> f
-             >>= return . Neg
+    parens $ liftM Neg $ string "not" >> spaces >> f
 
 parseFormula :: Parser (Formula Argument)
 parseFormula =
         try (parseConjunction parseFormula)
     <|> try (parseNegation parseFormula)
-    <|> (parseFluent >>= return . Pred)
+    <|> liftM Pred parseFluent
 
 parseType :: Parser String
 parseType = char '-' >> spaces >> parseName
@@ -115,42 +120,38 @@ groundedFormula :: Parser (Formula Name)
 groundedFormula =
         try (parseConjunction groundedFormula)
     <|> try (parseNegation groundedFormula)
-    <|> (groundedPredicate >>= return . Pred)
+    <|> liftM Pred groundedPredicate
 
 parseActionSpec :: Parser ActionSpec
 parseActionSpec =
     parens $ do
-        _ <- string ":action "
+        string ":action " >> spaces
+        aname <- parseName
+        spaces >> string ":parameters " >> spaces
+        ts <- parens $ typedList parseArgRef
+        --params <- parens $ typedList --(parseArgRef `sepBy` spaces)
         spaces
-        name <- parseName
-        spaces
-        _ <- string ":parameters "
-        spaces
-        params <- parens (parseArgRef `sepBy` spaces)
-        spaces
-        _ <- string ":precondition "
-        spaces
+        string ":precondition " >> spaces
         precond <- parseFormula
         spaces
-        _ <- string ":effect "
-        spaces
+        string ":effect " >> spaces
         eff <- parseFormula
         spaces
-        return ActionSpec { asName    = name
-                          , asParas   = params
-                          , asPrecond = precond
-                          , asEffect  = eff
+        return ActionSpec { asName      = aname
+                          , asParas     = map fst ts
+                          , asPrecond   = precond
+                          , asEffect    = eff
                           , asConstants = []
-                          , asTypes = Map.empty
+                          , asTypes     = Map.fromList ts
                           }
 
 parseDomain :: Parser PDDLDomain
 parseDomain =
     parens $ do
         _ <- string "define "
-        name <- parens $ string "domain " >> parseName
+        dname <- parens $ string "domain " >> parseName
         spaces
-        _ <- parens $ string ":requirements " >> many parseRequirement
+        _ <- parens $ string ":requirements " >> sepBy spaces parseRequirement
         spaces
         types <- parens $ string ":types " >> parseName `sepBy` spaces
         spaces
@@ -158,10 +159,10 @@ parseDomain =
         spaces
         preds <- parens $ string ":predicates " >> parsePredicateSpec `sepBy` spaces
         spaces
-        actions <- parseActionSpec `sepEndBy1` spaces
-        return PDDLDomain { dmName         = name
+        dactions <- parseActionSpec `sepEndBy1` spaces
+        return PDDLDomain { dmName         = dname
                           , dmPredicates   = preds
-                          , dmActionsSpecs = actions
+                          , dmActionsSpecs = dactions
                           , dmConstants    = consts
                           , dmTypes        = types
                           }
@@ -170,22 +171,22 @@ parseProblem :: Parser PDDLProblem
 parseProblem =
     parens $ do
         _ <- string "define "
-        name <- parens $ string "problem " >> parseName
+        pname <- parens $ string "problem " >> parseName
         spaces
         dom <- parens $ string ":domain " >> parseName
         spaces
-        objs <- parens $ string ":objects " >> parseName `sepBy` spaces
+        objs <- parens $ string ":objects " >> typedList parseName
         spaces
         ini <- parens $ string ":init " >> groundedPredicate `sepBy` comments
         spaces
         g <- parens $ string ":goal " >> groundedFormula
         _ <- comments
-        return PDDLProblem { probName = name
+        return PDDLProblem { probName = pname
                            , probDomain = dom
-                           , probObjs = objs
+                           , probObjs = map fst objs
                            , probState = Set.fromList ini
                            , probGoal = g
-                           , probTypes = Map.empty
+                           , probTypes = Map.fromList objs
                            }
 
 plan :: Parser Plan

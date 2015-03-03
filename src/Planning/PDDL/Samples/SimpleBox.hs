@@ -6,12 +6,18 @@ import qualified Data.Set as Set
 import qualified Data.Map as Map
 import Environment
 import Planning
-inside a = Predicate "inside" [a]
-pInside = Pred . inside
 
-outside a = Predicate "outside" [a]
-pOutside = Pred . outside
+inside = "inside"
+outside = "outside"
 
+insideSpec a = Predicate inside [(a, baseType)]
+outsideSpec a = Predicate outside [(a, baseType)]
+
+pInside a = Predicate "inside" [a]
+fInside = Pred . pInside
+
+pOutside a = Predicate "outside" [a]
+fOutside = Pred . pOutside
 
 a = "?a"
 ar = Ref a
@@ -19,8 +25,8 @@ ar = Ref a
 putIn = ActionSpec
     { asName = "put-in"
     , asParas = [a]
-    , asPrecond = pOutside ar
-    , asEffect = Con [Neg $ pOutside ar,  pInside ar]
+    , asPrecond = fOutside ar
+    , asEffect = Con [Neg $ fOutside ar,  fInside ar]
     , asConstants = []
     , asTypes = Map.empty
     }
@@ -28,15 +34,15 @@ putIn = ActionSpec
 takeOut = ActionSpec
     { asName = "take-out"
     , asParas = [a]
-    , asPrecond = pInside ar
-    , asEffect = Con [Neg $ pInside ar, pOutside ar]
+    , asPrecond = fInside ar
+    , asEffect = Con [Neg $ fInside ar, fOutside ar]
     , asConstants = []
     , asTypes = Map.empty
     }
 
 sBDomain = PDDLDomain
     { dmName = "SimpleBox"
-    , dmPredicates = [inside a, outside a]
+    , dmPredicates = [insideSpec a, outsideSpec a]
     , dmActionsSpecs = [putIn, takeOut]
     , dmConstants = []
     , dmTypes = []
@@ -46,8 +52,8 @@ sBProblem = PDDLProblem
     { probName = "put-into-box"
     , probObjs = ["A", "B"]
     , probDomain = "SimpleBox"
-    , probState = Set.fromList [inside "B", outside "A"]
-    , probGoal = Con [pInside "A", pOutside "B"]
+    , probState = Set.fromList [pInside "B", pOutside "A"]
+    , probGoal = Con [fInside "A", fOutside "B"]
     , probTypes = Map.empty
     }
 newtype SBEnvironment =  SBEnvironment (State, PDDLDomain)

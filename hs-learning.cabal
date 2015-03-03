@@ -17,14 +17,17 @@ cabal-version:       >=1.10
 
 library
   exposed-modules: Planning
+                 , Planning.Viewing
                  , Planning.PDDL
                  , Planning.PDDL.Parser
                  , Planning.PDDL.Logic
                  , Planning.PDDL.Samples.SimpleBox
                  , Planning.PDDL.Samples.BlocksWorld
+                 , Learning
                  , Learning.Induction
                  , Learning.OptEffectLearn
                  , Learning.OptPrecondLearn
+                 , Learning.ManyHypothesis
                  , Planning.Planner.FastDownward
                  , Data.TupleSet
                  , Data.Queue
@@ -32,10 +35,13 @@ library
                  , Graph
                  , Graph.Search
                  , Graph.Search.Astar
+                 , Environment
                  , Environment.Sokoban
                  , Environment.Sokoban.PDDL
                  , Environment.Sokoban.SokobanView
+                 , Environment.Sokoban.SokobanDomain
                  , Logic.Formula
+
   default-extensions: MultiParamTypeClasses
                     , FlexibleContexts
                     , FlexibleInstances
