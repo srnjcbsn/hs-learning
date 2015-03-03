@@ -3,8 +3,9 @@ module Environment.Sokoban where
 import           Data.Map (Map)
 import qualified Data.Map as Map
 import qualified Data.List as List
-import Debug.Trace
-import Text.Show.Pretty
+import Data.Maybe (fromMaybe)
+--import Debug.Trace
+--import Text.Show.Pretty
 
 data Tile = Clear
           | Box Object
@@ -67,9 +68,9 @@ moveVector :: World -> Coord -> World
 moveVector world vec  =
   let sokoPos = sokoban world
       moveTo = vec + sokoPos
-      pushTo = traceShowId $ (vec * 2) + sokoPos
-      atTo = traceShowId $ Map.lookup moveTo $ coordMap world
-      atPushTo = traceShowId $ Map.lookup pushTo $ coordMap world
+      pushTo = (vec * 2) + sokoPos
+      atTo = Map.lookup moveTo $ coordMap world
+      atPushTo = Map.lookup pushTo $ coordMap world
   in case (atTo, atPushTo) of
        (Just Clear, _) -> world { sokoban = moveTo }
        (Just (Box n), Just Clear) ->
@@ -80,16 +81,16 @@ moveVector world vec  =
        (Just (Box _), _) -> world
 
 move :: World -> Direction -> World
-move w UpDir    = traceShowId $ moveVector w (Coord ( 0,  1))
-move w DownDir  = traceShowId $ moveVector w (Coord ( 0, -1))
+move w UpDir    = moveVector w (Coord ( 0,  1))
+move w DownDir  = moveVector w (Coord ( 0, -1))
 move w LeftDir  = moveVector w (Coord (-1,  0))
 move w RightDir = moveVector w (Coord ( 1,  0))
 
 coord :: World -> Coord -> Tile
-coord world goal = case Map.lookup goal (coordMap world) of
-                        Just c -> c
-                        Nothing -> error ("Tried to look up coord of " ++ show goal
-                                         ++ " which does not exist.")
+coord world goal =
+  let e = error ("Tried to look up coord of " ++ show goal
+                   ++ " which does not exist.")
+   in fromMaybe e (Map.lookup goal (coordMap world))
 
 coordHasBox :: World -> Coord -> Bool
 coordHasBox world c = case Map.lookup c (coordMap world) of
@@ -98,4 +99,4 @@ coordHasBox world c = case Map.lookup c (coordMap world) of
 
 -- | The goal is satisfied when all goal tiles are occupied by boxes
 isSolved :: World -> Bool
-isSolved world = trace (ppShow world) all (coordHasBox world) (goals world)
+isSolved world = all (coordHasBox world) (goals world)

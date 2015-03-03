@@ -12,6 +12,7 @@ import           Environment.Sokoban.SokobanView
 import           Environment.Sokoban.PDDL
 import qualified Environment.Sokoban.Samples.SimpleSample as SS
 import qualified Environment.Sokoban.Samples.LargeSample  as LS
+import qualified Environment.Sokoban.Samples.BigSample   as BS
 import qualified Environment.Sokoban.Samples.WikiSample   as WS
 import           Environment.Sokoban.SokobanDomain
 import           Graph.Search.Astar                       as Astar
@@ -55,17 +56,21 @@ main = do
     --     let as = fromJust $ actionSpecification dom "move-v"
     --         as' = constructPrecondSchema (preHyp ! "move-v") as
     --       in putStr (ppShow (groundPreconditions as' ["b0x1", "b0x0"]))
-    fenv <- runv env Nothing
+    (fenv,dom') <- runv initDom env Nothing
+    --(fenv',dom'') <- runv dom' sokoEnv' Nothing
     putStr (ppShow fenv)
+    --putStr (ppShow fenv')
     return ()
     --outp2 <- continue outp
     --printOut outp
     --printOut outp2
     where
-        sokoWorld = WS.world
+        sokoWorld = SS.world
         sokoEnv = fromWorld sokoWorld
+        sokoWorld' = BS.world
+        sokoEnv' = fromWorld sokoWorld'
         --runn = run astar dom prob
-        runv = runnerVisualized astar (sokobanView "log.log") learnDom prob
+        runv ldom = runnerVisualized astar (sokobanView "log.log") ldom prob
         -- continue outp =
         --   case outp of
         --     Left (env',preHyp,effHyp,plan) -> runn env' preHyp effHyp plan
@@ -85,5 +90,8 @@ main = do
         iniPreDomHyp = fromDomain dom :: OptPreHypothesis
         iniEffDomHyp = fromDomain dom :: OptEffHypothesis
 
-        manyhyp = ManyHypothesis [HypBox iniPreDomHyp,HypBox iniEffDomHyp] :: ManyHypothesis
-        learnDom = toLearningDomain manyhyp dom
+        manyhyp = ManyHypothesis [
+                         --HypBox iniPreDomHyp,
+                         --HypBox iniEffDomHyp
+                      ] :: ManyHypothesis
+        initDom = toLearningDomain manyhyp dom

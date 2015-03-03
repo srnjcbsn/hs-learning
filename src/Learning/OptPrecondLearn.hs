@@ -23,7 +23,7 @@ type PreKnowledge = (Knowledge, Knowledge, CNF)
 
 type PreDomainHypothesis = Map Name PreKnowledge
 
-newtype OptPreHypothesis = OptPreHypothesis PreDomainHypothesis
+newtype OptPreHypothesis = OptPreHypothesis PreDomainHypothesis deriving (Show)
 
 instance Lrn.DomainHypothesis OptPreHypothesis PDDLDomain PDDLProblem ActionSpec where
       update (OptPreHypothesis eff) dom trans  =
@@ -51,7 +51,8 @@ initialPreDomainHyp dom =
 constructPrecondFormula :: PreKnowledge -> Formula Argument
 constructPrecondFormula ((_, posKnown), (_, negKnown), cnf) =
     Con predList
-    where negPredList (poss,negs) =  Set.toList (Set.map Pred negs)
+    where
+          negPredList (poss,negs) =  Set.toList (Set.map Pred negs)
                                   ++ Set.toList (Set.map (Neg . Pred) poss)
           orList = Neg . Con . negPredList
           predList =  Set.toList (Set.map Pred posKnown)

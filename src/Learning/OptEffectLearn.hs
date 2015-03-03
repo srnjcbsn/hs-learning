@@ -23,14 +23,13 @@ type EffectHypothesis = (EffectKnowledge, EffectKnowledge)
 
 type DomainHypothesis = Map Name EffectHypothesis
 
-newtype OptEffHypothesis = OptEffHypothesis DomainHypothesis
+newtype OptEffHypothesis = OptEffHypothesis DomainHypothesis deriving (Show)
 
 instance Lrn.DomainHypothesis OptEffHypothesis PDDLDomain PDDLProblem ActionSpec where
       update (OptEffHypothesis eff) dom trans  =
         OptEffHypothesis (updateDomainHyp dom eff trans)
       adjustDomain (OptEffHypothesis eff) dom  = domainFromKnowledge dom eff
       fromDomain dom = OptEffHypothesis ( initialHypothesis dom )
-
 -- | Takes a set of uknowns, a pair of unambiguous/ambiguous to add to,
 --   and a set of fluents which is suspected to be unambiguous.
 --   once determined they/it will be added to its respective set

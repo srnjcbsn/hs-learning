@@ -151,7 +151,8 @@ applyAction pddlw ("move-v", [from, to])
 applyAction pddlw ("push-h", [c, soko, cLoc, toLoc])
     | asserts pddlw conditions = Just $ applyFromLoc pddlw soko cLoc
     | otherwise = Nothing
-        where conditions = [ sokobanAt soko
+        where conditions = [
+                           sokobanAt soko
                            , crateAt c cLoc
                            , hAdj soko cLoc
                            , hAdj cLoc toLoc

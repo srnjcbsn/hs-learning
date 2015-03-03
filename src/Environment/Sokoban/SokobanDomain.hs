@@ -71,14 +71,25 @@ moveCond adjPred [from, to] =
         , (clear, [to])
         ]
 
-pushCond :: PredicateSpec -> PredicateSpec -> [Name] -> Formula Argument
-pushCond adjPred goalPred [c, soko, from, to] =
-    con [ (sokobanAt, [from])
+pushCondNotGoal :: PredicateSpec  -> [Name] -> Formula Argument
+pushCondNotGoal adjPred [c, soko, from, to] = poss `conjunction` mapNegate negs where
+    poss = con  [ (sokobanAt, [soko])
+                , (at, [c, from])
+                , (adjPred, [soko, from])
+                , (adjPred, [from, to])
+                , (clear, [to])
+                ]
+    negs = con  [ (goal, [to])
+                ]
+
+pushCondGoal :: PredicateSpec  -> [Name] -> Formula Argument
+pushCondGoal adjPred  [c, soko, from, to] =
+    con [ (sokobanAt, [soko])
         , (at, [c, from])
         , (adjPred, [soko, from])
         , (adjPred, [from, to])
         , (clear, [to])
-        , (goalPred, [to])
+        , (goal, [to])
         ]
 
 moveEff :: [Name] -> Formula Argument
@@ -116,15 +127,15 @@ pushEffNotGoal paras@(c : _) = pushEffShared paras `conjunction` ngPred
 moveH, moveV, pushH, pushV, pushHGoal, pushVGoal :: ActionSpec
 moveH     = mkActionSpec "move-h" moveParas moveTypes (moveCond hAdj) moveEff
 moveV     = mkActionSpec "move-v" moveParas moveTypes (moveCond vAdj) moveEff
-pushH     = mkActionSpec "push-h" pushParas pushTypes (pushCond hAdj notGoal) pushEffNotGoal
-pushV     = mkActionSpec "push-v" pushParas pushTypes (pushCond vAdj notGoal) pushEffNotGoal
-pushHGoal = mkActionSpec "push-h-goal" pushParas pushTypes (pushCond hAdj goal) pushEffGoal
-pushVGoal = mkActionSpec "push-v-goal" pushParas pushTypes (pushCond vAdj goal) pushEffGoal
+pushH     = mkActionSpec "push-h" pushParas pushTypes (pushCondNotGoal hAdj ) pushEffNotGoal
+pushV     = mkActionSpec "push-v" pushParas pushTypes (pushCondNotGoal vAdj ) pushEffNotGoal
+pushHGoal = mkActionSpec "push-h-goal" pushParas pushTypes (pushCondGoal hAdj ) pushEffGoal
+pushVGoal = mkActionSpec "push-v-goal" pushParas pushTypes (pushCondGoal vAdj ) pushEffGoal
 
 sokobanDomain :: PDDLDomain
 sokobanDomain = PDDLDomain
     { dmName = "sokobanDom"
-    , dmPredicates = [hAdj, vAdj, sokobanAt, at, atGoal, clear, goal, notGoal]
+    , dmPredicates = [hAdj, vAdj, sokobanAt, at, atGoal, clear, goal]
     , dmActionsSpecs = [moveH, moveV, pushH, pushV, pushHGoal, pushVGoal]
     , dmConstants = []
     , dmTypes = []
