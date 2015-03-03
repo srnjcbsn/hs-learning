@@ -56,6 +56,7 @@ main = do
     --     let as = fromJust $ actionSpecification dom "move-v"
     --         as' = constructPrecondSchema (preHyp ! "move-v") as
     --       in putStr (ppShow (groundPreconditions as' ["b0x1", "b0x0"]))
+    --putStrLn (ppShow initDom)
     (fenv,dom') <- runv initDom env Nothing
     --(fenv',dom'') <- runv dom' sokoEnv' Nothing
     putStr (ppShow fenv)
@@ -65,7 +66,7 @@ main = do
     --printOut outp
     --printOut outp2
     where
-        sokoWorld = SS.world
+        sokoWorld = WS.world
         sokoEnv = fromWorld sokoWorld
         sokoWorld' = BS.world
         sokoEnv' = fromWorld sokoWorld'

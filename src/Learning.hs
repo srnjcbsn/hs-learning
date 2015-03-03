@@ -129,7 +129,7 @@ run planner view oldDomain problem  env plan bound apps =
            in do --putStrLn $ "running: did action " ++ (ppShow act)
                  --putStrLn $ "running: new state: " ++ (ppShow s')
                  --hFlush stdout
-                 _ <- doActs
+                 -- _ <- doActs
                  actionPerformed view act (isJust s')
                  return $ Left (env', newDom, newPlan, newBound, apps')
          Right ans -> return $ Right ans

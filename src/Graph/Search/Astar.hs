@@ -23,7 +23,8 @@ updateFrontier :: (ForwardSearchGraph g v e)
 updateFrontier graph explored frontier@(queue,vMap) (v, cost, path) =
   let isExplored = Set.member v explored
       oldPriority = PrioQ.priority queue v
-      newPriority = cost + heuristicCostToGoal graph v
+      heuCost = traceShowId $ heuristicCostToGoal graph v
+      newPriority = cost + heuCost
       addedToFrontier =
         ( PrioQ.insert newPriority v queue
         , Map.insert v (cost, path) vMap )
