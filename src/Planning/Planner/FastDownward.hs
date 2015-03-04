@@ -126,7 +126,7 @@ fastDownward fd dom prob temp =
             ec <- waitForProcess pH
             putStrLn $ tmp </> planName fd
             putStrLn (show ec)
-            -- threadDelay $ (10 ^ 12 :: Int)
+            threadDelay $ (10 ^ 12 :: Int)
             parsePlan $ tmp </> planName fd
 
 -- TODO: If the file can be read, but not parsed, print the contents

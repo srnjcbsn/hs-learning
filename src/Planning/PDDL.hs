@@ -131,12 +131,15 @@ writeArgumentList as = unwords (map writeArgument as)
 -- writeParameterList :: [String] -> String
 -- writeParameterList ps = writeArgumentList $ map Ref ps
 
-writeTypedParameterList :: [(Name, Type)] -> String
-writeTypedParameterList ts@((_, t) : _) = sameList ++ " - " ++ t ++ " " ++ rest
-    where sameList = unwords $ map (writeArgument . Ref . fst) same
+writeTypedList :: (Name -> String) -> [(Name, Type)] -> String
+writeTypedList w ts@((_, t) : _) = sameList ++ " - " ++ t ++ " " ++ rest
+    where sameList = unwords $ map (w . fst) same
           (same, different) = span ((t ==) . snd) ts
-          rest = writeTypedParameterList different
-writeTypedParameterList [] = ""
+          rest = writeTypedList w different
+writeTypedList _ [] = ""
+
+writeTypedParameterList :: [(Name, Type)] -> String
+writeTypedParameterList = writeTypedList (writeArgument . Ref)
 
 writeFluentPredicate :: FluentPredicate -> String
 writeFluentPredicate (Predicate pname as) =
@@ -175,7 +178,8 @@ writeProblem :: PDDLProblem -> String
 writeProblem prob =
     let defineStr = "(define (problem " ++ probName prob ++ ")"
         domStr    = "(:domain " ++ probDomain prob ++ ")"
-        objsStr   = "(:objects " ++ unwords (probObjs prob) ++ ")"
+        objs      = writeTypedList id $ Map.toList (probTypes prob)
+        objsStr   = "(:objects " ++ objs ++ ")"
         initStr   = "(:init " ++ writeState (probState prob) ++ ")"
         goalStr   = "(:goal " ++ writeGrFormula (probGoal prob) ++ ")"
     in intercalate "\n\t" [defineStr, domStr, objsStr, initStr, goalStr] ++ ")"
