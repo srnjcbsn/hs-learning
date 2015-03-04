@@ -54,11 +54,13 @@ main = do
     clearScreen
     setTitle "SOKOBAN!"
     --putStrLn (ppShow $ initialState prob)
-    (_, dom') <- runv  initDom ssProb ssEnv
-    (_, dom'') <- runv  dom' lsProb lsEnv
-    (fenv, dom''') <- runv  dom'' bsProb bsEnv
+    -- (_, dom') <- runv  initDom ssProb ssEnv
+    -- (_, dom'') <- runv  dom' lsProb lsEnv
+    -- (fenv, dom''') <- runv  dom'' bsProb bsEnv
+    writeFile "sokoProb.pddl" (writeProblem ssProb)
+    (fenv, dom) <- runv initDom ssProb ssEnv
     putStrLn (ppShow fenv)
-    putStrLn (ppShow dom''')
+    -- putStrLn (ppShow dom''')
     return ()
     where
         bsWorld = BS.world
@@ -69,19 +71,19 @@ main = do
         lsEnv = fromWorld lsWorld
         lsProb = toProblem lsWorld
 
-        ssWorld = SS.world
+        ssWorld = SS.world2
         ssEnv = fromWorld ssWorld
         ssProb = toProblem ssWorld
         --runn = run astar dom prob
-        runv ldom = runUntilSolved astar (sokobanView "log.log") ldom
+        runv ldom = runUntilSolved fd (sokobanView "log.log") ldom
         dom = sokobanDomain
         astar = Astar Nothing
-        --fd = mkFastDownard dom prob
+        fd = mkFastDownard dom ssProb
         iniPreDomHyp = fromDomain dom :: OptPreHypothesis
         iniEffDomHyp = fromDomain dom :: OptEffHypothesis
 
         manyhyp = ManyHypothesis [
-                         HypBox iniPreDomHyp,
-                         HypBox iniEffDomHyp
+                        --  HypBox iniPreDomHyp,
+                        --  HypBox iniEffDomHyp
                       ] :: ManyHypothesis
         initDom = toLearningDomain manyhyp dom
