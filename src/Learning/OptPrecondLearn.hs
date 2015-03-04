@@ -91,7 +91,7 @@ isSingleton = (== 1) . TSet.size
 
 removeSetsWithKnowns :: CNF -> (Set FluentPredicate, Set FluentPredicate) -> CNF
 removeSetsWithKnowns cnfs kns
-    | TSet.size kns > 0 = Set.filter (not . TSet.isSubSetOf kns) cnfs
+    | TSet.size kns > 0 = Set.filter (not . TSet.doesOverlap kns) cnfs
     | otherwise = cnfs
 
 extractKnowns :: CNF -> (Set FluentPredicate, Set FluentPredicate, CNF)
@@ -128,7 +128,7 @@ updatePrecHypothesis domain (posKnowledge, negKnowledge, cnfs) (s, action, s') =
                   $ ground domain action unkns `Set.intersection` s
 
         posRelevant = rel posUnkns
-        negRelevant = rel negUnkns
+        negRelevant = trace ("CNFS: (" ++ show action ++ ")" ++ ppShow cnfs ++ "\n") $ rel negUnkns
     in case s' of
          Nothing  -> ( (posUnkns \\ posKns', posKns')
                      , (negUnkns \\ negKns', negKns')
@@ -136,27 +136,35 @@ updatePrecHypothesis domain (posKnowledge, negKnowledge, cnfs) (s, action, s') =
                      )
             where -- All predicates that are not in the state are candidates
                   -- for being positive preconditions
-                  posCands = posUnkns \\ posRelevant
+                  posCands = trace ("posUnks: (" ++ show action ++ ")" ++ ppShow posUnkns ++ "\n")
+                           $ trace ("posrelevant (" ++ show action ++ ")" ++ ppShow posRelevant ++ "\n")
+                           $ posUnkns \\ posRelevant
 
                   -- All predicates that are in the state are candidates
                   -- for being negative preconditions
+                --   trace ("New CNFs: " ++ show cnfs' ++ "\n") $
                   negCands = negUnkns `Set.intersection` negRelevant
-                  cands = (posCands, negCands)
+                  cands = trace ("Nothing state for action " ++ ppShow action ++ " in state " ++ show s ++ "\n")
+                        $ trace ("cands: (" ++ show action ++") " ++ ppShow (posCands, negCands))
+                        $ trace ("negUnks: (" ++ show action ++ ")" ++ ppShow negUnkns ++ "\n")
+                        $ trace ("negrelevant (" ++ show action ++ ")" ++ ppShow negRelevant ++ "\n")
+                        $ (posCands, negCands)
+
                   (posKns', negKns', cnfs')
-                    | isSingleton cands =
+                    | isSingleton cands = trace ("New CNFs: (" ++ show action ++ ")" ++ show (removeSetsWithKnowns cnfs cands) ++ "\n") $
                         ( Set.union posKns posCands
-                        , Set.union negKns negCands
+                        , trace ("neg knowns: " ++ ppShow (Set.union negKns negCands)) $ Set.union negKns negCands
                         , removeSetsWithKnowns cnfs cands
                         )
-                    | otherwise = (posKns, negKns, addToCandiates cnfs cands)
+                    | otherwise =  trace ("New CNFs: (" ++ show action ++ ")" ++ ppShow (addToCandiates cnfs cands) ++ "\n") $ (posKns, negKns, addToCandiates cnfs cands)
 
-         Just _ -> ( (posUnkns' \\ extractPosKns, Set.union extractPosKns posKns)
+         Just s'' ->  ( (posUnkns' \\ extractPosKns, Set.union extractPosKns posKns)
                    , (negUnkns' \\ extractNegKns, Set.union extractNegKns negKns)
                    , cnfs'')
             where -- All preds not in the state cant be a positive precond
-                  posUnkns' = posUnkns `Set.intersection` posRelevant
+                  posUnkns' = trace (show s'' ++ "\n for action " ++ show action ++ " in state \n" ++ show s ++ "\n") posUnkns `Set.intersection` posRelevant
                   -- All preds in the state cant be a negative precond
-                  negUnkns' = negUnkns \\ negRelevant
+                  negUnkns' =  negUnkns \\ negRelevant
                   -- all proved to be false can't be candidates
                   cnfs' = Set.map (TSet.intersection (posUnkns', negUnkns')) cnfs
-                  (extractPosKns, extractNegKns, cnfs'')  = extractKnowns cnfs'
+                  (extractPosKns, extractNegKns, cnfs'')  = trace ("New CNFs: (" ++ show action ++ ")" ++ ppShow cnfs' ++ "\n") $ extractKnowns cnfs'
