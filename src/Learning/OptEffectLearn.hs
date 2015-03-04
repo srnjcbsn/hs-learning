@@ -8,6 +8,7 @@ import           Data.Maybe          (catMaybes, fromJust)
 import           Data.Set            (Set, (\\))
 import qualified Data.Set            as Set
 import           Debug.Trace
+import Data.Typeable
 
 import           Text.Show.Pretty (ppShow)
 import           Learning.Induction
@@ -23,7 +24,7 @@ type EffectHypothesis = (EffectKnowledge, EffectKnowledge)
 
 type DomainHypothesis = Map Name EffectHypothesis
 
-newtype OptEffHypothesis = OptEffHypothesis DomainHypothesis deriving (Show)
+newtype OptEffHypothesis = OptEffHypothesis DomainHypothesis deriving (Show, Eq, Typeable)
 
 instance Lrn.DomainHypothesis OptEffHypothesis PDDLDomain PDDLProblem ActionSpec where
       update (OptEffHypothesis eff) dom trans  =

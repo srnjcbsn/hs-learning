@@ -3,13 +3,13 @@ module Environment.Sokoban.SokobanView where
 import           Data.Map                 (Map)
 import qualified Data.Map                 as Map
 import           Data.Maybe               (fromMaybe)
-import           System.Console.ANSI
-import           Text.Show.Pretty
-import           System.IO(hFlush, stdout)
 import           Environment.Sokoban
 import           Environment.Sokoban.PDDL
 import           Planning
 import           Planning.Viewing
+import           System.Console.ANSI
+import           System.IO                (hFlush, stdout)
+import           Text.Show.Pretty
 
 goalSymbol, sokobanSymbol :: Char
 goalSymbol = 'X'

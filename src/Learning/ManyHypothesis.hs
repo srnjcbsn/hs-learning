@@ -3,14 +3,22 @@ module Learning.ManyHypothesis where
 import Planning.PDDL
 import Planning.PDDL.Logic()
 import Learning
+import Data.Typeable
 
 data HypBox =
-  forall hyp. (DomainHypothesis hyp PDDLDomain PDDLProblem ActionSpec, Show hyp) => HypBox hyp
+  forall hyp. (DomainHypothesis hyp PDDLDomain PDDLProblem ActionSpec, Show hyp, Eq hyp, Typeable hyp) => HypBox hyp
 
 instance Show HypBox where
-  show (HypBox hyp) = show hyp
+    show (HypBox hyp) = show hyp
 
-newtype ManyHypothesis = ManyHypothesis [HypBox] deriving (Show)
+instance Eq HypBox where
+    HypBox a == HypBox b =
+        case cast a of Just a' -> a' == b
+                       Nothing -> False
+
+
+newtype ManyHypothesis = ManyHypothesis [HypBox] deriving (Show, Eq)
+
 
 instance DomainHypothesis ManyHypothesis PDDLDomain PDDLProblem ActionSpec where
       update (ManyHypothesis (hyps)) domain trans  =

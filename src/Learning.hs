@@ -18,7 +18,7 @@ import qualified Data.Map as Map
 --import qualified Data.Set as Set
 --import Data.List(find)
 
-class Domain dom p as => DomainHypothesis dh dom p as | dh -> dom p as where
+class (Domain dom p as, Eq dh) => DomainHypothesis dh dom p as | dh -> dom p as where
     update :: dh -> dom -> Transition -> dh
     adjustDomain :: dh -> dom -> dom
     fromDomain :: dom -> dh
@@ -119,21 +119,7 @@ runRound planner view oldDomain problem  env plan bound apps =
               newPlan | isNothing s' = Nothing
                       | planIsDone = Nothing
                       | otherwise = plan''
-              -- doActs =
-              --   if not psIsSameAsNs then do
-              --     putStrLn ("Action: "++ ppShow act)
-              --     putStrLn ("plan State: "++ ppShow planState)
-              --     putStrLn ("real State: "++ ppShow s')
-              --     putStrLn ("domain: " ++ ppShow oldDomain)
-              --     error "GoodBye"
-              --   else return ()
-              -- apps'' | planStateIsSameAsNewState = []
-              --        | otherwise                 = apps'
-           in do --putStrLn $ "running: did action " ++ (ppShow act)
-                 --putStrLn $ "running: new state: " ++ (ppShow s')
-                 --hFlush stdout
-                 -- _ <- doActs
-                 actionPerformed view act (isJust s')
+           in do actionPerformed view act (isJust s')
                  return $ Left (env', newDom, newPlan, newBound, apps')
          Right ans -> return $ Right ans
 
@@ -148,7 +134,7 @@ runEpisode :: ( BoundedPlanner ep
            -> prob
            -> env
            -> Maybe Int
-           -> IO (Maybe env,dom)
+           -> IO (Maybe env, dom)
 runEpisode planr view dom prob env startBound =
   let solved sp senv = isSolved sp (Env.toState senv)
       runv rdom rprob renv rplan bound tried =
@@ -188,8 +174,6 @@ runUntilSolved planner view domain prob env =
             (Nothing, newDom) | newDom == dom -> error "Environment is unsolvable"
             (Nothing, newDom) -> run' Nothing newDom
    in run' (Just 1) domain
-
-
 
 newtype (Domain dom p as, DomainHypothesis dh dom p as) =>
       LearningDomain' dom dh p as =  LearningDomain' (dom, dh)

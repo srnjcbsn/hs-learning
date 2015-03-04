@@ -12,7 +12,7 @@ import           Environment.Sokoban.SokobanView
 import           Environment.Sokoban.PDDL
 import qualified Environment.Sokoban.Samples.SimpleSample as SS
 import qualified Environment.Sokoban.Samples.LargeSample  as LS
-import qualified Environment.Sokoban.Samples.BigSample   as BS
+import qualified Environment.Sokoban.Samples.BigSample    as BS
 import qualified Environment.Sokoban.Samples.WikiSample   as WS
 import           Environment.Sokoban.SokobanDomain
 import           Graph.Search.Astar                       as Astar
@@ -40,11 +40,13 @@ instance ExternalPlanner Astar (LearningDomain' PDDLDomain ManyHypothesis PDDLPr
         Just b -> return $ Astar.searchBounded (PDDLGraph (d,p)) (initialState p) b
         Nothing -> return $ Astar.search (PDDLGraph (d,p)) (initialState p)
 
+instance ExternalPlanner FastDownward (LearningDomain' PDDLDomain ManyHypothesis PDDLProblem ActionSpec) PDDLProblem ActionSpec where
+    makePlan fd (LearningDomain' (d, _)) = makePlan' fd d
+
 toFormula :: PDDLDomain -> PreDomainHypothesis -> [(String, Formula Argument)]
 toFormula dom dHyp =
   map (\as -> (asName as, constructPrecondFormula (dHyp ! asName as)))
                                     $ dmActionsSpecs dom
-
 
 main :: IO ()
 main = do
@@ -52,50 +54,24 @@ main = do
     clearScreen
     setTitle "SOKOBAN!"
     putStrLn (ppShow $ initialState prob)
-    --putStrLn (ppShow (toFormula dom iniPreDomHyp))
-    --outp <- runn env iniPreDomHyp iniEffDomHyp Nothing
-    -- case outp of
-    --   Left (env',preHyp,_,_) ->
-    --     let as = fromJust $ actionSpecification dom "move-v"
-    --         as' = constructPrecondSchema (preHyp ! "move-v") as
-    --       in putStr (ppShow (groundPreconditions as' ["b0x1", "b0x0"]))
-    --putStrLn (ppShow initDom)
-    (fenv,dom') <- runv initDom env Nothing
-    --(fenv',dom'') <- runv dom' sokoEnv' Nothing
+    (fenv, dom') <- runv initDom env
     putStr (ppShow fenv)
-    --putStr (ppShow fenv')
     return ()
-    --outp2 <- continue outp
-    --printOut outp
-    --printOut outp2
     where
-        sokoWorld = WS.world
+        sokoWorld = SS.world
         sokoEnv = fromWorld sokoWorld
-        sokoWorld' = BS.world
-        sokoEnv' = fromWorld sokoWorld'
         --runn = run astar dom prob
-        runv ldom = runEpisode astar (sokobanView "log.log") ldom prob
-        -- continue outp =
-        --   case outp of
-        --     Left (env',preHyp,effHyp,plan) -> runn env' preHyp effHyp plan
-        --     Right eror -> error ("stopped " ++ show eror)
-        -- printOut outp =
-        --   case outp of
-        --    Left (env,preHyp,effHyp,_) ->
-        --     do putStrLn ("preconds: " ++ (ppShow effHyp))
-        --    Right True -> putStrLn ("Success")
-        --    Right False -> putStrLn ("failed")
+        runv ldom = runUntilSolved fd (sokobanView "log.log") ldom prob
         env = sokoEnv
         dom = sokobanDomain
         prob = toProblem sokoWorld
-        --env = SBEnvironment (initialState prob, dom)
         astar = Astar Nothing
-        -- fd = mkFastDownard dom prob
+        fd = mkFastDownard dom prob
         iniPreDomHyp = fromDomain dom :: OptPreHypothesis
         iniEffDomHyp = fromDomain dom :: OptEffHypothesis
 
         manyhyp = ManyHypothesis [
-                         --HypBox iniPreDomHyp,
-                         --HypBox iniEffDomHyp
+                         HypBox iniPreDomHyp,
+                         HypBox iniEffDomHyp
                       ] :: ManyHypothesis
         initDom = toLearningDomain manyhyp dom

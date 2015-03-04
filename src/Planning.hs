@@ -33,7 +33,7 @@ class BoundedPlanner p where
 class (Domain d p as, Problem p) => ExternalPlanner ep d p as where
     makePlan :: ep -> d -> p -> IO (Maybe Plan)
 
-class (ActionSpecification as p) => Domain d p as | d -> as where
+class (ActionSpecification as p, Eq d) => Domain d p as | d -> as where
     actionSpecification  :: d -> Name -> Maybe as
     actions              :: d -> [as]
     apply                :: d -> State -> Action -> Maybe State

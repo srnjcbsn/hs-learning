@@ -30,6 +30,9 @@ data FastDownward = FastDownward
 instance ExternalPlanner FastDownward PDDLDomain PDDLProblem ActionSpec where
     makePlan = makePlan'
 
+instance BoundedPlanner FastDownward where
+    setBound f _ = f
+
 -- | construct a default 'FastDownward' record, where
 --
 -- * the path to the fast-downward program is @fd/fast-downward.py@

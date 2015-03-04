@@ -6,6 +6,8 @@ import           Planning.PDDL
 import           Planning.PDDL.Logic
 import Debug.Trace
 import Text.Show.Pretty (ppShow)
+import Data.Typeable
+
 
 import           Data.Map            (Map, (!))
 import qualified Data.Map            as Map
@@ -23,7 +25,7 @@ type PreKnowledge = (Knowledge, Knowledge, CNF)
 
 type PreDomainHypothesis = Map Name PreKnowledge
 
-newtype OptPreHypothesis = OptPreHypothesis PreDomainHypothesis deriving (Show)
+newtype OptPreHypothesis = OptPreHypothesis PreDomainHypothesis deriving (Show, Eq, Typeable)
 
 instance Lrn.DomainHypothesis OptPreHypothesis PDDLDomain PDDLProblem ActionSpec where
       update (OptPreHypothesis eff) dom trans  =
