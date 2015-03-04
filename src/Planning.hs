@@ -1,9 +1,9 @@
 module Planning where
 
 import           Data.Set      (Set)
---import Control.Monad (replicateM)
+import Control.Monad (liftM)
 import           Data.TupleSet (TupleSet)
-
+import           Data.Maybe(fromMaybe)
 import Logic.Formula
 
 type Object = String
@@ -38,6 +38,10 @@ class (ActionSpecification as p, Eq d) => Domain d p as | d -> as where
     actions              :: d -> [as]
     apply                :: d -> State -> Action -> Maybe State
     allApplicableActions :: Problem p => d -> p -> State -> [Action]
+    isActionApplicable   :: d -> State -> Action -> Bool
+    isActionApplicable dom s (aname,args) =
+      fromMaybe False $ liftM (\as -> isApplicable as s args)
+                              (actionSpecification dom aname)
 
 class Problem p where
     initialState :: p -> State

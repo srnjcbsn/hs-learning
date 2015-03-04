@@ -33,16 +33,17 @@ isStateExplored :: Finder -> State -> Bool
 isStateExplored finder state = fromMaybe False
                                $ liftM null (Map.lookup state finder)
 
-findAction :: (State -> [Action]) -> Finder -> State -> (Maybe Action, Finder)
-findAction actsFunc finder state =
+findAction :: (Action -> Bool) -> (State -> [Action]) -> Finder -> State -> (Maybe Action, Finder)
+findAction isAppAble actsFunc finder state =
     let acts = Map.lookup state finder
-     in case acts of
+        filtered = liftM (filter isAppAble) acts
+     in case filtered of
           Just (act:rest) -> (Just act, Map.insert state rest finder)
           Just [] -> (Nothing, finder)
-          Nothing -> findAction actsFunc
+          Nothing -> findAction isAppAble actsFunc
                                 (Map.insert state (actsFunc state) finder)
-
                                 state
+                                
 emptyFinder :: Finder
 emptyFinder = Map.empty
 
@@ -66,7 +67,7 @@ refine planner domain problem maybeCurPlan bound finder = outp where
     s = initialState problem
     actGen = allApplicableActions domain problem
     --sExplored = isStateExplored finder s
-    (finderAct, finder') = findAction actGen finder s
+    (finderAct, finder') = findAction (isActionApplicable domain s) actGen finder s
     outp | isJust finderAct && isMEq bound 1 =
                return (Just [fromJust finderAct], finder')
          | isNothing maybeCurPlan =
@@ -123,13 +124,13 @@ runRound planner view oldDomain problem  env plan bound apps =
                       | planIsDone = Nothing
                       | otherwise = plan''
 
-              acts = if not psIsSameAsNs
-                   then do
-                       putStrLn ("plan State didn't match: "
-                                  ++ (show $ isNothing planState)
-                                  ++" "++ (show $ isNothing s'))
-
-                   else return ()
+              -- acts = if not psIsSameAsNs
+              --      then do
+              --          putStrLn ("plan State didn't match: "
+              --                     ++ (show $ isNothing planState)
+              --                     ++" "++ (show $ isNothing s'))
+              --
+              --      else return ()
 
            in do
              --acts

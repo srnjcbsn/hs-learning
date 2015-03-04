@@ -1,4 +1,4 @@
-module Learning.OptEffectLearn (OptEffHypothesis) where
+module Learning.OptEffectLearn  where
 
 import           Data.Function       (on)
 import           Data.List           (deleteBy, unionBy)
