@@ -54,11 +54,11 @@ main = do
     clearScreen
     setTitle "SOKOBAN!"
     --putStrLn (ppShow $ initialState prob)
-    (_, dom') <- runv  initDom ssProb ssEnv
-    (_, dom'') <- runv  dom' lsProb lsEnv
-    (fenv, dom''') <- runv  dom'' bsProb bsEnv
-    putStrLn (ppShow fenv)
-    putStrLn (ppShow dom''')
+    (_, LearningDomain'(_,hyp)) <- runv  initDom ssProb ssEnv
+    --(_, dom'') <- runv  dom' lsProb lsEnv
+    --(fenv, dom''') <- runv  dom'' bsProb bsEnv
+    --putStrLn (ppShow fenv)
+    putStrLn (ppShow hyp)
     return ()
     where
         bsWorld = BS.world

@@ -2,7 +2,7 @@ module Learning where
 
 import           Control.Monad
 import           Data.Maybe
---import           Text.Show.Pretty
+import           Text.Show.Pretty
 
 import           Environment              (Environment)
 import qualified Environment              as Env
@@ -107,11 +107,14 @@ runRound planner view oldDomain problem  env plan bound apps =
           let planState = apply oldDomain s act
               psIsSameAsNs = fromMaybe False
                                         $ liftM2 (==) planState  s'
-
+              psIsNotSameAsNs = fromMaybe False
+                                        $ liftM2 (/=) planState  s'
               planIsDone = fromMaybe False (liftM null plan'')
-              planRunning = fromMaybe False (liftM ((> 0) . length ) plan'')
-              newBound | psIsSameAsNs && planIsDone  = liftM (2 *) bound
-                       | psIsSameAsNs && planRunning = bound
+              --planRunning = fromMaybe False (liftM ((> 0) . length ) plan'')
+              newBound | planIsDone  = liftM (2 *) bound
+                       -- psIsSameAsNs && planRunning = bound
+                       | psIsSameAsNs                = bound
+                       | psIsNotSameAsNs             = bound
                        | isJust s' && isMEq bound 1  = Just 2
                        | otherwise                   = Just 1
 
@@ -119,8 +122,19 @@ runRound planner view oldDomain problem  env plan bound apps =
               newPlan | isNothing s' = Nothing
                       | planIsDone = Nothing
                       | otherwise = plan''
-           in do actionPerformed view act (isJust s')
-                 return $ Left (env', newDom, newPlan, newBound, apps')
+
+              acts = if not psIsSameAsNs
+                   then do
+                       putStrLn ("plan State didn't match: "
+                                  ++ (show $ isNothing planState)
+                                  ++" "++ (show $ isNothing s'))
+
+                   else return ()
+
+           in do
+             --acts
+             actionPerformed view act (isJust s')
+             return $ Left (env', newDom, newPlan, newBound, apps')
          Right ans -> return $ Right ans
 
 runEpisode :: ( BoundedPlanner ep
@@ -134,12 +148,12 @@ runEpisode :: ( BoundedPlanner ep
            -> prob
            -> env
            -> Maybe Int
-           -> IO (Maybe env, dom)
+           -> IO (Maybe env, dom, Maybe Int)
 runEpisode planr view dom prob env startBound =
   let solved sp senv = isSolved sp (Env.toState senv)
       runv rdom rprob renv rplan bound tried =
         if solved rprob renv
-        then return (Just renv, rdom)
+        then return (Just renv, rdom, bound)
         else
           do planMade view rplan
              res <- runRound planr view rdom rprob renv rplan bound tried
@@ -151,7 +165,7 @@ runEpisode planr view dom prob env startBound =
                       --putStrLn ("New bound: " ++ show bound')
                       runv  dom' prob' env' plan' bound' tried'
                Right True -> error "Planner says problem is solved, environment does not"
-               Right False -> return (Nothing, rdom)
+               Right False -> return (Nothing, rdom, bound)
     in envChanged view env >> runv dom prob env Nothing startBound emptyFinder
 
 runUntilSolved :: ( BoundedPlanner ep
@@ -170,9 +184,11 @@ runUntilSolved planner view domain prob environment =
   let run' bound dom env =
         do res <- runEpisode planner view dom prob env bound
            case res of
-            (Just doneEnv, newDom) -> return (doneEnv, newDom)
-            (Nothing, newDom) | newDom == dom -> error "Environment is unsolvable"
-            (Nothing, newDom) -> run' Nothing newDom environment
+            (Just doneEnv, newDom, _) -> return (doneEnv, newDom)
+            (Nothing, newDom, newBound) | isNothing newBound ->
+                error ("Environment is unsolvable, final dom:"
+                      ++ ppShow newDom)
+            (Nothing, newDom, _) -> run' Nothing newDom environment
    in run' (Just 1) domain environment
 
 newtype (Domain dom p as, DomainHypothesis dh dom p as) =>
