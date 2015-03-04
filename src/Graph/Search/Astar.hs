@@ -8,7 +8,7 @@ import Data.Map (Map)
 --import Data.Set (Set)
 import Data.PriorityQueue as PrioQ
 import Data.Maybe (mapMaybe,fromMaybe)
-import Debug.Trace
+--import Debug.Trace
 import Control.Monad (liftM)
 
 --type SearchNode v e = (v,[e])
@@ -23,7 +23,7 @@ updateFrontier :: (ForwardSearchGraph g v e)
 updateFrontier graph explored frontier@(queue,vMap) (v, cost, path) =
   let isExplored = Set.member v explored
       oldPriority = PrioQ.priority queue v
-      heuCost = traceShowId $ heuristicCostToGoal graph v
+      heuCost = heuristicCostToGoal graph v
       newPriority = cost + heuCost
       addedToFrontier =
         ( PrioQ.insert newPriority v queue

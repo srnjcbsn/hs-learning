@@ -53,20 +53,30 @@ main = do
     catchIOError (removeFile logPath) (\_ -> return ())
     clearScreen
     setTitle "SOKOBAN!"
-    putStrLn (ppShow $ initialState prob)
-    (fenv, dom') <- runv initDom env
-    putStr (ppShow fenv)
+    --putStrLn (ppShow $ initialState prob)
+    (_, dom') <- runv  initDom ssProb ssEnv
+    (_, dom'') <- runv  dom' lsProb lsEnv
+    (fenv, dom''') <- runv  dom'' bsProb bsEnv
+    putStrLn (ppShow fenv)
+    putStrLn (ppShow dom''')
     return ()
     where
-        sokoWorld = SS.world
-        sokoEnv = fromWorld sokoWorld
+        bsWorld = BS.world
+        bsEnv = fromWorld bsWorld
+        bsProb = toProblem bsWorld
+
+        lsWorld = LS.world
+        lsEnv = fromWorld lsWorld
+        lsProb = toProblem lsWorld
+
+        ssWorld = SS.world
+        ssEnv = fromWorld ssWorld
+        ssProb = toProblem ssWorld
         --runn = run astar dom prob
-        runv ldom = runUntilSolved fd (sokobanView "log.log") ldom prob
-        env = sokoEnv
+        runv ldom = runUntilSolved astar (sokobanView "log.log") ldom
         dom = sokobanDomain
-        prob = toProblem sokoWorld
         astar = Astar Nothing
-        fd = mkFastDownard dom prob
+        --fd = mkFastDownard dom prob
         iniPreDomHyp = fromDomain dom :: OptPreHypothesis
         iniEffDomHyp = fromDomain dom :: OptEffHypothesis
 

@@ -166,14 +166,14 @@ runUntilSolved :: ( BoundedPlanner ep
                -> prob
                -> env
                -> IO (env,dom)
-runUntilSolved planner view domain prob env =
-  let run' bound dom =
+runUntilSolved planner view domain prob environment =
+  let run' bound dom env =
         do res <- runEpisode planner view dom prob env bound
            case res of
             (Just doneEnv, newDom) -> return (doneEnv, newDom)
             (Nothing, newDom) | newDom == dom -> error "Environment is unsolvable"
-            (Nothing, newDom) -> run' Nothing newDom
-   in run' (Just 1) domain
+            (Nothing, newDom) -> run' Nothing newDom environment
+   in run' (Just 1) domain environment
 
 newtype (Domain dom p as, DomainHypothesis dh dom p as) =>
       LearningDomain' dom dh p as =  LearningDomain' (dom, dh)

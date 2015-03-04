@@ -29,9 +29,9 @@ visTile m c | xCoord c == 0 = ['\n', t]
 
 visualize :: SokobanPDDL -> IO ()
 visualize pddl =
-    do --clearScreen
+    do clearScreen
        putStrLn worldStr
-       --hFlush stdout
+       hFlush stdout
     where
     w = world pddl
     tileMap = Map.map tileSymbol (coordMap w)
