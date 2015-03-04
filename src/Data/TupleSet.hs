@@ -11,8 +11,11 @@ union (pos,neg) (pos2,neg2) = (Set.union pos pos2, Set.union neg neg2)
 
 -- | Gets two intersection of a tuples with sets
 isSubSetOf :: Ord a => (Set a, Set a) -> (Set a, Set a) -> Bool
-isSubSetOf (s1a,s1b) (s2a,s2b) =
+isSubSetOf (s1a, s1b) (s2a, s2b) =
     Set.isSubsetOf s1a s2a && Set.isSubsetOf s1b s2b
+
+doesOverlap :: Ord a => TupleSet a -> TupleSet a -> Bool
+doesOverlap t1 t2 = size  (intersection t1 t2) > 0
 
 intersection :: Ord a => (Set a, Set a) -> (Set a, Set a) -> (Set a, Set a)
 intersection (s1a,s1b) (s2a,s2b) =
