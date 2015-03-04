@@ -28,12 +28,12 @@ aName :: Action -> Name
 aName = fst
 
 class BoundedPlanner p where
-    setBound :: p -> Int -> p
+    setBound :: p -> Maybe Int -> p
 
 class (Domain d p as, Problem p) => ExternalPlanner ep d p as where
     makePlan :: ep -> d -> p -> IO (Maybe Plan)
 
-class ActionSpecification as p => Domain d p as | d -> as where
+class (ActionSpecification as p) => Domain d p as | d -> as where
     actionSpecification  :: d -> Name -> Maybe as
     actions              :: d -> [as]
     apply                :: d -> State -> Action -> Maybe State
@@ -44,7 +44,7 @@ class Problem p where
     isSolved     :: p -> State -> Bool
     objects      :: p -> [Object]
     setInitialState :: p -> State -> p
-    
+
 
 class Problem p => ActionSpecification a p | a -> p where
     name              :: a -> String

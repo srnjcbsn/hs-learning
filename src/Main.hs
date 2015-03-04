@@ -29,13 +29,16 @@ import           Learning.ManyHypothesis
 
 logPath = "./log.log"
 
-data Astar = Astar Int
+data Astar = Astar (Maybe Int)
 
 instance BoundedPlanner Astar where
   setBound (Astar _) = Astar
 
 instance ExternalPlanner Astar (LearningDomain' PDDLDomain ManyHypothesis PDDLProblem ActionSpec) PDDLProblem ActionSpec where
-    makePlan (Astar bound) (LearningDomain' (d,_)) p = return $ Astar.searchBounded (PDDLGraph (d,p)) (initialState p) bound
+    makePlan (Astar bound) (LearningDomain' (d,_)) p =
+      case bound of
+        Just b -> return $ Astar.searchBounded (PDDLGraph (d,p)) (initialState p) b
+        Nothing -> return $ Astar.search (PDDLGraph (d,p)) (initialState p)
 
 toFormula :: PDDLDomain -> PreDomainHypothesis -> [(String, Formula Argument)]
 toFormula dom dHyp =
@@ -71,7 +74,7 @@ main = do
         sokoWorld' = BS.world
         sokoEnv' = fromWorld sokoWorld'
         --runn = run astar dom prob
-        runv ldom = runnerVisualized astar (sokobanView "log.log") ldom prob
+        runv ldom = runEpisode astar (sokobanView "log.log") ldom prob
         -- continue outp =
         --   case outp of
         --     Left (env',preHyp,effHyp,plan) -> runn env' preHyp effHyp plan
@@ -86,7 +89,7 @@ main = do
         dom = sokobanDomain
         prob = toProblem sokoWorld
         --env = SBEnvironment (initialState prob, dom)
-        astar = Astar 1
+        astar = Astar Nothing
         -- fd = mkFastDownard dom prob
         iniPreDomHyp = fromDomain dom :: OptPreHypothesis
         iniEffDomHyp = fromDomain dom :: OptEffHypothesis

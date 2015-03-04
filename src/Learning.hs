@@ -2,7 +2,7 @@ module Learning where
 
 import           Control.Monad
 import           Data.Maybe
-import           Text.Show.Pretty
+--import           Text.Show.Pretty
 
 import           Environment              (Environment)
 import qualified Environment              as Env
@@ -46,6 +46,9 @@ findAction actsFunc finder state =
 emptyFinder :: Finder
 emptyFinder = Map.empty
 
+isMEq :: Eq a => Maybe a -> a -> Bool
+isMEq m v = fromMaybe False $ liftM (== v) m
+
 refine  :: ( BoundedPlanner ep
            , Domain dom prob as
            , Problem prob
@@ -55,7 +58,7 @@ refine  :: ( BoundedPlanner ep
         -> dom
         -> prob
         -> Maybe Plan
-        -> Int
+        -> Maybe Int
         -> Finder
         -> IO (Maybe Plan, Finder)
 refine planner domain problem maybeCurPlan bound finder = outp where
@@ -64,7 +67,7 @@ refine planner domain problem maybeCurPlan bound finder = outp where
     actGen = allApplicableActions domain problem
     --sExplored = isStateExplored finder s
     (finderAct, finder') = findAction actGen finder s
-    outp | isJust finderAct && bound == 1 =
+    outp | isJust finderAct && isMEq bound 1 =
                return (Just [fromJust finderAct], finder')
          | isNothing maybeCurPlan =
             liftM (flip (,) finder) $ makePlan planner' domain problem
@@ -83,47 +86,47 @@ perform env (Just (action:restPlan)) =
 perform _ (Just []) = Right True
 perform _ Nothing = Right False
 
-run :: ( BoundedPlanner ep
-       , LearningDomain dom prob as
-       , ExternalPlanner ep dom prob as
-       , Environment env)
-    => ep
-    -> View env
-    -> dom
-    -> prob
-    -> env
-    -> Maybe Plan
-    -> Int
-    -> Finder
-    -> IO (Either (env, dom, Maybe Plan, Int, Finder) Bool)
-run planner view oldDomain problem  env plan bound apps =
+runRound  :: ( BoundedPlanner ep
+             , LearningDomain dom prob as
+             , ExternalPlanner ep dom prob as
+             , Environment env)
+          => ep
+          -> View env
+          -> dom
+          -> prob
+          -> env
+          -> Maybe Plan
+          -> Maybe Int
+          -> Finder
+          -> IO (Either (env, dom, Maybe Plan, Maybe Int, Finder) Bool)
+runRound planner view oldDomain problem  env plan bound apps =
   let
   in do (plan',apps') <- refine planner oldDomain problem plan bound apps
         case perform env plan' of
          Left (env', trans@(s,act,s'), plan'') ->
           let planState = apply oldDomain s act
-              planStateIsSameAsNewState = fromMaybe False
+              psIsSameAsNs = fromMaybe False
                                         $ liftM2 (==) planState  s'
 
               planIsDone = fromMaybe False (liftM null plan'')
               planRunning = fromMaybe False (liftM ((> 0) . length ) plan'')
-              newBound | planStateIsSameAsNewState && planIsDone  = bound * 2
-                       | planStateIsSameAsNewState && planRunning = bound
-                       | isJust s' && bound == 1                  = 2
-                       | otherwise                                = 1
+              newBound | psIsSameAsNs && planIsDone  = liftM (2 *) bound
+                       | psIsSameAsNs && planRunning = bound
+                       | isJust s' && isMEq bound 1  = Just 2
+                       | otherwise                   = Just 1
 
               newDom = learn oldDomain trans
               newPlan | isNothing s' = Nothing
                       | planIsDone = Nothing
                       | otherwise = plan''
-              doActs =
-                if not planStateIsSameAsNewState then do
-                  putStrLn ("Action: "++ ppShow act)
-                  putStrLn ("plan State: "++ ppShow planState)
-                  putStrLn ("real State: "++ ppShow s')
-                  putStrLn ("domain: " ++ ppShow oldDomain)
-                  error "GoodBye"
-                else return ()
+              -- doActs =
+              --   if not psIsSameAsNs then do
+              --     putStrLn ("Action: "++ ppShow act)
+              --     putStrLn ("plan State: "++ ppShow planState)
+              --     putStrLn ("real State: "++ ppShow s')
+              --     putStrLn ("domain: " ++ ppShow oldDomain)
+              --     error "GoodBye"
+              --   else return ()
               -- apps'' | planStateIsSameAsNewState = []
               --        | otherwise                 = apps'
            in do --putStrLn $ "running: did action " ++ (ppShow act)
@@ -134,41 +137,63 @@ run planner view oldDomain problem  env plan bound apps =
                  return $ Left (env', newDom, newPlan, newBound, apps')
          Right ans -> return $ Right ans
 
-runnerVisualized :: ( BoundedPlanner ep
-                    , LearningDomain dom prob as
-                    , Problem prob
-                    , ExternalPlanner ep dom prob as
-                    , Environment env)
-                 => ep
-                 -> View env
-                 -> dom
-                 -> prob
-                 -> env
-                 -> Maybe Plan
-                 -> IO (env,dom)
-runnerVisualized planr view dom prob env plan =
+runEpisode :: ( BoundedPlanner ep
+              , LearningDomain dom prob as
+              , Problem prob
+              , ExternalPlanner ep dom prob as
+              , Environment env)
+           => ep
+           -> View env
+           -> dom
+           -> prob
+           -> env
+           -> Maybe Int
+           -> IO (Maybe env,dom)
+runEpisode planr view dom prob env startBound =
   let solved sp senv = isSolved sp (Env.toState senv)
       runv rdom rprob renv rplan bound tried =
         if solved rprob renv
-        then return (renv, rdom)
+        then return (Just renv, rdom)
         else
-          do planMade view plan
-             res <- run planr view rdom rprob renv rplan bound tried
+          do planMade view rplan
+             res <- runRound planr view rdom rprob renv rplan bound tried
              case res of
                Left (env', dom', plan', bound', tried') ->
                  let prob' = setInitialState prob (Env.toState env')
                   in do
                       envChanged view env'
-                      putStrLn ("New bound: " ++ show bound')
+                      --putStrLn ("New bound: " ++ show bound')
                       runv  dom' prob' env' plan' bound' tried'
                Right True -> error "Planner says problem is solved, environment does not"
-               Right False -> error ("Cannot solve problem, planner found no plan with domain: " ++ ppShow rdom)
-    in envChanged view env >> runv dom prob env plan 1 emptyFinder
+               Right False -> return (Nothing, rdom)
+    in envChanged view env >> runv dom prob env Nothing startBound emptyFinder
+
+runUntilSolved :: ( BoundedPlanner ep
+                  , Eq dom
+                  , LearningDomain dom prob as
+                  , Problem prob
+                  , ExternalPlanner ep dom prob as
+                  , Environment env)
+               => ep
+               -> View env
+               -> dom
+               -> prob
+               -> env
+               -> IO (env,dom)
+runUntilSolved planner view domain prob env =
+  let run' bound dom =
+        do res <- runEpisode planner view dom prob env bound
+           case res of
+            (Just doneEnv, newDom) -> return (doneEnv, newDom)
+            (Nothing, newDom) | newDom == dom -> error "Environment is unsolvable"
+            (Nothing, newDom) -> run' Nothing newDom
+   in run' (Just 1) domain
+
 
 
 newtype (Domain dom p as, DomainHypothesis dh dom p as) =>
       LearningDomain' dom dh p as =  LearningDomain' (dom, dh)
-        deriving (Show)
+        deriving (Show, Eq)
 
 instance (Domain dom p as, DomainHypothesis dh dom p as)
          => Domain (LearningDomain' dom dh p as) p as where
