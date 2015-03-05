@@ -33,13 +33,18 @@ isStateExplored :: Finder -> State -> Bool
 isStateExplored finder state = fromMaybe False
                                $ liftM null (Map.lookup state finder)
 
+findWithRem :: (a -> Bool) -> [a] -> Maybe (a, [a])
+findWithRem prd (h:r) | prd h = Just (h, r)
+                      | otherwise = findWithRem prd r
+findWithRem _ [] = Nothing
+
 findAction :: (Action -> Bool) -> (State -> [Action]) -> Finder -> State -> (Maybe Action, Finder)
 findAction isAppAble actsFunc finder state =
     let acts = Map.lookup state finder
-        filtered = liftM (filter isAppAble) acts
+        filtered = liftM (findWithRem isAppAble) acts
      in case filtered of
-          Just (act:rest) -> (Just act, Map.insert state rest finder)
-          Just [] -> (Nothing, finder)
+          Just (Just (act, rest)) -> (Just act, Map.insert state rest finder)
+          Just Nothing -> (Nothing, finder)
           Nothing -> findAction isAppAble actsFunc
                                 (Map.insert state (actsFunc state) finder)
                                 state
@@ -115,7 +120,7 @@ runRound planner view oldDomain problem  env plan bound apps =
               newBound | planIsDone  = liftM (2 *) bound
                        -- psIsSameAsNs && planRunning = bound
                        | psIsSameAsNs                = bound
-                       | psIsNotSameAsNs             = bound
+                       -- | psIsNotSameAsNs             = bound
                        | isJust s' && isMEq bound 1  = Just 2
                        | otherwise                   = Just 1
 
@@ -186,7 +191,7 @@ runUntilSolved planner view domain prob environment =
         do res <- runEpisode planner view dom prob env bound
            case res of
             (Just doneEnv, newDom, _) -> return (doneEnv, newDom)
-            (Nothing, newDom, newBound) | isNothing newBound ->
+            (Nothing, newDom, newBound) | isNothing newBound && newDom == dom ->
                 error ("Environment is unsolvable, final dom:"
                       ++ ppShow newDom)
             (Nothing, newDom, _) -> run' Nothing newDom environment
