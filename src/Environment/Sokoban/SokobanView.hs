@@ -10,14 +10,18 @@ import           Planning.Viewing
 import           System.Console.ANSI
 import           System.IO                (hFlush, stdout)
 import           Text.Show.Pretty
-
-goalSymbol, sokobanSymbol :: Char
-goalSymbol = 'X'
+import           Control.Concurrent
+goalSymbol, sokobanSymbol, boxSymbol, clearSymbol, boxWithGoalSymbol, emptySymbol :: Char
+goalSymbol = 'O'
 sokobanSymbol = 'S'
+boxSymbol = '#'
+clearSymbol = '.'
+boxWithGoalSymbol = 'X'
+emptySymbol = '\178'
 
 tileSymbol :: Tile -> Char
-tileSymbol Clear   = '+'
-tileSymbol (Box _) = '#'
+tileSymbol Clear   = clearSymbol
+tileSymbol (Box _) = boxSymbol
 
 vis :: Int -> String -> String
 vis width str = take width str ++ "\n" ++ vis width (drop width str)
@@ -25,18 +29,21 @@ vis width str = take width str ++ "\n" ++ vis width (drop width str)
 visTile :: Map Coord Char -> Coord -> String
 visTile m c | xCoord c == 0 = ['\n', t]
             | otherwise = [t]
-                where t = fromMaybe ' ' $ Map.lookup c m
+                where t = fromMaybe emptySymbol $ Map.lookup c m
 
 visualize :: SokobanPDDL -> IO ()
 visualize pddl =
-    do --clearScreen
+    do clearScreen
        putStrLn worldStr
        hFlush stdout
+       threadDelay 2000
     where
+    goalFunc s | s == boxSymbol = boxWithGoalSymbol
+               | otherwise      = goalSymbol
     w = world pddl
     tileMap = Map.map tileSymbol (coordMap w)
     upd symb m k = Map.adjust symb k m
-    tileMap' = foldl (upd (const goalSymbol)) tileMap (goals w)
+    tileMap' = foldl (upd (goalFunc)) tileMap (goals w)
     tileMap'' = upd (const sokobanSymbol) tileMap' (sokoban w)
     coords = Map.keys $ coordMap w
     width = fromIntegral $ maximum $ map xCoord coords
@@ -50,7 +57,7 @@ onActionPerformed file action True =
     -- putStrLn ("Action " ++ ppShow action ++ " succeeded.\n") >> hFlush stdout
 onActionPerformed file action False =
     appendFile file $ "Action " ++ ppShow action ++ " failed.\n"
-    --putStrLn ("Action " ++ ppShow action ++ " failed.\n") >> hFlush stdout
+    -- putStrLn ("Action " ++ ppShow action ++ " failed.\n") >> hFlush stdout
 onPlanMade :: FilePath -> Maybe Plan -> IO ()
 onPlanMade file (Just p) =
     appendFile file $ "Plan found: " ++ ppShow p ++ "\n"

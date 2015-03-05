@@ -48,7 +48,7 @@ findAction isAppAble actsFunc finder state =
           Nothing -> findAction isAppAble actsFunc
                                 (Map.insert state (actsFunc state) finder)
                                 state
-                                
+
 emptyFinder :: Finder
 emptyFinder = Map.empty
 
@@ -59,24 +59,28 @@ refine  :: ( BoundedPlanner ep
            , Domain dom prob as
            , Problem prob
            , ExternalPlanner ep dom prob as
+           , Environment env
            )
         => ep
+        -> View env
         -> dom
         -> prob
         -> Maybe Plan
         -> Maybe Int
         -> Finder
         -> IO (Maybe Plan, Finder)
-refine planner domain problem maybeCurPlan bound finder = outp where
+refine planner view domain problem maybeCurPlan bound finder = outp where
     planner' = setBound planner bound
     s = initialState problem
     actGen = allApplicableActions domain problem
     --sExplored = isStateExplored finder s
     (finderAct, finder') = findAction (isActionApplicable domain s) actGen finder s
-    outp | isJust finderAct && isMEq bound 1 =
+    outp | isMEq bound 1 && isJust finderAct =
                return (Just [fromJust finderAct], finder')
-         | isNothing maybeCurPlan =
-            liftM (flip (,) finder) $ makePlan planner' domain problem
+         | isNothing maybeCurPlan = do
+            plan <- makePlan planner' domain problem
+            planMade view plan
+            return (plan,finder)
          | otherwise =  return (maybeCurPlan, finder)
 
 
@@ -107,14 +111,14 @@ runRound  :: ( BoundedPlanner ep
           -> IO (Either (env, dom, Maybe Plan, Maybe Int, Finder) Bool)
 runRound planner view oldDomain problem  env plan bound apps =
   let
-  in do (plan',apps') <- refine planner oldDomain problem plan bound apps
+  in do (plan',apps') <- refine planner view oldDomain problem plan bound apps
         case perform env plan' of
          Left (env', trans@(s,act,s'), plan'') ->
           let planState = apply oldDomain s act
               psIsSameAsNs = fromMaybe False
                                         $ liftM2 (==) planState  s'
-              psIsNotSameAsNs = fromMaybe False
-                                        $ liftM2 (/=) planState  s'
+              -- psIsNotSameAsNs = fromMaybe False
+              --                           $ liftM2 (/=) planState  s'
               planIsDone = fromMaybe False (liftM null plan'')
               --planRunning = fromMaybe False (liftM ((> 0) . length ) plan'')
               newBound | planIsDone  = liftM (2 *) bound
@@ -128,7 +132,8 @@ runRound planner view oldDomain problem  env plan bound apps =
               newPlan | isNothing s' = Nothing
                       | planIsDone = Nothing
                       | otherwise = plan''
-
+              showEnv | isJust s' = envChanged view env'
+                      | otherwise = return ()
               -- acts = if not psIsSameAsNs
               --      then do
               --          putStrLn ("plan State didn't match: "
@@ -138,7 +143,8 @@ runRound planner view oldDomain problem  env plan bound apps =
               --      else return ()
 
            in do
-             --acts
+             showEnv
+             --envChanged view env'
              actionPerformed view act (isJust s')
              return $ Left (env', newDom, newPlan, newBound, apps')
          Right ans -> return $ Right ans
@@ -161,15 +167,11 @@ runEpisode planr view dom prob env startBound =
         if solved rprob renv
         then return (Just renv, rdom, bound)
         else
-          do planMade view rplan
-             res <- runRound planr view rdom rprob renv rplan bound tried
+          do res <- runRound planr view rdom rprob renv rplan bound tried
              case res of
                Left (env', dom', plan', bound', tried') ->
                  let prob' = setInitialState prob (Env.toState env')
-                  in do
-                      envChanged view env'
-                      --putStrLn ("New bound: " ++ show bound')
-                      runv  dom' prob' env' plan' bound' tried'
+                  in runv  dom' prob' env' plan' bound' tried'
                Right True -> error "Planner says problem is solved, environment does not"
                Right False -> return (Nothing, rdom, bound)
     in envChanged view env >> runv dom prob env Nothing startBound emptyFinder
