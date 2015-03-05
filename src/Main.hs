@@ -5,27 +5,26 @@ import           System.Console.ANSI
 import           System.Directory                         (removeFile)
 
 import           Data.Map                                 ((!))
-import Planning.Viewing
-import           Data.Maybe
 import           Environment                              as Env
-import           Environment.Sokoban.SokobanView
 import           Environment.Sokoban.PDDL
-import qualified Environment.Sokoban.Samples.SimpleSample as SS
-import qualified Environment.Sokoban.Samples.LargeSample  as LS
 import qualified Environment.Sokoban.Samples.BigSample    as BS
+import qualified Environment.Sokoban.Samples.LargeSample  as LS
+import qualified Environment.Sokoban.Samples.SimpleSample as SS
 import qualified Environment.Sokoban.Samples.WikiSample   as WS
 import           Environment.Sokoban.SokobanDomain
+import           Environment.Sokoban.SokobanView
 import           Graph.Search.Astar                       as Astar
 import           Learning
+import           Learning.ManyHypothesis
 import           Learning.OptEffectLearn
 import           Learning.OptPrecondLearn
 import           Planning
 import           Planning.PDDL
 import           Planning.PDDL.Logic
 import           Planning.Planner.FastDownward
+import           Planning.Viewing
 import           System.IO.Error
 import           Text.Show.Pretty
-import           Learning.ManyHypothesis
 
 logPath = "./log.log"
 

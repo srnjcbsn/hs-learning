@@ -5,4 +5,3 @@ import Planning
 class Environment env where
   toState :: env -> State
   applyAction :: env -> Action -> Maybe env
-  --fromProblem :: PDDLProblem -> env

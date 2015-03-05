@@ -8,10 +8,10 @@ import           Planning.PDDL
 import           Planning.PDDL.Logic ()
 
 fluentPredicate :: PredicateSpec -> [Name] -> FluentPredicate
-fluentPredicate (Predicate name _) ns = Predicate name $ map Ref ns
+fluentPredicate (Predicate pname _) ns = Predicate pname $ map Ref ns
 
 groundedPredicate :: PredicateSpec -> [Name] -> GroundedPredicate
-groundedPredicate (Predicate name _) = Predicate name
+groundedPredicate (Predicate pname _) = Predicate pname
 
 mkActionSpec :: Name
              -> [Name]
@@ -19,9 +19,9 @@ mkActionSpec :: Name
              -> ([Name] -> Formula Argument)
              -> ([Name] -> Formula Argument)
              -> ActionSpec
-mkActionSpec name paras t conds effs =
+mkActionSpec aname paras t conds effs =
     ActionSpec { asConstants  = []
-               , asName    = name
+               , asName    = aname
                , asParas   = paras
                , asPrecond = conds paras
                , asEffect  = effs paras
@@ -64,12 +64,17 @@ pushTypes = Map.fromList $ zip pushParas [crateType, locType, locType, locType]
 predicate :: PredicateSpec -> [Name] -> Formula Argument
 predicate ps paras = Pred $ fluentPredicate ps paras
 
+wrongArityError :: Show a => String -> [a] -> Int -> String
+wrongArityError n args ar = n ++ " called with wrong arity. Arguments: "
+                            ++ show args ++ " but arity is " ++ show ar
+
 moveCond :: PredicateSpec -> [Name] -> Formula Argument
 moveCond adjPred [from, to] =
     con [ (sokobanAt, [from])
         , (adjPred, [from, to])
         , (clear, [to])
         ]
+moveCond _ args = error $ wrongArityError "moveCond" args 2
 
 pushCondNotGoal :: PredicateSpec  -> [Name] -> Formula Argument
 pushCondNotGoal adjPred [c, soko, from, to] = poss `conjunction` mapNegate negs where
@@ -81,6 +86,7 @@ pushCondNotGoal adjPred [c, soko, from, to] = poss `conjunction` mapNegate negs 
                 ]
     negs = con  [ (goal, [to])
                 ]
+pushCondNotGoal _ args = error $ wrongArityError "pushCondNotGoal" args 4
 
 pushCondGoal :: PredicateSpec  -> [Name] -> Formula Argument
 pushCondGoal adjPred  [c, soko, from, to] =
@@ -91,6 +97,7 @@ pushCondGoal adjPred  [c, soko, from, to] =
         , (clear, [to])
         , (goal, [to])
         ]
+pushCondGoal _ args = error $ wrongArityError "pushCondGoal" args 4
 
 moveEff :: [Name] -> Formula Argument
 moveEff [from, to] = poss `conjunction` mapNegate negs where
@@ -101,6 +108,7 @@ moveEff [from, to] = poss `conjunction` mapNegate negs where
     negs = con [ (sokobanAt, [from])
                , (clear, [to])
                ]
+moveEff args = error $ wrongArityError "moveEff" args 2
 
 pushEffShared :: [Name] -> Formula Argument
 pushEffShared [c, soko, from, to] = poss `conjunction` mapNegate negs where
@@ -115,14 +123,17 @@ pushEffShared [c, soko, from, to] = poss `conjunction` mapNegate negs where
             , (at, [c, from])
             , (clear, [to])
             ]
+pushEffShared args = error $ wrongArityError "pushEffShared" args 4
 
 pushEffGoal :: [Name] -> Formula Argument
 pushEffGoal paras@(c : _) = pushEffShared paras `conjunction` gPred
     where gPred = Pred (fluentPredicate atGoal [c])
+pushEffGoal args = error $ wrongArityError "pushEffGoal" args 4
 
 pushEffNotGoal :: [Name] -> Formula Argument
 pushEffNotGoal paras@(c : _) = pushEffShared paras `conjunction` ngPred
     where ngPred = Neg $ Pred (fluentPredicate atGoal [c])
+pushEffNotGoal args = error $ wrongArityError "pushEffNotGoal" args 4
 
 moveH, moveV, pushH, pushV, pushHGoal, pushVGoal :: ActionSpec
 moveH     = mkActionSpec "move-h" moveParas moveTypes (moveCond hAdj) moveEff

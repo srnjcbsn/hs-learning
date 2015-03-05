@@ -196,9 +196,9 @@ applyAction pddlw ("push-v-goal", [c, soko, cLoc, toLoc])
 applyAction _ act = error ("Unknown action: " ++ show act)
 
 isStructurePred :: GroundedPredicate -> Bool
-isStructurePred (Predicate name _)
-    | name == vAdjName = True
-    | name == hAdjName = True
+isStructurePred (Predicate pname _)
+    | pname == vAdjName = True
+    | pname == hAdjName = True
     | otherwise        = False
 
 parseLocation :: Location -> Coord
@@ -215,7 +215,7 @@ statePred :: GroundedPredicate -> Maybe StatePred
 statePred (Predicate "goal" [a])      = Just $ Goal a
 statePred (Predicate "at" [c, l])     = Just $ CrateLoc c l
 statePred (Predicate "sokobanAt" [l]) = Just $ SokobanLoc l
-statePred p = Nothing
+statePred _ = Nothing
 
 data StatePred = Structure Location Location
                | CrateLoc Crate Location
@@ -229,49 +229,49 @@ fromState state = pddl where
     goalPreds    = [ gp  | gp@(Predicate "goal" _) <- rest ]
     notGoalPreds = [ ngp | ngp@(Predicate "notGoal" _) <- rest ]
 
-    coordMap = Map.fromList
-             $ Set.toList
-             $ Set.map (\n -> (n, parseLocation n))
-             $ Set.unions
-             $ map (\(Predicate _ args) -> Set.fromList args) structPreds
+    cMap = Map.fromList
+         $ Set.toList
+         $ Set.map (\n -> (n, parseLocation n))
+         $ Set.unions
+         $ map (\(Predicate _ args) -> Set.fromList args) structPreds
 
     dataList = mapMaybe statePred rest
     -- If this is an empty list, we throw an error, as we wouldn't be able
     -- to go on without knowing the location of Sokoban:
-    sokoLoco = coordMap ! head [ l | SokobanLoc l <- dataList ]
-    crates   = [ (coordMap ! l, Box c) | CrateLoc c l <- dataList ]
-    goals    = [ coordMap ! g | Goal g <- dataList ]
+    sokoLoco = cMap ! head [ l | SokobanLoc l <- dataList ]
+    crates   = [ (cMap ! l, Box c) | CrateLoc c l <- dataList ]
+    goals'   = [ cMap ! g | Goal g <- dataList ]
 
     -- Set all tiles as 'Clear'
-    clearTiles = Map.fromList $ zip (Map.elems coordMap) (repeat Clear)
+    clearTiles = Map.fromList $ zip (Map.elems cMap) (repeat Clear)
     -- Overwrite the tiles that contain crates
     tileMap  = Map.fromList crates `Map.union` clearTiles
 
-    world = World
+    w = World
         { coordMap = tileMap
         , sokoban  = sokoLoco
-        , goals    = goals
+        , goals    = goals'
         }
 
     pddl = SokobanPDDL
-        { world = world
-        , locMap = coordMap
+        { world = w
+        , locMap = cMap
         , persistentState = Set.fromList $ structPreds ++ goalPreds ++ notGoalPreds
         }
 
 worldPreds :: World -> Set GroundedPredicate
-worldPreds world = Set.insert sokLoc tilePreds where
+worldPreds pworld = Set.insert sokLoc tilePreds where
 
-    sokLoc = pSokobanAt $ writeLocation $ sokoban world
+    sokLoc = pSokobanAt $ writeLocation $ sokoban pworld
     -- The tilemap minus the tile sokoban is standing on
-    tileMap' = Map.delete (sokoban world) (coordMap world)
+    tileMap' = Map.delete (sokoban pworld) (coordMap pworld)
     tilePreds = Set.fromList $ concatMap (uncurry tilePred) $ Map.toList tileMap'
 
     tilePred :: Coord -> Tile -> [GroundedPredicate]
-    tilePred coord Clear = [pClear $ writeLocation coord]
-    tilePred coord (Box n)
-        | coord `elem` goals world = [pAtGoal n, pAt n $ writeLocation coord]
-        | otherwise = [pAt n $ writeLocation coord]
+    tilePred c Clear = [pClear $ writeLocation c]
+    tilePred c (Box n)
+        | c `elem` goals pworld = [pAtGoal n, pAt n $ writeLocation c]
+        | otherwise = [pAt n $ writeLocation c]
 
 toState :: SokobanPDDL -> State
 toState pddl =
@@ -279,24 +279,24 @@ toState pddl =
 
 
 adjTiles:: World -> Coord -> ([(Coord,Tile)], [(Coord,Tile)])
-adjTiles w coord =
-  let vAdj = [Coord (0,1),Coord (0,-1)]
-      hAdj = [Coord (1,0),Coord (-1,0)]
-      absHAdj = List.map (+ coord) hAdj
-      absVAdj = List.map (+ coord) vAdj
+adjTiles w c =
+  let vAdjC = [Coord (0,1), Coord (0,-1)]
+      hAdjC = [Coord (1,0), Coord (-1,0)]
+      absHAdj = List.map (+ c) hAdjC
+      absVAdj = List.map (+ c) vAdjC
       f x = (x, Map.lookup x $ coordMap w)
       tilesH = List.map f absHAdj
       tilesV = List.map f absVAdj
-      tOnly tiles = [(c,t) | (c,Just t) <- tiles]
+      tOnly tiles = [(c', t) | (c', Just t) <- tiles]
    in (tOnly tilesH, tOnly tilesV)
 
 fromWorld :: World -> SokobanPDDL
 fromWorld w =
   let cm = coordMap w
-      addAdjsToSet coord _ allPreds =
-          let (hAdjs, vAdjs) = adjTiles w coord
-              cLoc = writeLocation coord
-              toLocs l = [writeLocation c | (c,_) <- l]
+      addAdjsToSet c _ allPreds =
+          let (hAdjs, vAdjs) = adjTiles w c
+              cLoc = writeLocation c
+              toLocs l = [writeLocation c' | (c', _) <- l]
               hlocs = toLocs hAdjs
               vlocs = toLocs vAdjs
               vPreds = List.map (pVAdj cLoc) vlocs

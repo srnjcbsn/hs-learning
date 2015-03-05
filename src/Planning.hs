@@ -1,10 +1,10 @@
 module Planning where
 
 import           Data.Set      (Set)
-import Control.Monad (liftM)
+import           Control.Monad (liftM)
 import           Data.TupleSet (TupleSet)
-import           Data.Maybe(fromMaybe)
-import Logic.Formula
+import           Data.Maybe    (fromMaybe)
+import           Logic.Formula
 
 type Object = String
 type Name   = String
@@ -56,17 +56,3 @@ class Problem p => ActionSpecification a p | a -> p where
     isApplicable      :: a -> State -> [Name] -> Bool
     effect            :: a -> [Name] -> TupleSet GroundedPredicate
     applicableActions :: Problem p => p -> State -> a -> [Action]
-
--- applications :: (ActionSpecification as, Problem p) => p -> as -> [Action]
--- applications problem as =
---     map ((,) (name as)) $ replicateM (arity as) (objects problem)
-
--- applicableActions :: (ActionSpecification as, Problem p)
---                   => p -> State ->  as -> [Action]
--- applicableActions problem state as =
---     filter (isApplicable as state . aArgs) $ applications problem as
-
--- allApplicableActions :: (Domain dom as, Problem prob) => dom -> prob -> State -> [Action]
--- allApplicableActions  dom prob s =
---   let acts = actions dom
---   in concatMap (applicableActions prob s) acts

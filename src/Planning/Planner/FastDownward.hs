@@ -1,6 +1,7 @@
 module Planning.Planner.FastDownward where
 
-import           Control.Concurrent    (threadDelay)
+-- import           Control.Concurrent    (threadDelay)
+import           Control.Monad         (liftM)
 import           System.Directory
 import           System.FilePath.Posix
 import           System.IO             (IOMode (..), openFile)
@@ -10,7 +11,7 @@ import           System.Process
 
 import           Planning
 import           Planning.PDDL
-import           Planning.PDDL.Logic
+import           Planning.PDDL.Logic   ()
 import           Planning.PDDL.Parser
 
 -- | A record describing how the fast-downard program should be called.
@@ -63,7 +64,7 @@ fdArgs :: FastDownward
        -> FilePath -- ^ The directory in which the temporary files (and the
                    --   plan file) should be kept.
        -> [String]
-fdArgs fd tmp =
+fdArgs fd _ =
     [ "--run-all"
     , "--plan-file", planName fd
     , domFile fd, probFile fd
@@ -76,8 +77,8 @@ makePlan' :: FastDownward -> PDDLDomain -> PDDLProblem -> IO (Maybe Plan)
 makePlan' fd dom prob = do
     writeFile (domFile fd) (writeDomain dom)
     writeFile (probFile fd) (writeProblem prob)
-    fdPath' <-  getCurrentDirectory
-    let fd' = fd { workDir = fdPath' }
+    -- fdPath' <-  getCurrentDirectory
+    -- let fd' = fd { workDir = fdPath' }
     fastDownward fd dom prob "plan"
     -- let domFile = dmName dom
     --     probFile = probName prob
@@ -125,8 +126,8 @@ fastDownward fd dom prob temp =
                 }
             ec <- waitForProcess pH
             putStrLn $ tmp </> planName fd
-            putStrLn (show ec)
-            threadDelay $ (10 ^ 12 :: Int)
+            print ec
+            -- threadDelay $ (10 ^ 12 :: Int)
             parsePlan $ tmp </> planName fd
 
 -- TODO: If the file can be read, but not parsed, print the contents
@@ -135,7 +136,7 @@ fastDownward fd dom prob temp =
 --   parser error.
 parsePlan :: FilePath -> IO (Maybe Plan)
 parsePlan planFile =
-    ((readFile planFile >>= return . Just) `catchIOError` eHandler) >>= parsePlan'
+    (liftM Just (readFile planFile) `catchIOError` eHandler) >>= parsePlan'
     -- case readFile planFile `catchIOError` errHandler
     where parsePlan' (Just str) = putStrLn ("parsePlan1: " ++ str) >>
             case doParse plan str of

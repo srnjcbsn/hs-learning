@@ -1,16 +1,15 @@
 module Learning.OptEffectLearn  where
 
 import           Data.Function       (on)
-import           Data.List           (deleteBy, unionBy)
-import           Data.Map            (Map, (!))
+import           Data.List           (deleteBy)
+import           Data.Map            (Map)
 import qualified Data.Map            as Map
-import           Data.Maybe          (catMaybes, fromJust)
 import           Data.Set            (Set, (\\))
 import qualified Data.Set            as Set
-import           Debug.Trace
+-- import           Debug.Trace
 import Data.Typeable
 
-import           Text.Show.Pretty (ppShow)
+-- import           Text.Show.Pretty (ppShow)
 import           Learning.Induction
 import           Logic.Formula
 import           Planning.PDDL
@@ -45,7 +44,7 @@ extractUnambiguous unk (uAmb,amb) test =
 
 
 addList :: ActionSpec -> Action -> PDDLDomain -> Set GroundedPredicate
-addList aSpec action dom = fst $ snd $ instantiateAction aSpec action
+addList aSpec action _ = fst $ snd $ instantiateAction aSpec action
 
 -- | Sets the effects of the provided ActionSpec to that of the effect hypothesis
 constructEffectSchema :: EffectHypothesis -> ActionSpec -> ActionSpec

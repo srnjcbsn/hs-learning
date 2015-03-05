@@ -8,7 +8,7 @@ module Planning.PDDL.Logic
     , groundPreconditions
     ) where
 
-import           Data.List     (intercalate, permutations)
+import           Data.List     (intercalate)
 import qualified Data.List     as List
 import           Data.Map      (Map, (!))
 import qualified Data.Map      as Map
@@ -23,8 +23,8 @@ import           Planning
 import           Planning.PDDL
 import           Data.Maybe
 
-import Debug.Trace
-import Text.Show.Pretty (ppShow)
+-- import Debug.Trace
+-- import Text.Show.Pretty (ppShow)
 
 -- | Finds the action spec of an action in a domain
 findActionSpec :: PDDLDomain -> Action -> ActionSpec
@@ -158,7 +158,7 @@ instance Problem PDDLProblem where
     initialState = probState
     isSolved     = isSatisfied . probGoal
     objects      = probObjs
-    setInitialState prob s = prob { probState = s } 
+    setInitialState prob s = prob { probState = s }
 
 instance Graph PDDLGraph State Action where
   adjacentEdges (PDDLGraph (dom, prob)) s = allApplicableActions dom prob s

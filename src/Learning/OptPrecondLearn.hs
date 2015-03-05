@@ -4,8 +4,8 @@ import           Learning.Induction
 import           Logic.Formula
 import           Planning.PDDL
 import           Planning.PDDL.Logic
-import Debug.Trace
-import Text.Show.Pretty (ppShow)
+-- import Debug.Trace
+-- import Text.Show.Pretty (ppShow)
 import Data.Typeable
 
 
@@ -152,7 +152,7 @@ updatePrecHypothesis domain (posKnowledge, negKnowledge, cnfs) (s, action, s') =
                         )
                     | otherwise =  (posKns, negKns, addToCandiates cnfs cands)
 
-         Just s'' ->  ( (posUnkns' \\ extractPosKns, Set.union extractPosKns posKns)
+         Just _ -> ( (posUnkns' \\ extractPosKns, Set.union extractPosKns posKns)
                    , (negUnkns' \\ extractNegKns, Set.union extractNegKns negKns)
                    , cnfs'')
             where -- All preds not in the state cant be a positive precond

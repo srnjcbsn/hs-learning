@@ -1,5 +1,7 @@
 module Environment.Sokoban.SokobanView where
 
+import           Control.Concurrent
+import           Data.Char
 import           Data.Map                 (Map)
 import qualified Data.Map                 as Map
 import           Data.Maybe               (fromMaybe)
@@ -10,14 +12,14 @@ import           Planning.Viewing
 import           System.Console.ANSI
 import           System.IO                (hFlush, stdout)
 import           Text.Show.Pretty
-import           Control.Concurrent
+
 goalSymbol, sokobanSymbol, boxSymbol, clearSymbol, boxWithGoalSymbol, emptySymbol :: Char
 goalSymbol = 'O'
-sokobanSymbol = 'S'
-boxSymbol = '#'
-clearSymbol = '.'
+sokobanSymbol = 'S' -- chr 128515
+boxSymbol = 'B' -- chr 9744
+clearSymbol = '·'
 boxWithGoalSymbol = 'X'
-emptySymbol = '\178'
+emptySymbol = '+' -- chr 9608
 
 tileSymbol :: Tile -> Char
 tileSymbol Clear   = clearSymbol
@@ -43,7 +45,7 @@ visualize pddl =
     w = world pddl
     tileMap = Map.map tileSymbol (coordMap w)
     upd symb m k = Map.adjust symb k m
-    tileMap' = foldl (upd (goalFunc)) tileMap (goals w)
+    tileMap' = foldl (upd goalFunc) tileMap (goals w)
     tileMap'' = upd (const sokobanSymbol) tileMap' (sokoban w)
     coords = Map.keys $ coordMap w
     width = fromIntegral $ maximum $ map xCoord coords
