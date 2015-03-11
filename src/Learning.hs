@@ -124,7 +124,6 @@ runRound planner view oldDomain problem  env plan bound apps =
               newBound | planIsDone  = liftM (2 *) bound
                        -- psIsSameAsNs && planRunning = bound
                        | psIsSameAsNs                = bound
-                       -- | psIsNotSameAsNs             = bound
                        | isJust s' && isMEq bound 1  = Just 2
                        | otherwise                   = Just 1
 

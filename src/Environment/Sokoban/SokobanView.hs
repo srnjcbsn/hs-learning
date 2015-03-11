@@ -38,7 +38,7 @@ visualize pddl =
     do clearScreen
        putStrLn worldStr
        hFlush stdout
-       threadDelay 2000
+       threadDelay 1000000
     where
     goalFunc s | s == boxSymbol = boxWithGoalSymbol
                | otherwise      = goalSymbol

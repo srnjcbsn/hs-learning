@@ -52,12 +52,14 @@ main = do
     catchIOError (removeFile logPath) (\_ -> return ())
     clearScreen
     setTitle "SOKOBAN!"
-    --putStrLn (ppShow $ initialState prob)
+    -- putStrLn (ppShow $ initialState prob)
     (_, dom') <- runv  initDom ssProb ssEnv
     (_, dom'') <- runv  dom' lsProb lsEnv
     (fenv, dom''') <- runv  dom'' bsProb bsEnv
-    --putStrLn (ppShow fenv)
+    putStrLn (ppShow fenv)
     putStrLn (ppShow dom''')
+    -- writeFile "sokoDom.pddl" $ writeDomain dom
+    -- writeFile "sokoProb.pddl" $ writeProblem wsProb
     return ()
     where
         bsWorld = BS.world
@@ -71,6 +73,10 @@ main = do
         ssWorld = SS.world
         ssEnv = fromWorld ssWorld
         ssProb = toProblem ssWorld
+
+        wsWorld = WS.world
+        wsEnv = fromWorld wsWorld
+        wsProb = toProblem wsWorld
         --runn = run astar dom prob
         runv ldom = runUntilSolved astar (sokobanView "log.log") ldom
         dom = sokobanDomain
