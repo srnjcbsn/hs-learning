@@ -101,8 +101,6 @@ typeList aSpec = zip (asParas aSpec)
 
 data PDDLGraph = PDDLGraph (PDDLDomain, PDDLProblem)
 
-
-
 pName :: FluentPredicate -> Name
 pName = predName
 
