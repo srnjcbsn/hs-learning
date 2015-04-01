@@ -4,6 +4,7 @@ import           Learning.Induction
 import           Logic.Formula
 import           Planning.PDDL
 import           Planning.PDDL.Logic
+import           Planning
 -- import Debug.Trace
 -- import Text.Show.Pretty (ppShow)
 import Data.Typeable
@@ -145,11 +146,10 @@ updatePrecHypothesis domain (posKnowledge, negKnowledge, cnfs) (s, action, s') =
                   cands = (posCands, negCands)
 
                   (posKns', negKns', cnfs')
-                    | isSingleton cands =
-                        ( Set.union posKns posCands
-                        , Set.union negKns negCands
-                        , removeSetsWithKnowns cnfs cands
-                        )
+                    | isSingleton cands = ( Set.union posKns posCands
+                                          , Set.union negKns negCands
+                                          , removeSetsWithKnowns cnfs cands
+                                          )
                     | otherwise =  (posKns, negKns, addToCandiates cnfs cands)
 
          Just _ -> ( (posUnkns' \\ extractPosKns, Set.union extractPosKns posKns)

@@ -6,6 +6,7 @@ module Logic.Formula
     , mapNegate
     , conjunction
     , evaluateCWA
+    , predArity
     ) where
 
 import           Data.Set (Set)
@@ -14,6 +15,9 @@ import qualified Data.Set as Set
 type Name = String
 
 data Predicate a = Predicate Name [a] deriving (Eq, Ord, Show)
+
+predArity :: Predicate a -> Int
+predArity = length . predArgs
 
 instance Functor Predicate where
     fmap f (Predicate n as) = Predicate n (fmap f as)

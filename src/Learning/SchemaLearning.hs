@@ -6,16 +6,20 @@ import           Planning.PDDL
 -- import qualified Data.TupleSet as TSet
 import           Data.TupleSet (TupleSet)
 
+import           Control.Monad
 import           Data.Map      (Map)
 import qualified Data.Map      as Map
 import           Data.Set      (Set)
+import qualified Data.Set      as Set
+
+type Transition = (State, Action, State)
 
 data Binding a b = Bound a
                  | Free b
 
 type FBind = Binding Int Argument
 
-type CNF a = Set (Knowledge a)
+type Cands a = Set (Knowledge a)
 
 -- | (Positive, Negative)
 type Knowledge a = TupleSet (Predicate a)
@@ -25,7 +29,7 @@ data Hyp a = Hyp
     , unknowns :: Knowledge a
     }
 
-data PreKnowledge a = PreKnowledge (Hyp a) (CNF a)
+data PreKnowledge a = PreKnowledge (Hyp a) (Cands a)
 data EffKnowledge a = EffKnowledge (Hyp a)
 
 type ConditionalEffect = (PreKnowledge FBind, EffKnowledge FBind)
@@ -36,12 +40,11 @@ data ForAllHyp = ForAllHyp
     }
 
 data ActionHyp = ActionHyp
-    { name       :: String
-    , params     :: [(Name, P.Type)]
-    , consts     :: [(Name, P.Type)]
-    , preconds   :: PreKnowledge Argument
-    , certainEff :: EffKnowledge Argument
-    , condEff    :: ForAllHyp
+    { name        :: String
+    , params      :: [(Name, P.Type)]
+    , consts      :: [(Name, P.Type)]
+    , condEffs    :: [ForAllHyp]
+    , commonConds :: PreKnowledge FBind
     }
 
 type DomainHyp = Map Name ActionHyp
@@ -53,6 +56,29 @@ typeOccurrences t = foldr (typeSum . snd) 0 . predArgs
 
 maxTypeOccurrence :: P.Type -> [PredicateSpec] -> Int
 maxTypeOccurrence t specs = maximum $ map (typeOccurrences t) specs
+
+allPreds :: PredicateSpec -> [Object] -> Set GroundedPredicate
+allPreds ps objs = Set.fromList
+                 $ map (Predicate (predName ps))
+                 $ replicateM (length . predArgs $ ps) objs
+
+-- fBindPred :: PredicateSpec -> Predicate FBind
+-- fBindPred ps = Predicate (predName ps) (take (predArity ps) [1 .. ])
+
+posOrNegCand :: PredicateSpec
+             -> [Object]
+             -> State
+             -> TupleSet PredicateSpec
+             -> TupleSet PredicateSpec
+posOrNegCand ps objs s (pos, neg)
+    | Set.isSubsetOf (allPreds ps objs) s =
+        (pos, Set.insert ps neg)
+    | Set.null (Set.intersection (allPreds ps objs) s) =
+        (Set.insert ps pos, neg)
+    | otherwise = (pos, neg)
+
+tmp :: [PredicateSpec] -> [Object] -> ActionHyp -> Transition -> ActionHyp
+tmp ps objs ah t@(s, a, s') | s == s' = undefined
 
 forAllFromDomain :: [P.Type] -> [PredicateSpec] -> ForAllHyp
 -- TODO: The content of the forall should no tbe the empty list, but a single
@@ -67,9 +93,7 @@ fromActionSpec types precs aSpec = ActionHyp
     , params = Map.toList $ asTypes aSpec
     -- FIXME: Constants in actionspec should have embedded type information
     , consts = zip (asConstants aSpec) (repeat baseType)
-    , preconds = undefined
-    , certainEff = undefined
-    , condEff = forAllFromDomain types precs
+    , condEffs = [forAllFromDomain types precs]
     }
 
 initialHypothesis :: PDDLDomain -> ActionSpec -> DomainHyp

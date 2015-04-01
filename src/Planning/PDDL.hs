@@ -28,8 +28,7 @@ module Planning.PDDL
     , GroundedAction
     , State
     , Plan
-    , Transition
-
+    
     -- ** Actions
     , Action
     , aName

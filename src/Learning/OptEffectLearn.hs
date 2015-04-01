@@ -15,6 +15,8 @@ import           Logic.Formula
 import           Planning.PDDL
 import           Planning.PDDL.Logic
 import qualified Learning as Lrn
+import           Planning
+
 -- | (unknown, known)
 type EffectKnowledge = (Set FluentPredicate, Set FluentPredicate)
 
