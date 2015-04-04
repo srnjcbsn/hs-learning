@@ -1,10 +1,8 @@
 
 module Main where
 
-import           System.Console.ANSI
-import           System.Directory                         (removeFile)
 
-import           Data.Map                                 ((!))
+
 import           Environment                              as Env
 import           Environment.Sokoban.PDDL
 import qualified Environment.Sokoban.Samples.BigSample    as BS
@@ -18,13 +16,19 @@ import           Learning
 import           Learning.ManyHypothesis
 import           Learning.OptEffectLearn
 import           Learning.OptPrecondLearn
+import           Learning.SchemaLearning
 import           Planning
 import           Planning.PDDL
 import           Planning.PDDL.Logic
 import           Planning.Planner.FastDownward
 import           Planning.Viewing
+
+import           Data.Map                                 ((!))
+import           System.Console.ANSI
+import           System.Directory                         (removeFile)
 import           System.IO.Error
 import           Text.Show.Pretty
+
 
 logPath = "./log.log"
 

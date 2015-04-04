@@ -1,45 +1,39 @@
 module Learning.OptPrecondLearn where
 
+import           Data.Typeable
 import           Learning.Induction
 import           Logic.Formula
 import           Planning.PDDL
 import           Planning.PDDL.Logic
-import           Planning
--- import Debug.Trace
--- import Text.Show.Pretty (ppShow)
-import Data.Typeable
 
 
-import           Data.Map            (Map, (!))
-import qualified Data.Map            as Map
-import           Data.Set            (Set, (\\))
-import qualified Data.Set            as Set
-import qualified Data.TupleSet       as TSet
-import qualified Learning as Lrn
+import           Data.Map                (Map, (!))
+import qualified Data.Map                as Map
+import           Data.Set                (Set, (\\))
+import qualified Data.Set                as Set
+import qualified Data.TupleSet           as TSet
+import qualified Learning.SchemaLearning as Lrn
 
-type CNF = Set (Set FluentPredicate, Set FluentPredicate)
--- | (unknowns, knowns)
-type Knowledge = (Set FluentPredicate, Set FluentPredicate)
-
--- | (Positives, Negatives, Candidates)
-type PreKnowledge = (Knowledge, Knowledge, CNF)
+type CNF = Lrn.Cands Argument
+type PreKnowledge = Lrn.PreKnowledge Argument
 
 type PreDomainHypothesis = Map Name PreKnowledge
 
-newtype OptPreHypothesis = OptPreHypothesis PreDomainHypothesis deriving (Show, Eq, Typeable)
+newtype OptPreHypothesis = OptPreHypothesis PreDomainHypothesis
+                           deriving (Show, Eq, Typeable)
 
-instance Lrn.DomainHypothesis OptPreHypothesis PDDLDomain PDDLProblem ActionSpec where
+instance Lrn.DomainHypothesis OptPreHypothesis PDDLDomain PDDLProblem ActionSpec
+    where
       update (OptPreHypothesis eff) dom trans  =
         OptPreHypothesis (updatePreDomainHyp dom eff trans)
       adjustDomain (OptPreHypothesis eff) dom  = domainFromPrecondHypothesis dom eff
       fromDomain dom = OptPreHypothesis ( initialPreDomainHyp dom )
 
 initialPreKnowledge :: [Name] -> [PredicateSpec] -> [Name] -> PreKnowledge
-initialPreKnowledge consts allPs paras =
-    let paras' = map Ref paras ++ map Const consts
-        unkns = Set.unions $ map (allFluents paras') allPs
-        kn = (unkns, Set.empty)
-    in (kn, kn, Set.empty)
+initialPreKnowledge consts allPs paras = Lrn.PreKnowledge hyp Set.empty where
+    paras' = map Ref paras ++ map Const consts
+    unkns = Set.unions $ map (allFluents paras') allPs
+    hyp = Lrn.Hyp (Set.empty, Set.empty) (unkns, unkns)
 
 initialPreDomainHyp :: PDDLDomain -> PreDomainHypothesis
 initialPreDomainHyp dom =
@@ -52,14 +46,14 @@ initialPreDomainHyp dom =
     in Map.fromList $ fmap mapper (dmActionsSpecs dom)
 
 constructPrecondFormula :: PreKnowledge -> Formula Argument
-constructPrecondFormula ((_, posKnown), (_, negKnown), cnf) =
+-- constructPrecondFormula ((_, posKnown), (_, negKnown), cnf) =
+constructPrecondFormula (Lrn.PreKnowledge hyp cnf) =
     Con predList
-    where
-          negPredList (poss,negs) =  Set.toList (Set.map Pred negs)
+    where negPredList (poss,negs) =  Set.toList (Set.map Pred negs)
                                   ++ Set.toList (Set.map (Neg . Pred) poss)
           orList = Neg . Con . negPredList
-          predList =  Set.toList (Set.map Pred posKnown)
-                   ++ Set.toList (Set.map (Neg . Pred) negKnown)
+          predList =  Set.toList (Set.map Pred (Lrn.posKnown hyp))
+                   ++ Set.toList (Set.map (Neg . Pred) (Lrn.negKnown hyp))
                    ++ Set.toList (Set.map orList cnf)
 
 constructPrecondSchema :: PreKnowledge -> ActionSpec -> ActionSpec
@@ -108,57 +102,66 @@ extractKnowns cnfs = (posKns, negKns, newCnfs')
 
 updatePreDomainHyp :: PDDLDomain
                    -> PreDomainHypothesis
-                   -> Transition
+                   -> Lrn.Transition
                    -> PreDomainHypothesis
 updatePreDomainHyp dom hyp transition =
     let (_, (name, _), _) = transition
         pkn = hyp ! name
     in Map.insert name (updatePrecHypothesis dom pkn transition) hyp
 
-updatePrecHypothesis :: PDDLDomain -> PreKnowledge -> Transition -> PreKnowledge
-updatePrecHypothesis domain (posKnowledge, negKnowledge, cnfs) (s, action, s') =
-    let aSpecParas = asParas $ findActionSpec domain action
-        unground' :: GroundedPredicate -> Set FluentPredicate
-        unground' = ungroundNExpand aSpecParas (aArgs action)
+updatePrecHypothesis :: PDDLDomain -> PreKnowledge -> Lrn.Transition -> PreKnowledge
+updatePrecHypothesis domain (Lrn.PreKnowledge hyp cnfs) (s, action, s')
+    | s == s'   =
+        let -- All predicates that are not in the state are candidates
+            -- for being positive preconditions
+            posCands = posUnkns \\ posRelevant
 
-        (posUnkns, posKns) = posKnowledge
-        (negUnkns, negKns) = negKnowledge
-        rel unkns = Set.unions
-                  $ Set.toList
-                  $ Set.map unground'
-                  $ ground domain action unkns `Set.intersection` s
+            -- All predicates that are in the state are candidates
+            -- for being negative preconditions
+            negCands = negUnkns `Set.intersection` negRelevant
+            cands = (posCands, negCands)
 
-        posRelevant = rel posUnkns
-        negRelevant = rel negUnkns
-    in case s' of
-         Nothing  -> ( (posUnkns \\ posKns', posKns')
-                     , (negUnkns \\ negKns', negKns')
-                     , cnfs'
-                     )
-            where -- All predicates that are not in the state are candidates
-                  -- for being positive preconditions
-                  posCands =  posUnkns \\ posRelevant
+            (posKns', negKns', cnfs')
+                | isSingleton cands = ( Set.union posKns posCands
+                                      , Set.union negKns negCands
+                                      , removeSetsWithKnowns cnfs cands
+                                      )
+                | otherwise =  (posKns, negKns, addToCandiates cnfs cands)
 
-                  -- All predicates that are in the state are candidates
-                  -- for being negative preconditions
-                --   trace ("New CNFs: " ++ show cnfs' ++ "\n") $
-                  negCands = negUnkns `Set.intersection` negRelevant
-                  cands = (posCands, negCands)
+            hyp' = Lrn.Hyp (posKns', negKns')
+                         (posUnkns \\ posKns', negUnkns \\ negKns')
 
-                  (posKns', negKns', cnfs')
-                    | isSingleton cands = ( Set.union posKns posCands
-                                          , Set.union negKns negCands
-                                          , removeSetsWithKnowns cnfs cands
-                                          )
-                    | otherwise =  (posKns, negKns, addToCandiates cnfs cands)
+        in Lrn.PreKnowledge hyp' cnfs'
 
-         Just _ -> ( (posUnkns' \\ extractPosKns, Set.union extractPosKns posKns)
-                   , (negUnkns' \\ extractNegKns, Set.union extractNegKns negKns)
-                   , cnfs'')
-            where -- All preds not in the state cant be a positive precond
-                  posUnkns' = posUnkns `Set.intersection` posRelevant
-                  -- All preds in the state cant be a negative precond
-                  negUnkns' =  negUnkns \\ negRelevant
-                  -- all proved to be false can't be candidates
-                  cnfs' = Set.map (TSet.intersection (posUnkns', negUnkns')) cnfs
-                  (extractPosKns, extractNegKns, cnfs'')  = extractKnowns cnfs'
+    | otherwise =
+        let -- All preds not in the state cant be a positive precond
+            posUnkns' = posUnkns `Set.intersection` posRelevant
+            -- All preds in the state cant be a negative precond
+            negUnkns' =  negUnkns \\ negRelevant
+            -- all proved to be false can't be candidates
+            cnfs' = Set.map (TSet.intersection (posUnkns', negUnkns')) cnfs
+            (extractPosKns, extractNegKns, cnfs'')  = extractKnowns cnfs'
+
+            hyp' = Lrn.Hyp ( Set.union extractPosKns posKns
+                           , Set.union extractNegKns negKns
+                           )
+                           (posUnkns' \\ extractPosKns, negUnkns \\ extractNegKns)
+
+        in Lrn.PreKnowledge hyp' cnfs''
+
+    where unground' :: GroundedPredicate -> Set FluentPredicate
+          unground' = ungroundNExpand aSpecParas (aArgs action)
+          aSpecParas = asParas $ findActionSpec domain action
+
+          posUnkns = (fst . Lrn.unknowns) hyp
+          posKns   = (fst . Lrn.knowns) hyp
+          negUnkns = (snd . Lrn.unknowns) hyp
+          negKns   = (snd . Lrn.knowns) hyp
+
+          rel unkns = Set.unions
+                    $ Set.toList
+                    $ Set.map unground'
+                    $ ground domain action unkns `Set.intersection` s
+
+          posRelevant = rel posUnkns
+          negRelevant = rel negUnkns

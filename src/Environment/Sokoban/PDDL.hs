@@ -137,22 +137,21 @@ type Assertion = SokobanPDDL -> Bool
 asserts :: SokobanPDDL -> [SokobanPDDL -> Bool] -> Bool
 asserts pddl = all (\f -> f pddl)
 
-applyAction :: SokobanPDDL -> Action -> Maybe SokobanPDDL
+applyAction :: SokobanPDDL -> Action -> SokobanPDDL
 applyAction pddlw ("move-h", [from, to])
     | asserts pddlw [sokobanAt from, tileClear to, hAdj from to] =
-        Just $ applyFromLoc pddlw from to
-    | otherwise = Nothing
+        applyFromLoc pddlw from to
+    | otherwise = pddlw
 
 applyAction pddlw ("move-v", [from, to])
     | asserts pddlw [sokobanAt from, tileClear to, vAdj from to] =
-        Just $ applyFromLoc pddlw from to
-    | otherwise = Nothing
+        applyFromLoc pddlw from to
+    | otherwise = pddlw
 
 applyAction pddlw ("push-h", [c, soko, cLoc, toLoc])
-    | asserts pddlw conditions = Just $ applyFromLoc pddlw soko cLoc
-    | otherwise = Nothing
-        where conditions = [
-                           sokobanAt soko
+    | asserts pddlw conditions = applyFromLoc pddlw soko cLoc
+    | otherwise = pddlw
+        where conditions = [ sokobanAt soko
                            , crateAt c cLoc
                            , hAdj soko cLoc
                            , hAdj cLoc toLoc
@@ -161,8 +160,8 @@ applyAction pddlw ("push-h", [c, soko, cLoc, toLoc])
                            ]
 
 applyAction pddlw ("push-v", [c, soko, cLoc, toLoc])
-    | asserts pddlw conditions = Just $ applyFromLoc pddlw soko cLoc
-    | otherwise = Nothing
+    | asserts pddlw conditions = applyFromLoc pddlw soko cLoc
+    | otherwise = pddlw
         where conditions = [ sokobanAt soko
                            , crateAt c cLoc
                            , vAdj soko cLoc
@@ -172,8 +171,8 @@ applyAction pddlw ("push-v", [c, soko, cLoc, toLoc])
                            ]
 
 applyAction pddlw ("push-h-goal", [c, soko, cLoc, toLoc])
-    | asserts pddlw conditions = Just $ applyFromLoc pddlw soko cLoc
-    | otherwise = Nothing
+    | asserts pddlw conditions = applyFromLoc pddlw soko cLoc
+    | otherwise = pddlw
         where conditions = [ sokobanAt soko
                            , crateAt c cLoc
                            , hAdj soko cLoc
@@ -183,8 +182,8 @@ applyAction pddlw ("push-h-goal", [c, soko, cLoc, toLoc])
                            ]
 
 applyAction pddlw ("push-v-goal", [c, soko, cLoc, toLoc])
-    | asserts pddlw conditions = Just $ applyFromLoc pddlw soko cLoc
-    | otherwise = Nothing
+    | asserts pddlw conditions = applyFromLoc pddlw soko cLoc
+    | otherwise = pddlw
         where conditions = [ sokobanAt soko
                            , crateAt c cLoc
                            , vAdj soko cLoc

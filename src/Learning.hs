@@ -8,23 +8,10 @@ import           Environment              (Environment)
 import qualified Environment              as Env
 import           Planning
 import Planning.Viewing
+import qualified Learning.SchemaLearning as Lrn
 
 import Data.Map (Map)
 import qualified Data.Map as Map
---import Data.Maybe(isNothing)
---import Data.Set (Set)
---import Debug.Trace
---import System.IO
---import qualified Data.Set as Set
---import Data.List(find)
-
-class (Domain dom p as, Eq dh) => DomainHypothesis dh dom p as | dh -> dom p as where
-    update :: dh -> dom -> Transition -> dh
-    adjustDomain :: dh -> dom -> dom
-    fromDomain :: dom -> dh
-
-class (Domain d p as, Show d) => LearningDomain d p as | d -> p as where
-   learn :: d -> Transition -> d
 
 type Finder = Map State [Action]
 type FinderResult = (Maybe Action, Finder)
@@ -53,7 +40,7 @@ emptyFinder :: Finder
 emptyFinder = Map.empty
 
 isMEq :: Eq a => Maybe a -> a -> Bool
-isMEq m v = fromMaybe False $ liftM (== v) m
+isMEq m v = Just v == m --fromMaybe False $ liftM (== v) m
 
 refine  :: ( BoundedPlanner ep
            , Domain dom prob as
@@ -87,17 +74,20 @@ refine planner view domain problem maybeCurPlan bound finder = outp where
 perform :: (Environment env)
         => env
         -> Maybe Plan
-        -> Either (env, Transition, Maybe Plan) Bool
-perform env (Just (action:restPlan)) =
-  let trans s' = (Env.toState env, action, s')
-   in case Env.applyAction env action of
-        Just env' -> Left (env', trans $ Just $ Env.toState env', Just restPlan)
-        Nothing -> Left (env, trans Nothing, Nothing)
+        -> Either (env, Lrn.Transition, Maybe Plan) Bool
+perform env (Just (action : rest))
+    | s == s'   = Left (env', t, Nothing)
+    | otherwise = Left (env', t, Just rest)
+    where s    = Env.toState env
+          env' = Env.applyAction env action
+          s'   = Env.toState env'
+          t    = (s, action, s')
+
 perform _ (Just []) = Right True
 perform _ Nothing = Right False
 
 runRound  :: ( BoundedPlanner ep
-             , LearningDomain dom prob as
+             , Lrn.LearningDomain dom prob as
              , ExternalPlanner ep dom prob as
              , Environment env)
           => ep
@@ -115,8 +105,9 @@ runRound planner view oldDomain problem  env plan bound apps =
         case perform env plan' of
          Left (env', trans@(s,act,s'), plan'') ->
           let planState = apply oldDomain s act
-              psIsSameAsNs = fromMaybe False
-                                        $ liftM2 (==) planState  s'
+            --   psIsSameAsNs = fromMaybe False
+            --                             $ liftM2 (==) planState  s'
+              psIsSameAsNs = Just s' == planState
               -- psIsNotSameAsNs = fromMaybe False
               --                           $ liftM2 (/=) planState  s'
               planIsDone = fromMaybe False (liftM null plan'')
@@ -124,32 +115,26 @@ runRound planner view oldDomain problem  env plan bound apps =
               newBound | planIsDone  = liftM (2 *) bound
                        -- psIsSameAsNs && planRunning = bound
                        | psIsSameAsNs                = bound
-                       | isJust s' && isMEq bound 1  = Just 2
+                       | s /= s' && isMEq bound 1    = Just 2
                        | otherwise                   = Just 1
 
-              newDom = learn oldDomain trans
-              newPlan | isNothing s' = Nothing
+              newDom = Lrn.learn oldDomain trans
+              newPlan | s == s'    = Nothing
                       | planIsDone = Nothing
                       | otherwise = plan''
-              showEnv | isJust s' = envChanged view env'
+
+              showEnv | s /= s'   = envChanged view env'
                       | otherwise = return ()
-              -- acts = if not psIsSameAsNs
-              --      then do
-              --          putStrLn ("plan State didn't match: "
-              --                     ++ (show $ isNothing planState)
-              --                     ++" "++ (show $ isNothing s'))
-              --
-              --      else return ()
 
            in do
              showEnv
              --envChanged view env'
-             actionPerformed view act (isJust s')
+             actionPerformed view act (s /= s')
              return $ Left (env', newDom, newPlan, newBound, apps')
          Right ans -> return $ Right ans
 
 runEpisode :: ( BoundedPlanner ep
-              , LearningDomain dom prob as
+              , Lrn.LearningDomain dom prob as
               , Problem prob
               , ExternalPlanner ep dom prob as
               , Environment env)
@@ -177,7 +162,7 @@ runEpisode planr view dom prob env startBound =
 
 runUntilSolved :: ( BoundedPlanner ep
                   , Eq dom
-                  , LearningDomain dom prob as
+                  , Lrn.LearningDomain dom prob as
                   , Problem prob
                   , ExternalPlanner ep dom prob as
                   , Environment env)
@@ -198,22 +183,22 @@ runUntilSolved planner view domain prob environment =
             (Nothing, newDom, _) -> run' Nothing newDom environment
    in run' (Just 1) domain environment
 
-newtype (Domain dom p as, DomainHypothesis dh dom p as) =>
+newtype (Domain dom p as, Lrn.DomainHypothesis dh dom p as) =>
       LearningDomain' dom dh p as =  LearningDomain' (dom, dh)
         deriving (Show, Eq)
 
-instance (Domain dom p as, DomainHypothesis dh dom p as)
+instance (Domain dom p as, Lrn.DomainHypothesis dh dom p as)
          => Domain (LearningDomain' dom dh p as) p as where
     actionSpecification  (LearningDomain' (dom, _)) = actionSpecification dom
     actions              (LearningDomain' (dom, _)) = actions dom
     apply                (LearningDomain' (dom, _)) = apply dom
     allApplicableActions (LearningDomain' (dom, _)) = allApplicableActions dom
 
-instance (Domain dom p as, Show dh, Show dom, DomainHypothesis dh dom p as) =>
-        LearningDomain (LearningDomain' dom dh p as) p as where
+instance (Domain dom p as, Show dh, Show dom, Lrn.DomainHypothesis dh dom p as) =>
+        Lrn.LearningDomain (LearningDomain' dom dh p as) p as where
     learn (LearningDomain' (dom, dh)) trans =
-      let dh'  = update dh dom trans
-          dom' = adjustDomain dh' dom
+      let dh'  = Lrn.update dh dom trans
+          dom' = Lrn.adjustDomain dh' dom
        in LearningDomain' (dom', dh')
     -- tellExploredAll (LearningDomain' (dom, dh)) s  =
     --  let dh'  = ignoreState dh s
@@ -221,8 +206,8 @@ instance (Domain dom p as, Show dh, Show dom, DomainHypothesis dh dom p as) =>
     --  in LearningDomain' (dom', dh')
 
 toLearningDomain :: ( Domain domain p as
-                    , DomainHypothesis domainHypothesis domain p as)
+                    , Lrn.DomainHypothesis domainHypothesis domain p as)
                  => domainHypothesis
                  -> domain
                  -> LearningDomain' domain domainHypothesis p as
-toLearningDomain dHyp dom = LearningDomain' (adjustDomain dHyp dom, dHyp)
+toLearningDomain dHyp dom = LearningDomain' (Lrn.adjustDomain dHyp dom, dHyp)

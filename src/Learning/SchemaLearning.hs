@@ -12,6 +12,14 @@ import qualified Data.Map      as Map
 import           Data.Set      (Set)
 import qualified Data.Set      as Set
 
+class (P.Domain dom p as, Eq dh) => DomainHypothesis dh dom p as | dh -> dom p as where
+    update :: dh -> dom -> Transition -> dh
+    adjustDomain :: dh -> dom -> dom
+    fromDomain :: dom -> dh
+
+class (P.Domain d p as, Show d) => LearningDomain d p as | d -> p as where
+   learn :: d -> Transition -> d
+
 type Transition = (State, Action, State)
 
 data Binding a b = Bound a
@@ -19,18 +27,24 @@ data Binding a b = Bound a
 
 type FBind = Binding Int Argument
 
-type Cands a = Set (Knowledge a)
-
 -- | (Positive, Negative)
 type Knowledge a = TupleSet (Predicate a)
+
+type Cands a = Set (Knowledge a)
 
 data Hyp a = Hyp
     { knowns   :: Knowledge a
     , unknowns :: Knowledge a
-    }
+    } deriving (Eq, Show)
 
-data PreKnowledge a = PreKnowledge (Hyp a) (Cands a)
-data EffKnowledge a = EffKnowledge (Hyp a)
+posKnown, posUnknown, negKnown, negUnknown :: Hyp a -> Set (Predicate a)
+posKnown   = fst . knowns
+posUnknown = fst . unknowns
+negKnown   = snd . knowns
+negUnknown = snd . unknowns
+
+data PreKnowledge a = PreKnowledge (Hyp a) (Cands a) deriving (Eq, Show)
+data EffKnowledge a = EffKnowledge (Hyp a) deriving (Eq, Show)
 
 type ConditionalEffect = (PreKnowledge FBind, EffKnowledge FBind)
 
