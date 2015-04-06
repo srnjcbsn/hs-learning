@@ -13,35 +13,35 @@ import qualified Learning.SchemaLearning as Lrn
 import Data.Map (Map)
 import qualified Data.Map as Map
 
-type Transition = (State, Action, State)
+class Knowledge knl info question where
+    analyze :: knl -> info -> knl
+    canAnswer :: knl -> question -> Bool
 
-class Hypthesis hyp where
-    update :: hyp -> Action -> hyp
+class Experiment exp world info where
+    conduct :: exp -> world -> IO info
 
-class Experiment exp where
-    next :: exp -> (Action, exp)
-    --validate ::
-
-class (Experiment exp, Hypthesis hyp) => Strategy hyp exp where
-    --form :: hypthesis -> exp
-
-class Inquirable i q a where
-    inquire :: i -> q -> IO (Maybe a)
+class (Experiment exp world info) => Strategy world knl exp info where
+    design :: strat -> knl -> exp
 
 
-conduct world experiment = undefined
-form = undefined
-analyze = undefined
-interpret = undefined
+class Inquirable uni question info where
+    inquire :: uni -> question -> IO (Maybe info)
 
---scientificMethod ::
+
+answered = undefined
+
+scientificMethod :: ( Strategy world knl exp info
+                    , Experiment exp world info
+                    , Inquirable world question info)
+                 => world -> strat -> knl -> question -> IO (knl)
 scientificMethod world strat knowledge question  =
   do information <- inquire world question
+     let knowledge' = liftM (analyze knowledge) information
      let loop knl =
-          do (hypthesis, experiment) <- form strat knl information
+          do experiment <- design strat knl
              testdata <- conduct world experiment
              let knl' = analyze knl testdata
-             if interpret knl' question
+             if answered knl' question
              then knl'
              else loop knl'
-      in loop knowledge
+      in loop >> knowledge'
