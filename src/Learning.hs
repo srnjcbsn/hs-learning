@@ -1,7 +1,10 @@
 module Learning where
 
 import           Control.Monad
+import Control.Monad.Writer
 import           Data.Maybe
+import qualified Data.Sequence as Seq
+import Data.Sequence (Seq)
 import           Text.Show.Pretty
 
 import           Environment              (Environment)
@@ -25,7 +28,11 @@ findWithRem prd (h:r) | prd h = Just (h, r)
                       | otherwise = findWithRem prd r
 findWithRem _ [] = Nothing
 
-findAction :: (Action -> Bool) -> (State -> [Action]) -> Finder -> State -> (Maybe Action, Finder)
+findAction :: (Action -> Bool)
+           -> (State -> [Action])
+           -> Finder
+           -> State
+           -> (Maybe Action, Finder)
 findAction isAppAble actsFunc finder state =
     let acts = Map.lookup state finder
         filtered = liftM (findWithRem isAppAble) acts
@@ -84,7 +91,7 @@ perform env (Just (action : rest))
           t    = (s, action, s')
 
 perform _ (Just []) = Right True
-perform _ Nothing = Right False
+perform _ Nothing   = Right False
 
 runRound  :: ( BoundedPlanner ep
              , Lrn.LearningDomain dom prob as
@@ -171,7 +178,7 @@ runUntilSolved :: ( BoundedPlanner ep
                -> dom
                -> prob
                -> env
-               -> IO (env,dom)
+               -> (IO (env, dom))
 runUntilSolved planner view domain prob environment =
   let run' bound dom env =
         do res <- runEpisode planner view dom prob env bound
@@ -184,7 +191,7 @@ runUntilSolved planner view domain prob environment =
    in run' (Just 1) domain environment
 
 newtype (Domain dom p as, Lrn.DomainHypothesis dh dom p as) =>
-      LearningDomain' dom dh p as =  LearningDomain' (dom, dh)
+      LearningDomain' dom dh p as = LearningDomain' (dom, dh)
         deriving (Show, Eq)
 
 instance (Domain dom p as, Lrn.DomainHypothesis dh dom p as)
