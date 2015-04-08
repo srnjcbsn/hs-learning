@@ -25,9 +25,6 @@ library
                  , Planning.PDDL.Samples.BlocksWorld
                  , Learning
                  , Learning.Induction
-                 , Learning.OptEffectLearn
-                 , Learning.OptPrecondLearn
-                 , Learning.ManyHypothesis
                  , Planning.Planner.FastDownward
                  , Data.TupleSet
                  , Data.Queue

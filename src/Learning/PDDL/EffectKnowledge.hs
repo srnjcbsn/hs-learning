@@ -2,24 +2,12 @@ module Learning.PDDL.EffectKnowledge  where
 
 import           Learning.Induction
 import qualified Learning.PDDL as Lrn
-import           Logic.Formula
 import           Planning
 import           Planning.PDDL
 import           Planning.PDDL.Logic
 
-import           Data.Function           (on)
-import           Data.List               (deleteBy)
-import           Data.Map                (Map)
-import qualified Data.Map                as Map
 import           Data.Set                (Set, (\\))
 import qualified Data.Set                as Set
-import           Data.Typeable
-
--- -- | (unknown, known)
--- type EffectKnowledge = (Set FluentPredicate, Set FluentPredicate)
---
--- -- | (Positive, negative)
--- type EffectHypothesis = (EffectKnowledge, EffectKnowledge)
 
 type EffectKnowledge = Lrn.EffKnowledge Argument
 

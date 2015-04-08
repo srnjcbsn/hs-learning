@@ -1,14 +1,10 @@
 module Learning.PDDL.PreconditionKnowledge where
 
--- import           Data.Typeable
 import           Learning.Induction
--- import           Logic.Formula
 import           Planning
 import           Planning.PDDL
 import           Planning.PDDL.Logic
 
--- import           Data.Map                (Map, (!))
--- import qualified Data.Map                as Map
 import           Data.Set                (Set, (\\))
 import qualified Data.Set                as Set
 import qualified Data.TupleSet           as TSet
@@ -83,12 +79,9 @@ addToCandiates curCands cand = newCands
     tmpCands = curCands `withoutSuperSetsOf` cand
     newCands = Set.insert cand tmpCands
 
-
-
 withoutSuperSetsOf :: CNF -> (Set FluentPredicate, Set FluentPredicate) -> CNF
 withoutSuperSetsOf cnfSets subset =
     Set.filter (not . TSet.isSubSetOf subset) cnfSets
-
 
 isSingleton :: (Set FluentPredicate, Set FluentPredicate) -> Bool
 isSingleton = (== 1) . TSet.size
