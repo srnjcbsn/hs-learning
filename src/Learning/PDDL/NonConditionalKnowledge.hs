@@ -1,15 +1,17 @@
 module Learning.PDDL.NonConditionalKnowledge where
 
 import           Data.Typeable
-import           Learning2
 import qualified Learning.PDDL                       as Lrn
 import qualified Learning.PDDL.EffectKnowledge       as Eff
 import qualified Learning.PDDL.PreconditionKnowledge as Pre
+import           Learning2
 import           Planning
 import           Planning.PDDL
+import           Learning.Induction
 
 import           Data.Map                            (Map)
 import qualified Data.Map                            as Map
+import qualified Data.Set                            as Set
 
 
 type DomainKnowledge = Map Name (Pre.PreKnowledge, Eff.EffectKnowledge)
@@ -28,9 +30,24 @@ updateKnowledge (PDDLKnowledge (d,k,_)) trans@(_,(aname,_),s') =
 
 instance Knowledge PDDLKnowledge Lrn.PDDLInfo PDDLProblem where
     analyze knl (ts) = foldl updateKnowledge knl ts
-    canAnswer (PDDLKnowledge (_,_,s)) prob =
+    canAnswer (PDDLKnowledge (_, _, s)) prob =
       isSolved prob s
 
+actionKnowledge :: [Name]
+                -> [PredicateSpec]
+                -> [Name]
+                -> (Pre.PreKnowledge, Eff.EffectKnowledge)
+actionKnowledge consts allPs paras =
+    let paras' = map Ref paras ++ map Const consts
+        unkns = Set.unions $ map (allFluents paras') allPs
+        hyp = Lrn.Hyp (Set.empty, Set.empty) (unkns, unkns)
+    in (Lrn.PreKnowledge hyp Set.empty, Lrn.EffKnowledge hyp)
 
 initialKnowledge :: PDDLDomain -> State -> PDDLKnowledge
-initialKnowledge = undefined
+initialKnowledge dom s = PDDLKnowledge (dom, kn, s) where
+    mapper aSpec = ( asName aSpec
+                   , actionKnowledge (dmConstants dom)
+                                     (dmPredicates dom)
+                                     (asParas aSpec)
+                   )
+    kn = Map.fromList $ fmap mapper (dmActionsSpecs dom)

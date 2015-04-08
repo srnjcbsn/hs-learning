@@ -2,16 +2,6 @@ module Learning2 where
 
 import           Control.Monad
 import           Data.Maybe
--- import           Text.Show.Pretty
---
--- import           Environment              (Environment)
--- import qualified Environment              as Env
--- import           Planning
--- import Planning.Viewing
--- import qualified Learning.SchemaLearning as Lrn
---
--- import Data.Map (Map)
--- import qualified Data.Map as Map
 
 class Knowledge knl info question | knl -> info question where
     analyze :: knl -> info -> knl
@@ -35,7 +25,7 @@ scientificMethod :: ( Strategy strat world question knl exp info
 scientificMethod world strat knowledge question  =
   do information <- inquire world question
      let knowledge' = fromMaybe knowledge (liftM (knowledge `analyze`)  information )  -- undefined --liftM (analyze knowledge) information
-     dres <- design strat question knowledge' 
+     dres <- design strat question knowledge'
      case dres of
       Just (experiment,strat') -> do
        (world', testdata) <- conduct experiment world
