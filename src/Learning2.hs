@@ -18,7 +18,7 @@ class Knowledge knl info question | knl -> info question where
     canAnswer :: knl -> question -> Bool
 
 class Experiment exp world info | exp -> world info  where
-    conduct :: exp -> world -> IO (info, world)
+    conduct :: exp -> world -> IO (world, info)
 
 class Experiment exp world info => Strategy strat world knl exp info | strat -> exp knl where
     design :: strat -> knl -> IO( Maybe (exp, strat) )
@@ -38,7 +38,7 @@ scientificMethod world strat knowledge question  =
      dres <- design strat knowledge'
      case dres of
       Just (experiment,strat') -> do
-       (testdata, world') <- conduct experiment world
+       (world', testdata) <- conduct experiment world
        let knowledge'' = analyze knowledge' testdata
 
        if canAnswer knowledge'' question

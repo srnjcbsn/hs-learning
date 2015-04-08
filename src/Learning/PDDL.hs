@@ -14,7 +14,7 @@ import           Data.Set      (Set)
 import qualified Data.Set      as Set
 
 
-newtype PDDLInfo = PDDLInfo [P.Transition]
+type PDDLInfo = [P.Transition]
 newtype PDDLQuestion  = PDDLQuestion (Formula Name)
 
 class (P.Domain dom p as, Eq dh) => DomainHypothesis dh dom p as | dh -> dom p as where
