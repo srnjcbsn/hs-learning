@@ -3,6 +3,7 @@ module Learning.PDDL where
 import           Logic.Formula
 import qualified Planning      as P
 import           Planning.PDDL
+-- import qualified Planning
 -- import qualified Data.TupleSet as TSet
 import           Data.TupleSet (TupleSet)
 
@@ -12,15 +13,19 @@ import qualified Data.Map      as Map
 import           Data.Set      (Set)
 import qualified Data.Set      as Set
 
+
+newtype PDDLInfo = PDDLInfo [P.Transition]
+newtype PDDLQuestion  = PDDLQuestion (Formula Name)
+
 class (P.Domain dom p as, Eq dh) => DomainHypothesis dh dom p as | dh -> dom p as where
-    update :: dh -> dom -> Transition -> dh
+    update :: dh -> dom -> P.Transition -> dh
     adjustDomain :: dh -> dom -> dom
     fromDomain :: dom -> dh
 
 class (P.Domain d p as, Show d) => LearningDomain d p as | d -> p as where
-   learn :: d -> Transition -> d
+   learn :: d -> P.Transition -> d
 
-type Transition = (State, Action, State)
+-- type Transition = (State, Action, State)
 
 data Binding a b = Bound a
                  | Free b
@@ -91,7 +96,7 @@ posOrNegCand ps objs s (pos, neg)
         (Set.insert ps pos, neg)
     | otherwise = (pos, neg)
 
-tmp :: [PredicateSpec] -> [Object] -> ActionHyp -> Transition -> ActionHyp
+tmp :: [PredicateSpec] -> [Object] -> ActionHyp -> P.Transition -> ActionHyp
 tmp ps objs ah t@(s, a, s') | s == s' = undefined
 
 forAllFromDomain :: [P.Type] -> [PredicateSpec] -> ForAllHyp

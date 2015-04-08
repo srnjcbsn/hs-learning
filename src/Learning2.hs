@@ -23,7 +23,6 @@ class Experiment exp world info | exp -> world info  where
 class Experiment exp world info => Strategy strat world knl exp info | strat -> exp knl where
     design :: strat -> knl -> Maybe (exp, strat)
 
-
 class Inquirable uni question info | question -> info where
     inquire :: uni -> question -> IO (Maybe info)
 
@@ -45,15 +44,3 @@ scientificMethod world strat knowledge question  =
        then return knowledge''
        else scientificMethod world' strat' knowledge'' question
       Nothing -> return knowledge'
-
-
-
-
-
-
-
-
-
-
-
-      ---fuck søren
