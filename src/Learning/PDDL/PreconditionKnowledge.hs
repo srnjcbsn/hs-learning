@@ -3,9 +3,9 @@ module Learning.PDDL.PreconditionKnowledge where
 -- import           Data.Typeable
 import           Learning.Induction
 -- import           Logic.Formula
+import           Planning
 import           Planning.PDDL
 import           Planning.PDDL.Logic
-
 
 -- import           Data.Map                (Map, (!))
 -- import qualified Data.Map                as Map
@@ -19,7 +19,7 @@ type PreKnowledge = Lrn.PreKnowledge Argument
 
 
 
-update :: PDDLDomain -> PreKnowledge -> Lrn.Transition -> PreKnowledge
+update :: PDDLDomain -> PreKnowledge -> Transition -> PreKnowledge
 update domain (Lrn.PreKnowledge hyp cnfs) (s, action, s')
     | s == s'   =
         let -- All predicates that are not in the state are candidates

@@ -1,11 +1,15 @@
 module Learning.PDDL.OptimisticStrategy  where
 
+import           Learning2
 import           Learning.Induction
-import qualified Learning.SchemaLearning as Lrn
+import qualified Learning.PDDL as Lrn
+import           Learning.PDDL.NonConditionalKnowledge
+import           Learning.PDDL.Experiment
 import           Logic.Formula
 import           Planning
 import           Planning.PDDL
 import           Planning.PDDL.Logic
+import           Environment
 
 import           Data.Function           (on)
 import           Data.List               (deleteBy)
@@ -16,8 +20,19 @@ import qualified Data.Set                as Set
 import           Data.Typeable
 
 
-class Experiment exp world info | exp -> world info  where
-    conduct :: exp -> world -> IO (info, world)
+newtype (Environment env) =>
+        OptimisticStrategy env = OptimisticStrategy ()
 
-class Experiment exp world info => Strategy strat world knl exp info | strat -> exp knl where
-    design :: strat -> knl -> Maybe exp
+
+
+instance Strategy
+            (OptimisticStrategy env)
+            env
+            PDDLKnowledge
+            (PDDLExperiment env)
+            Lrn.PDDLInfo
+    where
+      design strat knl = undefined
+
+makeOptimisticDomain :: PDDLKnowledge -> PDDLDomain
+makeOptimisticDomain = undefined

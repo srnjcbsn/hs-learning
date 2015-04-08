@@ -27,7 +27,7 @@ type EffectKnowledge = Lrn.EffKnowledge Argument
 -- | Updates the effect hypothesis based on the transition
 updateEffectHyp :: PDDLDomain
                 -> EffectKnowledge
-                -> Lrn.Transition
+                -> Transition
                 -> EffectKnowledge
 -- if the action application was unsuccessful, we cannot learn anything
 updateEffectHyp domain (Lrn.EffKnowledge hyp) (s, action, s')
