@@ -1,21 +1,15 @@
 module Learning.PDDL.NonConditionalKnowledge where
 
 import           Data.Typeable
--- import           Learning.Induction
 import           Learning2
 import qualified Learning.PDDL                       as Lrn
 import qualified Learning.PDDL.EffectKnowledge       as Eff
 import qualified Learning.PDDL.PreconditionKnowledge as Pre
--- import           Logic.Formula
 import           Planning
 import           Planning.PDDL
--- import           Planning.PDDL.Logic
 
 import           Data.Map                            (Map)
 import qualified Data.Map                            as Map
--- import           Data.Set                            (Set, (\\))
--- import qualified Data.Set                            as Set
--- import qualified Data.TupleSet                       as TSet
 
 
 type DomainKnowledge = Map Name (Pre.PreKnowledge, Eff.EffectKnowledge)
@@ -36,3 +30,7 @@ instance Knowledge PDDLKnowledge Lrn.PDDLInfo PDDLProblem where
     analyze knl (ts) = foldl updateKnowledge knl ts
     canAnswer (PDDLKnowledge (_,_,s)) prob =
       isSolved prob s
+
+
+initialKnowledge :: PDDLDomain -> State -> PDDLKnowledge
+initialKnowledge = undefined
