@@ -1,9 +1,8 @@
 module Planning.Viewing where
 
 import           qualified Planning as P
-import Learning.SchemaLearning
+import Learning.PDDL
 
-import Data.Map (Map)
 import Control.Monad.State
 
 data View e = View { actionPerformed :: P.Action -> Bool -> IO ()

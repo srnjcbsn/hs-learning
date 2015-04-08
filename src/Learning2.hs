@@ -31,17 +31,17 @@ scientificMethod :: ( Strategy strat world question knl exp info
                     , Experiment exp world info
                     , Inquirable world question info
                     , Knowledge knl info question )
-                 => world -> strat -> knl -> question -> IO knl
-scientificMethod world strat knowledge question  =
+                 => strat -> knl -> world -> question -> IO (knl, world)
+scientificMethod strat knowledge world  question  =
   do information <- inquire world question
      let knowledge' = fromMaybe knowledge (liftM (knowledge `analyze`)  information )  -- undefined --liftM (analyze knowledge) information
-     dres <- design strat question knowledge' 
+     dres <- design strat question knowledge'
      case dres of
       Just (experiment,strat') -> do
        (world', testdata) <- conduct experiment world
        let knowledge'' = analyze knowledge' testdata
 
        if canAnswer knowledge'' question
-       then return knowledge''
-       else scientificMethod world' strat' knowledge'' question
-      Nothing -> return knowledge'
+       then return (knowledge'', world')
+       else scientificMethod strat' knowledge'' world' question
+      Nothing -> return (knowledge', world)
