@@ -39,14 +39,10 @@ instance ExternalPlanner Astar PDDLDomain PDDLProblem ActionSpec where
       case bound of
         Just b -> return $ Astar.searchBounded (PDDLGraph (d,p)) (initialState p) b
         Nothing -> return $ Astar.search (PDDLGraph (d,p)) (initialState p)
+
 -- Inquirable uni question info
 instance Inquirable SokobanPDDL PDDLProblem PDDLInfo where
     inquire _ _ = return Nothing
-
--- toFormula :: PDDLDomain -> PreDomainHypothesis -> [(String, Formula Argument)]
--- toFormula dom dHyp =
---   map (\as -> (asName as, constructPrecondFormula (dHyp ! asName as)))
---                                     $ dmActionsSpecs dom
 
 main :: IO ()
 main = do
@@ -54,16 +50,21 @@ main = do
     clearScreen
     setTitle "SOKOBAN!"
     -- putStrLn (ppShow $ initialState prob)
-    (knl', world') <- scientificMethod optStrat initKnl ssEnv ssProb
-    (knl'', world'') <- scientificMethod optStrat knl' lsEnv lsProb
-    (knl''', world''') <- scientificMethod optStrat knl'' bsEnv bsProb
+
+
+
+    (knl', world') <- scientificMethod sokoView optStrat initKnl ssEnv ssProb
+    (knl'', world'') <- scientificMethod sokoView optStrat knl' lsEnv lsProb
+    (knl''', world''') <- scientificMethod sokoView optStrat knl'' bsEnv bsProb
     -- putStrLn (ppShow fenv)
     -- putStrLn (ppShow dom''')
     -- writeFile "sokoDom.pddl" $ writeDomain dom
     -- writeFile "sokoProb.pddl" $ writeProblem wsProb
     return ()
     where
-        optStrat = OptimisticStrategy (Astar Nothing)
+        sokoView = sokobanView logPath
+
+        optStrat = OptimisticStrategy (Astar Nothing, Nothing)
         bsWorld = BS.world
         bsEnv = fromWorld bsWorld
         bsProb = toProblem bsWorld
@@ -79,17 +80,7 @@ main = do
         wsWorld = WS.world
         wsEnv = fromWorld wsWorld
         wsProb = toProblem wsWorld
-        --runn = run astar dom prob
-        -- scientificMethod world strat knowledge question
+
         initKnl  = initialKnowledge dom (Env.toState ssEnv)
         dom = sokobanDomain
         astar = Astar Nothing
-        --fd = mkFastDownard dom prob
-        -- iniPreDomHyp = fromDomain dom :: OptPreHypothesis
-        -- iniEffDomHyp = fromDomain dom :: OptEffHypothesis
-        --
-        -- manyhyp = ManyHypothesis [
-        --                  HypBox iniPreDomHyp,
-        --                  HypBox iniEffDomHyp
-        --               ] :: ManyHypothesis
-        -- initDom = toLearningDomain manyhyp dom

@@ -13,8 +13,7 @@ import qualified Data.Map      as Map
 import           Data.Set      (Set)
 import qualified Data.Set      as Set
 
-
-type PDDLInfo = [P.Transition]
+type PDDLInfo = ([P.Transition], Int)
 
 class (P.Domain dom p as, Eq dh) => DomainHypothesis dh dom p as | dh -> dom p as where
     update :: dh -> dom -> P.Transition -> dh

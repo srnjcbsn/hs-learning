@@ -15,29 +15,36 @@ import qualified Data.Map                as Map
 import qualified Data.Set                as Set
 
 
-newtype (Environment env, ExternalPlanner planner PDDLDomain PDDLProblem ActionSpec) =>
-        OptimisticStrategy planner env =
-          OptimisticStrategy (planner)
+newtype (Environment env, BoundedPlanner planner, ExternalPlanner planner PDDLDomain PDDLProblem ActionSpec) =>
+        OptimisticStrategy planner env = OptimisticStrategy (planner, Maybe Int)
 
-
-
-instance (Environment env
-         , ExternalPlanner planner PDDLDomain PDDLProblem ActionSpec)
-          => Strategy
-            (OptimisticStrategy planner env)
-            env
-            PDDLProblem
-            PDDLKnowledge
-            (PDDLExperiment env)
-            Lrn.PDDLInfo
+instance ( Environment env
+         , BoundedPlanner planner
+         , ExternalPlanner planner PDDLDomain PDDLProblem ActionSpec
+         ) => Strategy
+             (OptimisticStrategy planner env)
+             env
+             PDDLProblem
+             PDDLKnowledge
+             (PDDLExperiment env)
+             Lrn.PDDLInfo
     where
-      design strat@(OptimisticStrategy planner) prob knl@(PDDLKnowledge (_,_,s)) =
+      design strat@(OptimisticStrategy (planner, bound)) prob knl@(PDDLKnowledge (_,_,s)) =
         do let optDom = makeOptimisticDomain knl
            let prob' = prob { probState = s}
-           plan <- makePlan planner optDom prob'
+           let planner' = setBound planner bound
+           plan <- makePlan planner' optDom prob'
            let expr = do plan' <- plan
-                         return (PDDLExperiment plan',strat)
+                         return (PDDLExperiment plan' optDom, strat)
            return expr
+
+      update (OptimisticStrategy (planner, bound)) (PDDLExperiment p _) (_, n)
+        | n == length p =
+          case bound of
+              Just b -> (OptimisticStrategy (planner, Just (b * 2)))
+              Nothing -> (OptimisticStrategy (planner, Nothing))
+        | otherwise =
+            OptimisticStrategy (planner, Just 1)
 
 
 effectSchema :: Eff.EffectKnowledge
@@ -60,9 +67,6 @@ precondFormula (Lrn.PreKnowledge hyp cnf) =
 
 precondSchema :: Pre.PreKnowledge -> ActionSpec -> ActionSpec
 precondSchema preKnow aSpec = aSpec { asPrecond = precondFormula preKnow }
-
-schema :: Pre.PreKnowledge -> Eff.EffectKnowledge -> ActionSpec -> ActionSpec
-schema pk ek = (effectSchema ek . precondSchema pk)
 
 mkSchema :: DomainKnowledge -> ActionSpec -> ActionSpec
 mkSchema kn as = case Map.lookup (asName as) kn of

@@ -35,10 +35,10 @@ visTile m c | xCoord c == 0 = ['\n', t]
 
 visualize :: SokobanPDDL -> IO ()
 visualize pddl =
-    do clearScreen
+    do --clearScreen
        putStrLn worldStr
-       hFlush stdout
-       threadDelay 1000000
+    --    hFlush stdout
+    --    threadDelay 1000000
     where
     goalFunc s | s == boxSymbol = boxWithGoalSymbol
                | otherwise      = goalSymbol

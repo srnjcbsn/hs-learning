@@ -29,7 +29,7 @@ updateKnowledge (PDDLKnowledge (d,k,_)) trans@(_,(aname,_),s') =
 
 
 instance Knowledge PDDLKnowledge Lrn.PDDLInfo PDDLProblem where
-    analyze knl (ts) = foldl updateKnowledge knl ts
+    analyze knl (ts, _) = foldl updateKnowledge knl ts
     canAnswer (PDDLKnowledge (_, _, s)) prob =
       isSolved prob s
 
