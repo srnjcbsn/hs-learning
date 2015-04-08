@@ -1,7 +1,7 @@
 module Learning.PDDL.EffectKnowledge  where
 
 import           Learning.Induction
-import qualified Learning.SchemaLearning as Lrn
+import qualified Learning.PDDL as Lrn
 import           Logic.Formula
 import           Planning
 import           Planning.PDDL

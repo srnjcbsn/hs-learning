@@ -12,7 +12,7 @@ import           Planning.PDDL.Logic
 import           Data.Set                (Set, (\\))
 import qualified Data.Set                as Set
 import qualified Data.TupleSet           as TSet
-import qualified Learning.SchemaLearning as Lrn
+import qualified Learning.PDDL as Lrn
 
 type CNF = Lrn.Cands Argument
 type PreKnowledge = Lrn.PreKnowledge Argument

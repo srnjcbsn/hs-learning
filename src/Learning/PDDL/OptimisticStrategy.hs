@@ -1,4 +1,4 @@
-module Learning.OptEffectLearn  where
+module Learning.PDDL.OptimisticStrategy  where
 
 import           Learning.Induction
 import qualified Learning.SchemaLearning as Lrn

@@ -1,4 +1,4 @@
-module Learning.SchemaLearning where
+module Learning.PDDL where
 
 import           Logic.Formula
 import qualified Planning      as P

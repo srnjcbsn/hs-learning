@@ -6,6 +6,7 @@ module Planning.PDDL.Logic
     , ground
     , applyAction
     , groundPreconditions
+    , isSatisfied
     ) where
 
 import           Data.List     (intercalate)
