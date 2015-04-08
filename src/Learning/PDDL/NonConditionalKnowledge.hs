@@ -4,7 +4,7 @@ import           Data.Typeable
 import qualified Learning.PDDL                       as Lrn
 import qualified Learning.PDDL.EffectKnowledge       as Eff
 import qualified Learning.PDDL.PreconditionKnowledge as Pre
-import           Learning2
+import           Learning
 import           Planning
 import           Planning.PDDL
 import           Learning.Induction
