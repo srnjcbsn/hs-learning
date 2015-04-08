@@ -22,17 +22,30 @@ import qualified Data.Set                as Set
 import           Data.Typeable
 
 
-newtype (Environment env) =>
-        OptimisticStrategy env = OptimisticStrategy ()
+newtype (Environment env, ExternalPlanner planner PDDLDomain PDDLProblem ActionSpec) =>
+        OptimisticStrategy planner env =
+          OptimisticStrategy (planner)
 
-instance Environment env => Strategy
-            (OptimisticStrategy env)
+
+
+instance (Environment env
+         , ExternalPlanner planner PDDLDomain PDDLProblem ActionSpec)
+          => Strategy
+            (OptimisticStrategy planner env)
             env
+            PDDLProblem
             PDDLKnowledge
             (PDDLExperiment env)
             Lrn.PDDLInfo
     where
-      design strat knl = undefined
+      design strat@(OptimisticStrategy planner) prob knl@(PDDLKnowledge (_,_,s)) =
+        do let optDom = makeOptimisticDomain knl
+           let prob' = prob { probState = s}
+           plan <- makePlan planner optDom prob'
+           let expr = do plan' <- plan
+                         return (PDDLExperiment plan',strat)
+           return expr
+
 
 effectSchema :: Eff.EffectKnowledge
                       -> ActionSpec

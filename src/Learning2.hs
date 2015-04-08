@@ -20,14 +20,14 @@ class Knowledge knl info question | knl -> info question where
 class Experiment exp world info | exp -> world info  where
     conduct :: exp -> world -> IO (world, info)
 
-class Experiment exp world info => Strategy strat world knl exp info | strat -> exp knl where
-    design :: strat -> knl -> IO( Maybe (exp, strat) )
+class Experiment exp world info => Strategy strat world question knl exp info | strat -> exp knl where
+    design :: strat -> question -> knl -> IO( Maybe (exp, strat) )
 
 class Inquirable uni question info | question -> info where
     inquire :: uni -> question -> IO (Maybe info)
 
 
-scientificMethod :: ( Strategy strat world knl exp info
+scientificMethod :: ( Strategy strat world question knl exp info
                     , Experiment exp world info
                     , Inquirable world question info
                     , Knowledge knl info question )
@@ -35,7 +35,7 @@ scientificMethod :: ( Strategy strat world knl exp info
 scientificMethod world strat knowledge question  =
   do information <- inquire world question
      let knowledge' = fromMaybe knowledge (liftM (knowledge `analyze`)  information )  -- undefined --liftM (analyze knowledge) information
-     dres <- design strat knowledge'
+     dres <- design strat question knowledge' 
      case dres of
       Just (experiment,strat') -> do
        (world', testdata) <- conduct experiment world

@@ -11,7 +11,7 @@ updateEnv env act = (env', t) where
     env' = applyAction env act
     t = (toState env, act, toState env')
 
-newtype Environment env => PDDLExperiment env = PDDLExperiment [Action]
+newtype Environment env => PDDLExperiment env = PDDLExperiment Plan
 
 instance Environment env => Experiment (PDDLExperiment env) env Lrn.PDDLInfo where
     conduct (PDDLExperiment acts) env = return $ mapAccumL updateEnv env acts
