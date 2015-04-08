@@ -2,7 +2,7 @@ module Learning.PDDL.Experiment where
 
 import Data.List (mapAccumL)
 import Environment
-import Learning2
+import Learning
 import qualified Learning.PDDL as Lrn
 import           Planning
 

@@ -12,7 +12,7 @@ import qualified Environment.Sokoban.Samples.WikiSample   as WS
 import           Environment.Sokoban.SokobanDomain
 import           Environment.Sokoban.SokobanView
 import           Graph.Search.Astar                       as Astar
-import           Learning2
+import           Learning
 import           Learning.PDDL
 import           Learning.PDDL.NonConditionalKnowledge
 import           Learning.PDDL.OptimisticStrategy

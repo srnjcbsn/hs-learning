@@ -2,7 +2,7 @@ module Learning.PDDL.OptimisticStrategy  where
 
 import qualified Learning.PDDL.EffectKnowledge       as Eff
 import qualified Learning.PDDL.PreconditionKnowledge as Pre
-import           Learning2
+import           Learning
 import qualified Learning.PDDL as Lrn
 import           Learning.PDDL.NonConditionalKnowledge
 import           Learning.PDDL.Experiment
