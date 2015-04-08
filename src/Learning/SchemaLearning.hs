@@ -5,6 +5,7 @@ import qualified Planning      as P
 import           Planning.PDDL
 -- import qualified Data.TupleSet as TSet
 import           Data.TupleSet (TupleSet)
+import           Planning.Loggable
 
 import           Control.Monad
 import           Data.Map      (Map)
@@ -12,7 +13,7 @@ import qualified Data.Map      as Map
 import           Data.Set      (Set)
 import qualified Data.Set      as Set
 
-class (P.Domain dom p as, Eq dh) => DomainHypothesis dh dom p as | dh -> dom p as where
+class (P.Domain dom p as, Eq dh, Loggable dh) => DomainHypothesis dh dom p as | dh -> dom p as where
     update :: dh -> dom -> Transition -> dh
     adjustDomain :: dh -> dom -> dom
     fromDomain :: dom -> dh

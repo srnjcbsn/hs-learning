@@ -7,10 +7,11 @@ import qualified Data.Sequence as Seq
 import Data.Sequence (Seq)
 import           Text.Show.Pretty
 
+import Learning.ManyHypothesis
 import           Environment              (Environment)
 import qualified Environment              as Env
 import           Planning
-import Planning.Viewing
+import qualified Planning.Viewing as V
 import qualified Learning.SchemaLearning as Lrn
 
 import Data.Map (Map)
@@ -18,6 +19,10 @@ import qualified Data.Map as Map
 
 type Finder = Map State [Action]
 type FinderResult = (Maybe Action, Finder)
+
+safeHead :: [a] -> Maybe a
+safeHead (a : _) = Just a
+safehead [] = Nothing
 
 isStateExplored :: Finder -> State -> Bool
 isStateExplored finder state = fromMaybe False
@@ -56,7 +61,7 @@ refine  :: ( BoundedPlanner ep
            , Environment env
            )
         => ep
-        -> View env
+        -> V.View env
         -> dom
         -> prob
         -> Maybe Plan
@@ -73,7 +78,7 @@ refine planner view domain problem maybeCurPlan bound finder = outp where
                return (Just [fromJust finderAct], finder')
          | isNothing maybeCurPlan = do
             plan <- makePlan planner' domain problem
-            planMade view plan
+            V.planMade view plan
             return (plan,finder)
          | otherwise =  return (maybeCurPlan, finder)
 
@@ -94,19 +99,21 @@ perform _ (Just []) = Right True
 perform _ Nothing   = Right False
 
 runRound  :: ( BoundedPlanner ep
-             , Lrn.LearningDomain dom prob as
+            --  , Lrn.LearningDomain dom prob as
              , ExternalPlanner ep dom prob as
              , Environment env)
           => ep
-          -> View env
-          -> dom
+          -> V.View env
+        --   -> dom
+          -> ManyHypothesis
           -> prob
           -> env
           -> Maybe Plan
           -> Maybe Int
           -> Finder
-          -> IO (Either (env, dom, Maybe Plan, Maybe Int, Finder) Bool)
-runRound planner view oldDomain problem  env plan bound apps =
+          -> V.Log env
+          -> IO (Either (env, dom, Maybe Plan, Maybe Int, Finder, V.Log env) Bool)
+runRound planner view oldDomain problem env plan bound apps (V.Log simLog) =
   let
   in do (plan',apps') <- refine planner view oldDomain problem plan bound apps
         case perform env plan' of
@@ -130,14 +137,23 @@ runRound planner view oldDomain problem  env plan bound apps =
                       | planIsDone = Nothing
                       | otherwise = plan''
 
-              showEnv | s /= s'   = envChanged view env'
+              showEnv | s /= s'   = V.envChanged view env'
                       | otherwise = return ()
 
            in do
-             showEnv
-             --envChanged view env'
-             actionPerformed view act (s /= s')
-             return $ Left (env', newDom, newPlan, newBound, apps')
+                 let sim = safeHead simLog
+                     sim' = V.SimState { V.transition = trans
+                                       , V.envState = env'
+                                       , V.hyp = newDom
+                                       , V.step = fromMaybe 0 (liftM V.step sim)
+                                       }
+                     log' = V.log sim' (V.Log simLog)
+
+                 showEnv
+                 --envChanged view env'
+                 V.actionPerformed view act (s /= s')
+
+                 return $ Left (env', newDom, newPlan, newBound, apps', log')
          Right ans -> return $ Right ans
 
 runEpisode :: ( BoundedPlanner ep
@@ -146,8 +162,9 @@ runEpisode :: ( BoundedPlanner ep
               , ExternalPlanner ep dom prob as
               , Environment env)
            => ep
-           -> View env
-           -> dom
+           -> V.View env
+        --    -> dom
+           -> ManyHypothesis
            -> prob
            -> env
            -> Maybe Int
@@ -165,17 +182,18 @@ runEpisode planr view dom prob env startBound =
                   in runv  dom' prob' env' plan' bound' tried'
                Right True -> error "Planner says problem is solved, environment does not"
                Right False -> return (Nothing, rdom, bound)
-    in envChanged view env >> runv dom prob env Nothing startBound emptyFinder
+    in V.envChanged view env >> runv dom prob env Nothing startBound emptyFinder
 
 runUntilSolved :: ( BoundedPlanner ep
                   , Eq dom
-                  , Lrn.LearningDomain dom prob as
+                --   , Lrn.LearningDomain dom prob as
                   , Problem prob
                   , ExternalPlanner ep dom prob as
                   , Environment env)
                => ep
-               -> View env
-               -> dom
+               -> V.View env
+            --    -> dom
+               -> ManyHypothesis
                -> prob
                -> env
                -> (IO (env, dom))
@@ -207,10 +225,6 @@ instance (Domain dom p as, Show dh, Show dom, Lrn.DomainHypothesis dh dom p as) 
       let dh'  = Lrn.update dh dom trans
           dom' = Lrn.adjustDomain dh' dom
        in LearningDomain' (dom', dh')
-    -- tellExploredAll (LearningDomain' (dom, dh)) s  =
-    --  let dh'  = ignoreState dh s
-    --      dom' = adjustDomain dh' dom
-    --  in LearningDomain' (dom', dh')
 
 toLearningDomain :: ( Domain domain p as
                     , Lrn.DomainHypothesis domainHypothesis domain p as)

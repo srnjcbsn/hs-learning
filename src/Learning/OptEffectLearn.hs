@@ -4,6 +4,7 @@ import           Learning.Induction
 import qualified Learning.SchemaLearning as Lrn
 import           Logic.Formula
 import           Planning
+import           Planning.Loggable
 import           Planning.PDDL
 import           Planning.PDDL.Logic
 
@@ -27,6 +28,16 @@ type EffDomainHypothesis = Map Name EffectKnowledge
 
 newtype OptEffHypothesis = OptEffHypothesis EffDomainHypothesis
                            deriving (Show, Eq, Typeable)
+
+instance Loggable OptEffHypothesis where
+    logg (OptEffHypothesis m) act = case Map.lookup act m of
+        Nothing -> error "logg: Failed to look up" ++ act ++ " in hypothesis."
+        Just (Lrn.EffKnowledge h) ->
+               "Known positive effects: "
+            ++ (show . Set.size . fst . Lrn.knowns) h ++ "\n"
+            ++ "Known negative effects: "
+            ++ (show . Set.size . fst . Lrn.unknowns) h
+    chart = undefined
 
 instance Lrn.DomainHypothesis OptEffHypothesis PDDLDomain PDDLProblem ActionSpec where
       update (OptEffHypothesis eff) dom trans  =
@@ -117,57 +128,6 @@ updateEffectHyp domain (Lrn.EffKnowledge hyp) (s, action, s')
             hyp' = Lrn.Hyp (posKnEff', negKnEff') (posUnkEff', negUnkEff')
 
             in Lrn.EffKnowledge hyp'
-
--- updateEffectHyp _ ak (_, _, Nothing) = ak
--- updateEffectHyp domain ak (oldState, action, Just newState) =
---     let aSpec = findActionSpec domain action
---         aSpecParas = asParas aSpec
---         (posEffects, negEffects) = ak
---         (posUnkEff, posKnEff) = posEffects
---         (negUnkEff, negKnEff) = negEffects
---
---         unground' :: GroundedPredicate -> Set FluentPredicate
---         unground' = ungroundNExpand aSpecParas (aArgs action)
---
---         unions :: Ord a => Set (Set a) -> Set a
---         unions = Set.unions . Set.toList
---
---         gAdd :: Set GroundedPredicate
---         gAdd = addList aSpec action domain
---         kAdd = newState \\ oldState
---         uAdd = newState `Set.intersection` oldState `Set.intersection` gAdd
---
---         kDel = oldState \\ newState
---
---         kAddUg = Set.map unground' kAdd
---         uAddUg = Set.map unground' uAdd
---
---         kDelUg = Set.map unground' kDel
---
---         alphaAdd = unions kAddUg `Set.intersection` posUnkEff
---         betaAdd  = unions uAddUg `Set.intersection` posUnkEff
---
---         alphaDel = unions kDelUg `Set.intersection` negUnkEff
---
---         tmpUnkAdd = alphaAdd `Set.union` betaAdd
---
---         (posUamb, posAmb) =
---             Set.foldl (extractUnambiguous tmpUnkAdd) (Set.empty, Set.empty) kAddUg
---         (negUamb, negAmb) =
---             Set.foldl (extractUnambiguous alphaDel) (Set.empty, Set.empty) kDelUg
---
---         posUnkEff' = betaAdd `Set.union` posAmb
---         posKnEff' = posKnEff `Set.union` posUamb
---
---         negUnkEff' = negAmb
---         negKnEff' = negKnEff `Set.union` negUamb
---
---         posEff' = (posUnkEff', posKnEff')
---         negEff' = (negUnkEff', negKnEff')
---
---         ak' = (posEff', negEff')
---
---         in ak'
 
 effectHypothesis :: EffDomainHypothesis -> Name -> EffectKnowledge
 effectHypothesis dmKnowledge actName =

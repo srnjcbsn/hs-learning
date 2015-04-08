@@ -1,31 +1,31 @@
 module Planning.Viewing where
 
+import Planning
 import           Environment
-import           Learning.SchemaLearning
+import           Learning.ManyHypothesis
+-- import           Learning.SchemaLearning
 import qualified Planning                as P
 import           Planning.PDDL
 
 import           Control.Monad.Writer
 import           Data.Map                (Map)
 
-class Loggable l where
-    logg :: l -> IO ()
+-- instance Loggable HypBox where
+--     logg (HypBox hyp) = logg hyp
 
+-- instance Loggable ManyHypothesis where
+--     logg (ManyHypothesis hbs) = concatMap logg hbs
 
-data (Environment env, LearningDomain dom prob as) => SimState env dom prob as =
+data Environment env => SimState env =
     SimState { transition :: Transition
              , envState   :: env
-             , lDom       :: dom
+             , hyp        :: ManyHypothesis
              , step       :: Int
              }
 
-data (Environment env, LearningDomain dom prob as) => Log env dom prob as =
-    Log [SimState env dom prob as]
+data Environment env => Log env = Log [SimState env]
 
-log :: (Environment env, LearningDomain dom prob as)
-    => SimState env dom prob as
-    -> Log env dom prob as
-    -> Log env dom prob as
+log :: Environment env => SimState env -> Log env -> Log env
 log s (Log l) = Log (s : l)
 
 data View e = View { actionPerformed :: P.Action -> Bool -> IO ()

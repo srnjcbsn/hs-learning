@@ -5,7 +5,7 @@ import           Learning.Induction
 import           Logic.Formula
 import           Planning.PDDL
 import           Planning.PDDL.Logic
-
+import           Planning.Loggable
 
 import           Data.Map                (Map, (!))
 import qualified Data.Map                as Map
@@ -21,6 +21,10 @@ type PreDomainHypothesis = Map Name PreKnowledge
 
 newtype OptPreHypothesis = OptPreHypothesis PreDomainHypothesis
                            deriving (Show, Eq, Typeable)
+
+instance Loggable OptPreHypothesis where
+    logg _ _ = "preconds"
+    chart = undefined
 
 instance Lrn.DomainHypothesis OptPreHypothesis PDDLDomain PDDLProblem ActionSpec
     where
