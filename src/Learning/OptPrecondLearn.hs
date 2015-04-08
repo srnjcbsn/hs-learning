@@ -58,7 +58,6 @@ constructPrecondFormula (Lrn.PreKnowledge hyp cnf) =
 
 constructPrecondSchema :: PreKnowledge -> ActionSpec -> ActionSpec
 constructPrecondSchema preKnow aSpec =
-    --trace ("precondForm (" ++ asName aSpec ++ "): " ++ ppShow preKnow)
     aSpec { asPrecond = constructPrecondFormula preKnow }
 
 domainFromPrecondHypothesis :: PDDLDomain -> PreDomainHypothesis -> PDDLDomain

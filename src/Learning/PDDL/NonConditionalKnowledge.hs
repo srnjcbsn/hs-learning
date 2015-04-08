@@ -33,6 +33,6 @@ updateKnowledge (PDDLKnowledge (d,k,_)) trans@(_,(aname,_),s') =
 
 
 instance Knowledge PDDLKnowledge Lrn.PDDLInfo Lrn.PDDLQuestion where
-    analyze knl (Lrn.PDDLInfo ts) = foldl updateKnowledge knl ts
+    analyze knl ts = foldl updateKnowledge knl ts
     canAnswer (PDDLKnowledge (_,_,s)) (Lrn.PDDLQuestion (goal)) =
       isSatisfied goal s
