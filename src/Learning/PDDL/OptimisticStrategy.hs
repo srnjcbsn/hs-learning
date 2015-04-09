@@ -25,9 +25,9 @@ instance ( Environment env
              (OptimisticStrategy planner env)
              env
              PDDLProblem
-             PDDLKnowledge
+             (PDDLKnowledge env)
              (PDDLExperiment env)
-             Lrn.PDDLInfo
+             (Lrn.PDDLInfo env)
     where
       design strat@(OptimisticStrategy (planner, bound)) prob knl@(PDDLKnowledge (_,_,s)) =
         do let optDom = makeOptimisticDomain knl
@@ -38,7 +38,7 @@ instance ( Environment env
                          return (PDDLExperiment plan' optDom, strat)
            return expr
 
-      update (OptimisticStrategy (planner, bound)) (PDDLExperiment p _) (_, n)
+      update (OptimisticStrategy (planner, bound)) (PDDLExperiment p _) (Lrn.PDDLInfo _ _ n)
         | n == length p =
           case bound of
               Just b -> (OptimisticStrategy (planner, Just (b * 2)))
@@ -74,6 +74,6 @@ mkSchema kn as = case Map.lookup (asName as) kn of
     Nothing -> error $  "Optimistic schema construction: lookup of action schema"
                      ++ (asName as) ++ " failed."
 
-makeOptimisticDomain :: PDDLKnowledge -> PDDLDomain
+makeOptimisticDomain :: PDDLKnowledge env -> PDDLDomain
 makeOptimisticDomain (PDDLKnowledge (dom, kn, _)) = dom { dmActionsSpecs = as }
     where as = map (mkSchema kn) (dmActionsSpecs dom)

@@ -3,8 +3,7 @@ module Learning.PDDL where
 import           Logic.Formula
 import qualified Planning      as P
 import           Planning.PDDL
--- import qualified Planning
--- import qualified Data.TupleSet as TSet
+import Environment
 import           Data.TupleSet (TupleSet)
 
 import           Control.Monad
@@ -13,7 +12,11 @@ import qualified Data.Map      as Map
 import           Data.Set      (Set)
 import qualified Data.Set      as Set
 
-type PDDLInfo = ([P.Transition], Int)
+data Environment env => PDDLInfo env = PDDLInfo
+    { transitions :: [P.Transition]
+    , states      :: [env]
+    , stepsDone   :: Int
+    } deriving Show
 
 class (P.Domain dom p as, Eq dh) => DomainHypothesis dh dom p as | dh -> dom p as where
     update :: dh -> dom -> P.Transition -> dh

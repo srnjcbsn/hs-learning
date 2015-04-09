@@ -21,13 +21,25 @@ class Experiment exp world info => Strategy strat world question knl exp info | 
 class Inquirable uni question info | question -> info where
     inquire :: uni -> question -> IO (Maybe info)
 
+class Representable r where
+    textual :: r -> String
+
+data (Knowledge k i q, Experiment e w i, Representable r) =>
+    Repr k e w i q r = Repr (k -> e -> w -> i -> r)
 
 scientificMethod :: ( Show info
                     , Strategy strat world question knl exp info
                     , Experiment exp world info
                     , Inquirable world question info
-                    , Knowledge knl info question )
-                 => View world -> strat -> knl -> world -> question -> IO (knl, world)
+                    , Knowledge knl info question
+                    )
+                 => View world
+                 -> strat
+                 -> knl
+                 -> world
+                 -> question
+                --  -> Repr knl exp world info question r
+                 -> IO (knl, world)
 scientificMethod view strat knowledge world question =
   do information <- inquire world question
      let knowledge' = fromMaybe knowledge (liftM (knowledge `analyze`)  information )  -- undefined --liftM (analyze knowledge) information

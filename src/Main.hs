@@ -41,7 +41,7 @@ instance ExternalPlanner Astar PDDLDomain PDDLProblem ActionSpec where
         Nothing -> return $ Astar.search (PDDLGraph (d,p)) (initialState p)
 
 -- Inquirable uni question info
-instance Inquirable SokobanPDDL PDDLProblem PDDLInfo where
+instance Inquirable SokobanPDDL PDDLProblem (PDDLInfo SokobanPDDL) where
     inquire _ _ = return Nothing
 
 main :: IO ()
@@ -50,9 +50,6 @@ main = do
     clearScreen
     setTitle "SOKOBAN!"
     -- putStrLn (ppShow $ initialState prob)
-
-
-
     (knl', world') <- scientificMethod sokoView optStrat initKnl ssEnv ssProb
     (knl'', world'') <- scientificMethod sokoView optStrat knl' lsEnv lsProb
     (knl''', world''') <- scientificMethod sokoView optStrat knl'' bsEnv bsProb
