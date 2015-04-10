@@ -1,11 +1,14 @@
-module Learning where
+module Learning
+    ( Knowledge (..)
+    , Experiment (..)
+    , Strategy (..)
+    , Inquirable (..)
+    , SimStep (..)
+    , scientificMethod
+    ) where
 
-import Planning.Viewing
 import           Control.Monad
 import           Data.Maybe
-import Text.Show.Pretty
-
-import Debug.Trace
 
 class Knowledge knl info question | knl -> info question where
     analyze :: knl -> info -> knl
@@ -21,38 +24,71 @@ class Experiment exp world info => Strategy strat world question knl exp info | 
 class Inquirable uni question info | question -> info where
     inquire :: uni -> question -> IO (Maybe info)
 
-class Representable r where
-    textual :: r -> String
+data ( Strategy s w q k e i
+     , Experiment e w i
+     , Knowledge k i q
+     ) => SimStep s w q k e i = SimStep
+    { ssExp   :: e
+    , ssInfo  :: i
+    , ssStrat :: s
+    , ssWorld :: w
+    , ssKnl   :: k
+    }
 
-data (Knowledge k i q, Experiment e w i, Representable r) =>
-    Repr k e w i q r = Repr (k -> e -> w -> i -> r)
-
-scientificMethod :: ( Show info
-                    , Strategy strat world question knl exp info
+scientificMethod :: ( Strategy strat world question knl exp info
                     , Experiment exp world info
                     , Inquirable world question info
                     , Knowledge knl info question
                     )
-                 => View world
+                 => ([SimStep strat world question knl exp info] -> IO ())
                  -> strat
                  -> knl
                  -> world
                  -> question
-                --  -> Repr knl exp world info question r
-                 -> IO (knl, world)
-scientificMethod view strat knowledge world question =
-  do information <- inquire world question
-     let knowledge' = fromMaybe knowledge (liftM (knowledge `analyze`)  information )  -- undefined --liftM (analyze knowledge) information
-     dres <- design strat question knowledge'
-     case dres of
-      Just (experiment, strat') -> do
-       (world', testdata) <- conduct experiment world
+                 -> IO ([SimStep strat world question knl exp info])
+scientificMethod = scientificMethod' []
 
-       _ <- trace (ppShow testdata) $ (envChanged view) world'
-       let strat'' = update strat' experiment testdata
-       let knowledge'' = analyze knowledge' testdata
+scientificMethod' :: ( Strategy strat world question knl exp info
+                     , Experiment exp world info
+                     , Inquirable world question info
+                     , Knowledge knl info question
+                     )
+        => [SimStep strat world question knl exp info]
+        -> ([SimStep strat world question knl exp info] -> IO ())
+        -> strat
+        -> knl
+        -> world
+        -> question
+        -> IO ([SimStep strat world question knl exp info])
+scientificMethod' sss logger strat knl world quest = do
+    ms <- updateKnowledge strat knl world quest
+    case ms of
+        Nothing -> return []
+        Just ss | canAnswer (ssKnl ss) quest -> do
+                    logger (ss : sss)
+                    return (ss : sss)
+                | otherwise -> do
+                    logger (ss : sss)
+                    scientificMethod' (ss : sss) logger (ssStrat ss) (ssKnl ss) (ssWorld ss) quest
 
-       if canAnswer knowledge'' question
-       then return (knowledge'', world')
-       else scientificMethod view strat'' knowledge'' world' question
-      Nothing -> return (knowledge', world)
+updateKnowledge :: ( Strategy strat world question knl exp info
+                   , Experiment exp world info
+                   , Inquirable world question info
+                   , Knowledge knl info question
+                   )
+                => strat
+                -> knl
+                -> world
+                -> question
+                -> IO (Maybe (SimStep strat world question knl exp info))
+updateKnowledge strat knowledge world question = do
+    information <- inquire world question
+    let knowledge' = fromMaybe knowledge (liftM (knowledge `analyze`)  information )
+    dres <- design strat question knowledge'
+    case dres of
+        Nothing -> return Nothing
+        Just (experiment, strat') -> do
+           (world', testdata) <- conduct experiment world
+           let strat'' = update strat' experiment testdata
+           let knowledge'' = analyze knowledge' testdata
+           return $ Just $ SimStep experiment testdata strat'' world' knowledge''

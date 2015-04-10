@@ -1,8 +1,10 @@
 module Environment.Sokoban.Samples.LargeSample (world) where
 
 import Environment.Sokoban hiding (goals)
+
+p, c, b :: Either (Object -> Tile) Bool
 p = Right True
-e = Right False
+-- e = Right False
 c = Left $ const Clear
 b = Left Box
 

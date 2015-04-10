@@ -1,8 +1,6 @@
 
 module Main where
 
-
-
 import           Environment                              as Env
 import           Environment.Sokoban.PDDL
 import qualified Environment.Sokoban.Samples.BigSample    as BS
@@ -18,16 +16,10 @@ import           Learning.PDDL.NonConditionalKnowledge
 import           Learning.PDDL.OptimisticStrategy
 import           Planning
 import           Planning.PDDL
-import           Planning.PDDL.Logic
-import           Planning.Planner.FastDownward
-import           Planning.Viewing
 
-import           Data.Map                                 ((!))
 import           System.Console.ANSI
 import           System.Directory                         (removeFile)
 import           System.IO.Error
-import           Text.Show.Pretty
-logPath = "./log.log"
 
 data Astar = Astar (Maybe Int)
 
@@ -40,7 +32,6 @@ instance ExternalPlanner Astar PDDLDomain PDDLProblem ActionSpec where
         Just b -> return $ Astar.searchBounded (PDDLGraph (d,p)) (initialState p) b
         Nothing -> return $ Astar.search (PDDLGraph (d,p)) (initialState p)
 
--- Inquirable uni question info
 instance Inquirable SokobanPDDL PDDLProblem (PDDLInfo SokobanPDDL) where
     inquire _ _ = return Nothing
 
@@ -49,16 +40,19 @@ main = do
     catchIOError (removeFile logPath) (\_ -> return ())
     clearScreen
     setTitle "SOKOBAN!"
+
     -- putStrLn (ppShow $ initialState prob)
-    (knl', world') <- scientificMethod sokoView optStrat initKnl ssEnv ssProb
-    (knl'', world'') <- scientificMethod sokoView optStrat knl' lsEnv lsProb
-    (knl''', world''') <- scientificMethod sokoView optStrat knl'' bsEnv bsProb
+    hist <- scientificMethod emptyIO optStrat initKnl ssEnv ssProb
+    -- (knl'', world'') <- scientificMethod emptyIO optStrat knl' lsEnv lsProb
+    -- (knl''', world''') <- scientificMethod emptyIO optStrat knl'' bsEnv bsProb
     -- putStrLn (ppShow fenv)
     -- putStrLn (ppShow dom''')
     -- writeFile "sokoDom.pddl" $ writeDomain dom
     -- writeFile "sokoProb.pddl" $ writeProblem wsProb
     return ()
     where
+        emptyIO _ = return ()
+        logPath = "./log.log"
         sokoView = sokobanView logPath
 
         optStrat = OptimisticStrategy (Astar Nothing, Nothing)

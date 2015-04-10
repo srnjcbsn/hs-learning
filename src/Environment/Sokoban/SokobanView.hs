@@ -1,7 +1,5 @@
 module Environment.Sokoban.SokobanView where
 
-import           Control.Concurrent
-import           Data.Char
 import           Data.Map                 (Map)
 import qualified Data.Map                 as Map
 import           Data.Maybe               (fromMaybe)
@@ -9,8 +7,8 @@ import           Environment.Sokoban
 import           Environment.Sokoban.PDDL
 import           Planning
 import           Planning.Viewing
-import           System.Console.ANSI
-import           System.IO                (hFlush, stdout)
+-- import           System.Console.ANSI
+-- import           System.IO                (hFlush, stdout)
 import           Text.Show.Pretty
 
 goalSymbol, sokobanSymbol, boxSymbol, clearSymbol, boxWithGoalSymbol, emptySymbol :: Char

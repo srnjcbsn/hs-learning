@@ -1,6 +1,8 @@
 module Environment.Sokoban.Samples.WikiSample (world) where
 
 import Environment.Sokoban hiding (goals)
+
+p, e, c, b :: Either (Object -> Tile) Bool
 p = Right True
 e = Right False
 c = Left $ const Clear
