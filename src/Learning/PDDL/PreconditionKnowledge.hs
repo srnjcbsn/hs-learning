@@ -13,8 +13,6 @@ import qualified Learning.PDDL as Lrn
 type CNF = Lrn.Cands Argument
 type PreKnowledge = Lrn.PreKnowledge Argument
 
-
-
 update :: PDDLDomain -> PreKnowledge -> Transition -> PreKnowledge
 update domain (Lrn.PreKnowledge hyp cnfs) (s, action, s')
     | s == s'   =

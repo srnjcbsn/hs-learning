@@ -5,6 +5,7 @@ import qualified Planning      as P
 import           Planning.PDDL
 import Environment
 import           Data.TupleSet (TupleSet)
+import qualified Data.TupleSet as TSet
 
 import           Control.Monad
 import           Data.Map      (Map)
@@ -51,6 +52,17 @@ negUnknown = snd . unknowns
 
 data PreKnowledge a = PreKnowledge (Hyp a) (Cands a) deriving (Eq, Show)
 data EffKnowledge a = EffKnowledge (Hyp a) deriving (Eq, Show)
+
+deltaHyp :: Ord a => Hyp a -> Hyp a -> Hyp a
+deltaHyp h1 h2 = Hyp ks us where
+    ks = (knowns h2) `TSet.difference` (knowns h1)
+    us = (unknowns h1) `TSet.difference` (unknowns h2)
+
+pkHyp :: PreKnowledge a -> Hyp a
+pkHyp (PreKnowledge h _) = h
+
+ekHyp :: EffKnowledge a -> Hyp a
+ekHyp (EffKnowledge h) = h
 
 type ConditionalEffect = (PreKnowledge FBind, EffKnowledge FBind)
 

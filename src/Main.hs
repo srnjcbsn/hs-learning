@@ -1,6 +1,8 @@
 
 module Main where
 
+import           Data.TupleSet                            (TupleSet)
+import qualified Data.TupleSet                            as TSet
 import           Environment                              as Env
 import           Environment.Sokoban.PDDL
 import qualified Environment.Sokoban.Samples.BigSample    as BS
@@ -12,14 +14,22 @@ import           Environment.Sokoban.SokobanView
 import           Graph.Search.Astar                       as Astar
 import           Learning
 import           Learning.PDDL
+import qualified Learning.PDDL.EffectKnowledge            as Eff
+import           Learning.PDDL.Experiment
 import           Learning.PDDL.NonConditionalKnowledge
 import           Learning.PDDL.OptimisticStrategy
+import qualified Learning.PDDL.PreconditionKnowledge      as Pre
 import           Planning
 import           Planning.PDDL
 
+import           Data.Map                                 (Map)
+import qualified Data.Map                                 as Map
+import qualified Data.Set as Set
 import           System.Console.ANSI
 import           System.Directory                         (removeFile)
 import           System.IO.Error
+import Text.Show.Pretty
+import Control.Monad (unless)
 
 data Astar = Astar (Maybe Int)
 
@@ -35,6 +45,65 @@ instance ExternalPlanner Astar PDDLDomain PDDLProblem ActionSpec where
 instance Inquirable SokobanPDDL PDDLProblem (PDDLInfo SokobanPDDL) where
     inquire _ _ = return Nothing
 
+type SokoSimStep = SimStep (OptimisticStrategy Astar SokobanPDDL)
+                           SokobanPDDL
+                           PDDLProblem
+                           (PDDLKnowledge SokobanPDDL)
+                           (PDDLExperiment SokobanPDDL)
+                           (PDDLInfo SokobanPDDL)
+
+deltaKnl :: (Pre.PreKnowledge, Eff.EffectKnowledge)
+         -> (Pre.PreKnowledge, Eff.EffectKnowledge)
+         -> (Hyp Argument, Hyp Argument)
+deltaKnl (pk1, ek1) (pk2, ek2) =
+    ( deltaHyp (pkHyp pk1) (pkHyp pk2)
+    , deltaHyp (ekHyp ek1) (ekHyp ek2)
+    )
+
+showWorld :: [SokoSimStep] -> IO ()
+showWorld (step : _) = visualize $ ssWorld step
+showWorld [] = return ()
+
+lastAction :: SokoSimStep -> Action
+lastAction step = case transitions (ssInfo step) of
+                    ((_, act, _) : _) -> act
+                    [] -> error "lastAction: Empty transition list in PDDLInfo."
+
+showLearned :: [SokoSimStep] -> IO ()
+showLearned (step : prev : _) =  posPrecMessage >> negPrecMessage
+                              >> posEffMessage >> negEffMessage
+                              >> nPosPrecMessage >> nNegPrecMessage
+                              >> nPosEffMessage >> nNegEffMessage where
+    domKnl = (domainKnowledge . ssKnl)
+    act = lastAction step
+    actKnl s = case Map.lookup (aName act) (domKnl s) of
+                 Just k -> k
+                 Nothing -> error "ERROR message"
+    (precs, effs) = deltaKnl (actKnl prev) (actKnl step)
+
+    baseMessage = "The following predicates have been proven to be "
+
+    message set str = unless (Set.null set)
+                    $ putStrLn $ baseMessage ++ str ++ ppShow set
+
+    posPrecMessage = message (posKnown precs) "positive preconditions: "
+    negPrecMessage = message (negKnown precs) "negative preconditions: "
+    posEffMessage = message (posKnown effs) "positive effects: "
+    negEffMessage = message (negKnown effs) "negative effects: "
+
+    nPosPrecMessage = message (posUnknown precs) "NOT pos prec: "
+    nNegPrecMessage = message (negUnknown precs) "NOT neg prec: "
+    nPosEffMessage  = message (posUnknown effs) "NOT pos effs: "
+    nNegEffMessage  = message (negUnknown effs) "NOT neg effs: "
+showLearned _ = return ()
+
+showAct (step : _) = putStrLn $ "executed action " ++ show (lastAction step)
+showAct _ = return ()
+
+writeSim :: [SokoSimStep] -> IO ()
+writeSim steps = showAct steps >> showWorld steps >> showLearned steps
+-- writeSim [] = return ()
+
 main :: IO ()
 main = do
     catchIOError (removeFile logPath) (\_ -> return ())
@@ -42,7 +111,11 @@ main = do
     setTitle "SOKOBAN!"
 
     -- putStrLn (ppShow $ initialState prob)
-    hist <- scientificMethod emptyIO optStrat initKnl ssEnv ssProb
+    hist <- runAll writeSim optStrat initKnl [ (ssEnv, ssProb)
+                                             , (lsEnv, lsProb)
+                                             , (bsEnv, bsProb)
+                                             ]
+    -- hist <- scientificMethod writeSim optStrat initKnl ssEnv ssProb
     -- (knl'', world'') <- scientificMethod emptyIO optStrat knl' lsEnv lsProb
     -- (knl''', world''') <- scientificMethod emptyIO optStrat knl'' bsEnv bsProb
     -- putStrLn (ppShow fenv)
@@ -51,7 +124,6 @@ main = do
     -- writeFile "sokoProb.pddl" $ writeProblem wsProb
     return ()
     where
-        emptyIO _ = return ()
         logPath = "./log.log"
         sokoView = sokobanView logPath
 

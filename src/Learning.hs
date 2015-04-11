@@ -5,9 +5,10 @@ module Learning
     , Inquirable (..)
     , SimStep (..)
     , scientificMethod
+    , runAll
     ) where
 
-import           Control.Monad
+import           Control.Monad (foldM, liftM)
 import           Data.Maybe
 
 class Knowledge knl info question | knl -> info question where
@@ -34,6 +35,21 @@ data ( Strategy s w q k e i
     , ssWorld :: w
     , ssKnl   :: k
     }
+
+runAll :: ( Strategy strat world question knl exp info
+          , Experiment exp world info
+          , Inquirable world question info
+          , Knowledge knl info question
+          )
+       => ([SimStep strat world question knl exp info] -> IO ())
+       -> strat
+       -> knl
+       -> [(world, question)]
+       -> IO ([SimStep strat world question knl exp info])
+runAll logger strat knl quests = foldM runner [] quests where
+    runner steps (w, q) = scientificMethod' steps logger strat (knl' steps) w q
+    knl' [] = knl
+    knl' (step : _) = ssKnl step
 
 scientificMethod :: ( Strategy strat world question knl exp info
                     , Experiment exp world info

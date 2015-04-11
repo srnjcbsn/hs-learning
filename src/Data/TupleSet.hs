@@ -32,3 +32,6 @@ difference (s1a,s1b) (s2a,s2b) = (s1a \\ s2a, s1b \\ s2b )
 
 empty :: Ord a => (Set a, Set a)
 empty = (Set.empty, Set.empty)
+
+isEmpty :: Ord a => TupleSet a -> Bool
+isEmpty = (== 0) . size 

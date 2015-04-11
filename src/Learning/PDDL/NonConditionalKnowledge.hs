@@ -21,6 +21,9 @@ newtype Environment env => PDDLKnowledge env =
   PDDLKnowledge (PDDLDomain, DomainKnowledge, State)
     deriving (Show, Eq, Typeable)
 
+domainKnowledge :: PDDLKnowledge env -> DomainKnowledge
+domainKnowledge (PDDLKnowledge (_, dk, _)) = dk
+
 updateKnowledge :: PDDLKnowledge env -> Transition -> PDDLKnowledge env
 updateKnowledge (PDDLKnowledge (d,k,_)) trans@(_,(aname,_),s') =
   PDDLKnowledge (d, Map.adjust (f (uppPre,uppEff)) aname k,s')
