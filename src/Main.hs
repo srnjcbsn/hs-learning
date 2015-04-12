@@ -22,14 +22,14 @@ import qualified Learning.PDDL.PreconditionKnowledge      as Pre
 import           Planning
 import           Planning.PDDL
 
+import           Control.Monad                            (unless)
 import           Data.Map                                 (Map)
 import qualified Data.Map                                 as Map
-import qualified Data.Set as Set
+import qualified Data.Set                                 as Set
 import           System.Console.ANSI
 import           System.Directory                         (removeFile)
 import           System.IO.Error
-import Text.Show.Pretty
-import Control.Monad (unless)
+import           Text.Show.Pretty
 
 data Astar = Astar (Maybe Int)
 
@@ -60,6 +60,14 @@ deltaKnl (pk1, ek1) (pk2, ek2) =
     , deltaHyp (ekHyp ek1) (ekHyp ek2)
     )
 
+learned :: SokoSimStep -> SokoSimStep -> (Hyp Argument, Hyp Argument)
+learned prev latest = deltaKnl (actKnl prev) (actKnl latest) where
+    domKnl = (domainKnowledge . ssKnl)
+    act = lastAction latest
+    actKnl s = case Map.lookup (aName act) (domKnl s) of
+                 Just k -> k
+                 Nothing -> error "ERROR message"
+
 showWorld :: [SokoSimStep] -> IO ()
 showWorld (step : _) = visualize $ ssWorld step
 showWorld [] = return ()
@@ -74,18 +82,10 @@ showLearned (step : prev : _) =  posPrecMessage >> negPrecMessage
                               >> posEffMessage >> negEffMessage
                               >> nPosPrecMessage >> nNegPrecMessage
                               >> nPosEffMessage >> nNegEffMessage where
-    domKnl = (domainKnowledge . ssKnl)
-    act = lastAction step
-    actKnl s = case Map.lookup (aName act) (domKnl s) of
-                 Just k -> k
-                 Nothing -> error "ERROR message"
-    (precs, effs) = deltaKnl (actKnl prev) (actKnl step)
-
+    (precs, effs) = learned step prev
     baseMessage = "The following predicates have been proven to be "
-
     message set str = unless (Set.null set)
                     $ putStrLn $ baseMessage ++ str ++ ppShow set
-
     posPrecMessage = message (posKnown precs) "positive preconditions: "
     negPrecMessage = message (negKnown precs) "negative preconditions: "
     posEffMessage = message (posKnown effs) "positive effects: "
@@ -125,7 +125,6 @@ main = do
     return ()
     where
         logPath = "./log.log"
-        sokoView = sokobanView logPath
 
         optStrat = OptimisticStrategy (Astar Nothing, Nothing)
         bsWorld = BS.world
