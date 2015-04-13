@@ -21,6 +21,7 @@ import           Learning.PDDL.OptimisticStrategy
 import qualified Learning.PDDL.PreconditionKnowledge      as Pre
 import           Planning
 import           Planning.PDDL
+import Charting
 
 import           Control.Monad                            (unless)
 import           Data.Map                                 (Map)
@@ -31,26 +32,8 @@ import           System.Directory                         (removeFile)
 import           System.IO.Error
 import           Text.Show.Pretty
 
-data Astar = Astar (Maybe Int)
-
-instance BoundedPlanner Astar where
-  setBound (Astar _) = Astar
-
-instance ExternalPlanner Astar PDDLDomain PDDLProblem ActionSpec where
-    makePlan (Astar bound) d p =
-      case bound of
-        Just b -> return $ Astar.searchBounded (PDDLGraph (d,p)) (initialState p) b
-        Nothing -> return $ Astar.search (PDDLGraph (d,p)) (initialState p)
-
 instance Inquirable SokobanPDDL PDDLProblem (PDDLInfo SokobanPDDL) where
     inquire _ _ = return Nothing
-
-type SokoSimStep = SimStep (OptimisticStrategy Astar SokobanPDDL)
-                           SokobanPDDL
-                           PDDLProblem
-                           (PDDLKnowledge SokobanPDDL)
-                           (PDDLExperiment SokobanPDDL)
-                           (PDDLInfo SokobanPDDL)
 
 deltaKnl :: (Pre.PreKnowledge, Eff.EffectKnowledge)
          -> (Pre.PreKnowledge, Eff.EffectKnowledge)
@@ -62,23 +45,22 @@ deltaKnl (pk1, ek1) (pk2, ek2) =
 
 learned :: SokoSimStep -> SokoSimStep -> (Hyp Argument, Hyp Argument)
 learned prev latest = deltaKnl (actKnl prev) (actKnl latest) where
-    domKnl = (domainKnowledge . ssKnl)
-    act = lastAction latest
-    actKnl s = case Map.lookup (aName act) (domKnl s) of
-                 Just k -> k
-                 Nothing -> error "ERROR message"
+   domKnl = domainKnowledge . ssKnl
+   act = lastAction latest
+   actKnl s = case Map.lookup (aName act) (domKnl s) of
+                Just k -> k
+                Nothing -> error "ERROR message"
 
 showWorld :: [SokoSimStep] -> IO ()
 showWorld (step : _) = visualize $ ssWorld step
 showWorld [] = return ()
 
-lastAction :: SokoSimStep -> Action
-lastAction step = case transitions (ssInfo step) of
-                    ((_, act, _) : _) -> act
-                    [] -> error "lastAction: Empty transition list in PDDLInfo."
-
 showLearned :: [SokoSimStep] -> IO ()
-showLearned (step : prev : _) =  posPrecMessage >> negPrecMessage
+showLearned (step : prev : _) = print (Set.size (posKnown precs))
+                              >> print (Set.size (negKnown precs))
+                              >> print (Set.size (posKnown effs))
+                              >> print (Set.size (negKnown effs))
+                              >> posPrecMessage >> negPrecMessage
                               >> posEffMessage >> negEffMessage
                               >> nPosPrecMessage >> nNegPrecMessage
                               >> nPosEffMessage >> nNegEffMessage where
@@ -86,6 +68,7 @@ showLearned (step : prev : _) =  posPrecMessage >> negPrecMessage
     baseMessage = "The following predicates have been proven to be "
     message set str = unless (Set.null set)
                     $ putStrLn $ baseMessage ++ str ++ ppShow set
+
     posPrecMessage = message (posKnown precs) "positive preconditions: "
     negPrecMessage = message (negKnown precs) "negative preconditions: "
     posEffMessage = message (posKnown effs) "positive effects: "
@@ -97,11 +80,15 @@ showLearned (step : prev : _) =  posPrecMessage >> negPrecMessage
     nNegEffMessage  = message (negUnknown effs) "NOT neg effs: "
 showLearned _ = return ()
 
+showAct :: [SokoSimStep] -> IO ()
 showAct (step : _) = putStrLn $ "executed action " ++ show (lastAction step)
 showAct _ = return ()
 
 writeSim :: [SokoSimStep] -> IO ()
-writeSim steps = showAct steps >> showWorld steps >> showLearned steps
+writeSim steps = showAct steps
+               >> showWorld steps
+               >> showLearned steps
+               >> chartKnowledge steps
 -- writeSim [] = return ()
 
 main :: IO ()

@@ -19,6 +19,7 @@ module Planning.PDDL
     , ActionSpec (..)
     , paramNames
     , actionSpec
+    , unsActionSpec
     , PDDLGraph(..)
     , typeList
 
@@ -113,6 +114,14 @@ paramNames (Predicate _ params) = map fst params
 --   or 'Nothing' if it could not be found.
 actionSpec :: PDDLDomain -> Name -> Maybe ActionSpec
 actionSpec domain n = find ((== n) . asName) (dmActionsSpecs domain)
+
+-- | Find the action specification with the given name in the given domain.
+--   Throws an error if the action specification could not be found.
+unsActionSpec :: PDDLDomain -> Name -> ActionSpec
+unsActionSpec domain n = case actionSpec domain n of
+    Just as -> as
+    Nothing -> error $  "ansActionSpec: could not find action spec with name "
+                     ++ n ++ " in domain."
 
 writeState :: State -> String
 writeState state =
