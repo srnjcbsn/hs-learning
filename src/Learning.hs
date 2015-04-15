@@ -11,14 +11,14 @@ module Learning
 import           Control.Monad (foldM, liftM)
 import           Data.Maybe
 
-class Knowledge knl info question | knl -> info question where
+class (Show knl, Eq knl) => Knowledge knl info question | knl -> info question where
     analyze :: knl -> info -> knl
     canAnswer :: knl -> question -> Bool
 
 class Show exp => Experiment exp world info | exp -> world info  where
     conduct :: exp -> world -> IO (world, info)
 
-class Experiment exp world info => Strategy strat world question knl exp info | strat -> exp knl question where
+class (Experiment exp world info) => Strategy strat world question knl exp info | strat -> exp knl question where
     design :: strat -> question -> knl -> IO( Maybe (exp, strat) )
     update :: strat -> exp -> info -> strat
 
@@ -99,7 +99,8 @@ updateKnowledge :: ( Strategy strat world question knl exp info
                 -> IO (Maybe (SimStep strat world question knl exp info))
 updateKnowledge strat knowledge world question = do
     information <- inquire world question
-    let knowledge' = fromMaybe knowledge (liftM (knowledge `analyze`)  information )
+    let mKnl = (liftM (knowledge `analyze`)  information)
+    let knowledge' = fromMaybe knowledge (liftM (knowledge `analyze`)  information)
     dres <- design strat question knowledge'
     case dres of
         Nothing -> return Nothing

@@ -24,9 +24,6 @@ import           Planning
 import           Planning.PDDL
 import           Data.Maybe
 
--- import Debug.Trace
--- import Text.Show.Pretty (ppShow)
-
 -- | Finds the action spec of an action in a domain
 findActionSpec :: PDDLDomain -> Action -> ActionSpec
 findActionSpec domain (n, _) = case actionSpec domain n of

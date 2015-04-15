@@ -1,18 +1,15 @@
 module Graph.Search.Astar (search, searchBounded) where
+
 import Graph.Search
 import Graph
+import Data.PriorityQueue as PrioQ
+
 import qualified Data.Set as Set
 import Data.Set (Set)
 import qualified Data.Map as Map
 import Data.Map (Map)
---import Data.Set (Set)
-import Data.PriorityQueue as PrioQ
 import Data.Maybe (mapMaybe,fromMaybe)
---import Debug.Trace
 import Control.Monad (liftM)
-
---type SearchNode v e = (v,[e])
-
 
 updateFrontier :: (ForwardSearchGraph g v e)
                => g

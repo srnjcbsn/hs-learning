@@ -6,8 +6,6 @@ import           Data.Set      (Set)
 import qualified Data.Set      as Set
 import qualified Data.Queue as Queue
 import           Data.Queue (Queue)
--- import Debug.Trace
--- import Text.Show.Pretty
 
 data BFS = BFS
 

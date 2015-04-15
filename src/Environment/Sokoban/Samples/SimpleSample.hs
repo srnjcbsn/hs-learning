@@ -1,6 +1,6 @@
 module Environment.Sokoban.Samples.SimpleSample (world) where
 
-import Environment.Sokoban hiding (goals)
+import           Environment.Sokoban hiding (goals)
 
 p, c, b :: Either (Object -> Tile) Bool
 p = Right True
@@ -9,7 +9,7 @@ c = Left $ const Clear
 b = Left Box
 
 worldmap :: [[Either (String -> Tile) Bool]]
-worldmap = [ [c, b, c, p] ]
+worldmap = [ [c, b, c, c, p] ]
 -- worldMap2 = [ [c]
 --             , [c]
 --             , [b]

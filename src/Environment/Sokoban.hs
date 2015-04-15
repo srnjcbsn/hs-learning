@@ -1,11 +1,9 @@
 module Environment.Sokoban where
 
-import           Data.Map (Map)
-import qualified Data.Map as Map
-import qualified Data.List as List
-import Data.Maybe (fromMaybe)
---import Debug.Trace
---import Text.Show.Pretty
+import qualified Data.List  as List
+import           Data.Map   (Map)
+import qualified Data.Map   as Map
+import           Data.Maybe (fromMaybe)
 
 data Tile = Clear
           | Box Object

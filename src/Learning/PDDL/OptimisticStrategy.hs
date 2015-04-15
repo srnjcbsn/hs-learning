@@ -14,8 +14,9 @@ import           Environment
 import qualified Data.Map                as Map
 import qualified Data.Set                as Set
 
-
-newtype (Environment env, BoundedPlanner planner, ExternalPlanner planner PDDLDomain PDDLProblem ActionSpec) =>
+newtype ( Environment env
+        , BoundedPlanner planner
+        , ExternalPlanner planner PDDLDomain PDDLProblem ActionSpec) =>
         OptimisticStrategy planner env = OptimisticStrategy (planner, Maybe Int)
 
 instance ( Environment env
@@ -43,8 +44,7 @@ instance ( Environment env
           case bound of
               Just b -> (OptimisticStrategy (planner, Just (b * 2)))
               Nothing -> (OptimisticStrategy (planner, Nothing))
-        | otherwise =
-            OptimisticStrategy (planner, Just 1)
+        | otherwise = OptimisticStrategy (planner, Just 1)
 
 
 effectSchema :: Eff.EffectKnowledge

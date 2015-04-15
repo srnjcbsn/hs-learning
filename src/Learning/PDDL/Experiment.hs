@@ -1,10 +1,10 @@
 module Learning.PDDL.Experiment where
 
-import Environment
-import Learning
-import Planning.PDDL
-import qualified Learning.PDDL as Lrn
+import           Environment
+import           Learning
+import qualified Learning.PDDL       as Lrn
 import           Planning
+import           Planning.PDDL
 import qualified Planning.PDDL.Logic as L ()
 
 updateEnv :: Environment env

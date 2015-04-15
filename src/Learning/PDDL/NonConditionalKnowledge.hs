@@ -29,17 +29,16 @@ pddlDomain :: PDDLKnowledge env -> PDDLDomain
 pddlDomain (PDDLKnowledge (dom, _, _)) = dom
 
 updateKnowledge :: PDDLKnowledge env -> Transition -> PDDLKnowledge env
-updateKnowledge (PDDLKnowledge (d,k,_)) trans@(_,(aname,_),s') =
-  PDDLKnowledge (d, Map.adjust (f (uppPre,uppEff)) aname k,s')
-  where f (f1,f2) (o1,o2) = (f1 o1, f2 o2)
-        uppEff = flip (Eff.updateEffectHyp d) trans
-        uppPre = flip (Pre.update d) trans
-
+updateKnowledge (PDDLKnowledge (dom, dk, _)) trans@(_, (aname, _), s') =
+  PDDLKnowledge (dom, dk', s')
+  where dk' = Map.adjust (f (uppPre, uppEff)) aname dk
+        f (f1, f2) (o1, o2) = (f1 o1, f2 o2)
+        uppEff = flip (Eff.updateEffectHyp dom) trans
+        uppPre = flip (Pre.update dom) trans
 
 instance Environment env => Knowledge (PDDLKnowledge env) (Lrn.PDDLInfo env) PDDLProblem where
-    analyze knl (Lrn.PDDLInfo ts _ _) = foldl updateKnowledge knl ts
-    canAnswer (PDDLKnowledge (_, _, s)) prob =
-      isSolved prob s
+    analyze knl info = foldl updateKnowledge knl (Lrn.transitions info)
+    canAnswer (PDDLKnowledge (_, _, s)) prob = isSolved prob s
 
 allPreds :: [Name]
          -> [PredicateSpec]

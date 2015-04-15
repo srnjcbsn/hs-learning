@@ -35,7 +35,7 @@ import           Text.Show.Pretty
 import Diagrams.Backend.SVG
 import Diagrams.Prelude
 
-data Astar = Astar (Maybe Int)
+data Astar = Astar (Maybe Int) deriving Show
 
 instance BoundedPlanner Astar where
   setBound (Astar _) = Astar

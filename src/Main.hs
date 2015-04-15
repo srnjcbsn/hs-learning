@@ -43,6 +43,14 @@ deltaKnl (pk1, ek1) (pk2, ek2) =
     , deltaHyp (ekHyp ek1) (ekHyp ek2)
     )
 
+actKnl :: SokoSimStep -> (Hyp Argument, Hyp Argument)
+actKnl step = (pkHyp p, ekHyp e) where
+    domKnl = domainKnowledge $ ssKnl step
+    act = lastAction step
+    (p, e) = case Map.lookup (aName act) domKnl of
+               Just k -> k
+               Nothing -> error "ERROR"
+
 learned :: SokoSimStep -> SokoSimStep -> (Hyp Argument, Hyp Argument)
 learned prev latest = deltaKnl (actKnl prev) (actKnl latest) where
    domKnl = domainKnowledge . ssKnl
@@ -56,15 +64,16 @@ showWorld (step : _) = visualize $ ssWorld step
 showWorld [] = return ()
 
 showLearned :: [SokoSimStep] -> IO ()
-showLearned (step : prev : _) = print (Set.size (posKnown precs))
-                              >> print (Set.size (negKnown precs))
-                              >> print (Set.size (posKnown effs))
-                              >> print (Set.size (negKnown effs))
+showLearned (step : prev : _) =  print (Set.size (posKnown precs'))
+                              >> print (Set.size (negKnown precs'))
+                              >> print (Set.size (posKnown effs'))
+                              >> print (Set.size (negKnown effs'))
                               >> posPrecMessage >> negPrecMessage
                               >> posEffMessage >> negEffMessage
                               >> nPosPrecMessage >> nNegPrecMessage
                               >> nPosEffMessage >> nNegEffMessage where
-    (precs, effs) = learned step prev
+    (precs, effs) = learned prev step
+    (precs', effs') = actKnl step
     baseMessage = "The following predicates have been proven to be "
     message set str = unless (Set.null set)
                     $ putStrLn $ baseMessage ++ str ++ ppShow set
@@ -84,11 +93,17 @@ showAct :: [SokoSimStep] -> IO ()
 showAct (step : _) = putStrLn $ "executed action " ++ show (lastAction step)
 showAct _ = return ()
 
+showBound :: [SokoSimStep] -> IO ()
+showBound (step : _) = print b where
+    (OptimisticStrategy (_, b)) = ssStrat step
+showBound [] = return ()
+
 writeSim :: [SokoSimStep] -> IO ()
-writeSim steps = showAct steps
+writeSim steps =  showAct steps
                >> showWorld steps
                >> showLearned steps
                >> chartKnowledge steps
+               >> showBound steps
 -- writeSim [] = return ()
 
 main :: IO ()
