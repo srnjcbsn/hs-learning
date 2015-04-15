@@ -3,9 +3,9 @@ module Learning.PDDL.ConditionalKnowledge where
 import           Data.TupleSet
 import           Data.Typeable
 import           Environment
-import qualified Learning                            as L
+import qualified Learning                            as Lrn
 import           Learning.Induction
-import qualified Learning.PDDL                       as Lrn
+import qualified Learning.PDDL                       as PDDL
 import qualified Learning.PDDL.EffectKnowledge       as Eff
 import qualified Learning.PDDL.PreconditionKnowledge as Pre
 import           Logic.Formula
@@ -16,6 +16,8 @@ import           Data.Map                            (Map)
 import qualified Data.Map                            as Map
 import           Data.Set                            (Set, (\\))
 import qualified Data.Set                            as Set
+import           Data.Tree
+import           Data.TupleSet
 
 
 data Binding = Bound Int
@@ -37,22 +39,34 @@ type ActionTheory = Map (Predicate Int) Cond
 
 type Subst = Map Object Int
 
-h :: [Object] -> Subst -> Int -> Subst
-h [] _ _ = Map.empty
-h (o : os) m n =
-    case Map.lookup o m of
-        Just i  -> h os m n
-        Nothing -> h os (Map.insert o n m) (n + 1)
+type CArg = Int
 
-ug :: GroundedPredicate -> Subst
-ug (Predicate n objs) = undefined
+type CondKnl = PDDL.Knowledge CArg
 
-initActionTheory :: Predicate Int -> State -> Subst -> ActionTheory
-initActionTheory = undefined
+data KNode = KNode
+    { cands :: PDDL.Cands CArg
+    , unkns :: CondKnl
+    }
 
-f :: ActionTheory -> Transition -> ActionTheory
-f at (s, a, s') =
-    let posEffs = s' \\ s
-        posEffsUg =undefined
+data CondTheory = CondTheory
+    { ctEffects :: CondKnl
+    , ctRevTree :: RevTree
+    }
 
-    in undefined
+type RevTree = Tree KNode
+
+type Pattern = (CondKnl, CondKnl)
+
+-- | Merge two pieces of precondition knowledge, producing a set of revisions
+merge :: CondKnl -> CondKnl -> [CondKnl]
+merge = undefined
+
+-- | Updates the given theory with the knowledge obtained in the new transition
+updateTheory :: CondTheory -> CondKnl -> CondTheory
+updateTheory = undefined
+
+mergeEffects :: CondTheory -> Pattern -> CondTheory
+mergeEffects = undefined
+
+update :: CondTheory -> Transition -> CondTheory
+update = undefined
