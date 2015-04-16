@@ -102,7 +102,6 @@ writeSim :: [SokoSimStep] -> IO ()
 writeSim steps =  showAct steps
                >> showWorld steps
                >> showLearned steps
-               >> chartKnowledge steps
                >> showBound steps
 -- writeSim [] = return ()
 
@@ -114,9 +113,10 @@ main = do
 
     -- putStrLn (ppShow $ initialState prob)
     hist <- runAll writeSim optStrat initKnl [ (ssEnv, ssProb)
-                                             , (lsEnv, lsProb)
-                                             , (bsEnv, bsProb)
+                                            --  , (lsEnv, lsProb)
+                                            --  , (bsEnv, bsProb)
                                              ]
+    chartKnowledge hist
     -- hist <- scientificMethod writeSim optStrat initKnl ssEnv ssProb
     -- (knl'', world'') <- scientificMethod emptyIO optStrat knl' lsEnv lsProb
     -- (knl''', world''') <- scientificMethod emptyIO optStrat knl'' bsEnv bsProb

@@ -34,6 +34,7 @@ data ( Strategy s w q k e i
     , ssStrat :: s
     , ssWorld :: w
     , ssKnl   :: k
+    , ssStep  :: Int
     }
 
 runAll :: ( Strategy strat world question knl exp info
@@ -64,6 +65,11 @@ scientificMethod :: ( Strategy strat world question knl exp info
                  -> IO ([SimStep strat world question knl exp info])
 scientificMethod = scientificMethod' []
 
+getStep :: (Knowledge k i q, Experiment e w i, Strategy s w q k e i)
+        => [SimStep s w q k e i] -> Int
+getStep (step : _) = ssStep step
+getStep [] = 0
+
 scientificMethod' :: ( Strategy strat world question knl exp info
                      , Experiment exp world info
                      , Inquirable world question info
@@ -80,12 +86,13 @@ scientificMethod' sss logger strat knl world quest = do
     ms <- updateKnowledge strat knl world quest
     case ms of
         Nothing -> return []
-        Just ss | canAnswer (ssKnl ss) quest -> do
+        Just ssp | canAnswer (ssKnl ss) quest -> do
                     logger (ss : sss)
                     return (ss : sss)
-                | otherwise -> do
+                 | otherwise -> do
                     logger (ss : sss)
                     scientificMethod' (ss : sss) logger (ssStrat ss) (ssKnl ss) (ssWorld ss) quest
+                 where ss = ssp (getStep sss)
 
 updateKnowledge :: ( Strategy strat world question knl exp info
                    , Experiment exp world info
@@ -96,10 +103,9 @@ updateKnowledge :: ( Strategy strat world question knl exp info
                 -> knl
                 -> world
                 -> question
-                -> IO (Maybe (SimStep strat world question knl exp info))
+                -> IO (Maybe (Int -> SimStep strat world question knl exp info))
 updateKnowledge strat knowledge world question = do
     information <- inquire world question
-    let mKnl = (liftM (knowledge `analyze`)  information)
     let knowledge' = fromMaybe knowledge (liftM (knowledge `analyze`)  information)
     dres <- design strat question knowledge'
     case dres of
