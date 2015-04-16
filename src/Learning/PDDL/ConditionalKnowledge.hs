@@ -19,7 +19,6 @@ import qualified Data.Set                            as Set
 import           Data.Tree
 import           Data.TupleSet
 
-
 data Binding = Bound Int
              | Free  Int
 
@@ -41,32 +40,17 @@ type Subst = Map Object Int
 
 type CArg = Int
 
-type CondKnl = PDDL.Knowledge CArg
-
-data KNode = KNode
-    { cands :: PDDL.Cands CArg
-    , unkns :: CondKnl
+data Pattern = Pattern
+    { ctEffects :: PDDL.EffKnowledge CArg
+    , ctPreconds :: PDDL.PreKnowledge CArg
     }
 
-data CondTheory = CondTheory
-    { ctEffects :: CondKnl
-    , ctRevTree :: RevTree
-    }
-
-type RevTree = Tree KNode
-
-type Pattern = (CondKnl, CondKnl)
-
--- | Merge two pieces of precondition knowledge, producing a set of revisions
-merge :: CondKnl -> CondKnl -> [CondKnl]
+merge :: Pattern -> Pattern -> Pattern
 merge = undefined
 
--- | Updates the given theory with the knowledge obtained in the new transition
-updateTheory :: CondTheory -> CondKnl -> CondTheory
-updateTheory = undefined
+merges :: [Pattern] -> Maybe Pattern
+merges [] = Nothing
+merges ps = Just $ foldl1 merge ps
 
-mergeEffects :: CondTheory -> Pattern -> CondTheory
-mergeEffects = undefined
-
-update :: CondTheory -> Transition -> CondTheory
+update :: Pattern -> Transition -> Pattern
 update = undefined
