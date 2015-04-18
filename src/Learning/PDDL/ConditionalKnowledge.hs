@@ -45,8 +45,54 @@ data Pattern = Pattern
     , ctPreconds :: PDDL.PreKnowledge CArg
     }
 
+type CArgMap = (Map (CArg,CArg) CArg, CArg)
+
+matchPredicates :: CArgMap
+                -> Predicate CArg
+                -> [[CArg]]
+                -> CArgMap
+matchPredicates argMap p argLs  =
+  let
+      -- matched = map predArgs $ Set.toList $ Set.filter matcher ps
+      -- matcher = (== predName p) . predName
+
+      smerge :: [CArg] -> CArgMap -> [CArg] -> CArgMap
+      smerge  [] m [] = m
+      smerge (h1:rest1)  (m, newCArg) (h2:rest2) =
+        let f Nothing = Just newCArg
+            f val = val
+            newMapping = (h1,h2)
+            m' = Map.alter f newMapping m
+         in if Map.member newMapping m
+            then smerge rest1 (m', newCArg + 1) rest2
+            else smerge rest1 (m, newCArg) rest2
+      smerge _ _ _ = error ("Differnt arity for " ++ predName p)
+   in foldl (smerge $ predArgs p) argMap argLs
+
+group
+
+mapping :: CArgMap
+        -> Set (Predicate CArg)
+        -> Set (Predicate CArg)
+        -> CArgMap
+mapping m knl1 knl2 =
+  let
+      -- mP f t = Set.foldl (matchPredicates t) Map.empty f
+      -- m1 = mP knl1 knl2
+      -- m2 = mP knl2 knl1
+
+   in undefined
+
+-- Only works as long as effects doesn't contain more of each effect IE.
+-- p(x,y) p(y,z) <-- Not allowed
+-- p(x,y) f(y) <-- Allowed
 merge :: Pattern -> Pattern -> Pattern
-merge = undefined
+merge p1 p2 =
+  let ek p = PDDL.ekHyp (ctEffects p)
+      ekP1 = ek p1
+      ekP2 = ek p2
+
+   in undefined
 
 merges :: [Pattern] -> Maybe Pattern
 merges [] = Nothing
