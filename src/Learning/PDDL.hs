@@ -42,7 +42,7 @@ type Cands a = Set (Knowledge a)
 data Hyp a = Hyp
     { knowns   :: Knowledge a
     , unknowns :: Knowledge a
-    } deriving (Eq, Show)
+    } deriving (Eq, Ord, Show)
 
 posKnown, posUnknown, negKnown, negUnknown :: Hyp a -> Set (Predicate a)
 posKnown   = fst . knowns
@@ -50,8 +50,8 @@ posUnknown = fst . unknowns
 negKnown   = snd . knowns
 negUnknown = snd . unknowns
 
-data PreKnowledge a = PreKnowledge (Hyp a) (Cands a) deriving (Eq, Show)
-data EffKnowledge a = EffKnowledge (Hyp a) deriving (Eq, Show)
+data PreKnowledge a = PreKnowledge (Hyp a) (Cands a) deriving (Eq, Ord, Show)
+data EffKnowledge a = EffKnowledge (Hyp a) deriving (Eq, Ord, Show)
 
 deltaHyp :: Ord a => Hyp a -> Hyp a -> Hyp a
 deltaHyp h1 h2 = Hyp ks us where
