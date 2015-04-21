@@ -51,6 +51,16 @@ data Pattern = Pattern
 
 type CArgMap = (Map (CArg,CArg) CArg, CArg)
 
+type Combinations = [Map CArg CArg]
+
+combinations :: (Pattern, Pattern) -> CArgMap -> (Combinations, Combinations)
+combinations = undefined
+
+unground :: Pattern -> Combinations -> Pattern
+unground = undefined
+
+
+
 matchPredicates :: CArgMap
                 -> Predicate CArg
                 -> [[CArg]]
