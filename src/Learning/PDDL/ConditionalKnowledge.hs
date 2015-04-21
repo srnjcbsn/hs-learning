@@ -52,11 +52,7 @@ matchPredicates :: CArgMap
                 -> [[CArg]]
                 -> CArgMap
 matchPredicates argMap p argLs  =
-  let
-      -- matched = map predArgs $ Set.toList $ Set.filter matcher ps
-      -- matcher = (== predName p) . predName
-
-      smerge :: [CArg] -> CArgMap -> [CArg] -> CArgMap
+  let smerge :: [CArg] -> CArgMap -> [CArg] -> CArgMap
       smerge  [] m [] = m
       smerge (h1:rest1)  (m, newCArg) (h2:rest2) =
         let f Nothing = Just newCArg
@@ -69,19 +65,27 @@ matchPredicates argMap p argLs  =
       smerge _ _ _ = error ("Differnt arity for " ++ predName p)
    in foldl (smerge $ predArgs p) argMap argLs
 
-group
+group :: Set (Predicate CArg)
+      -> Set (Predicate CArg)
+      -> [(Predicate CArg,[[CArg]])]
+group ps1 ps2 =
+    let matched ps p  = (p, map predArgs $ Set.toList $ Set.filter (matcher p) ps )
+        matcher p = (== predName p) . predName
+     in Set.toList $ Set.map (matched ps2) ps1
 
 mapping :: CArgMap
         -> Set (Predicate CArg)
         -> Set (Predicate CArg)
         -> CArgMap
-mapping m knl1 knl2 =
-  let
-      -- mP f t = Set.foldl (matchPredicates t) Map.empty f
-      -- m1 = mP knl1 knl2
-      -- m2 = mP knl2 knl1
+mapping cArgMap knl1 knl2 =
+  let knlgroup = group knl1 knl2
+      f m (p,argLs) = matchPredicates m p argLs
+   in foldl f cArgMap knlgroup
 
-   in undefined
+initMapping :: Set (Predicate CArg)
+            -> Set (Predicate CArg)
+            -> CArgMap
+initMapping = mapping (Map.empty, 0)
 
 -- Only works as long as effects doesn't contain more of each effect IE.
 -- p(x,y) p(y,z) <-- Not allowed
