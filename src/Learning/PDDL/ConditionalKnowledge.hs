@@ -4,7 +4,7 @@ import           Data.TupleSet
 import           Data.Typeable
 import           Environment
 import qualified Learning                            as Lrn
-import           Learning.Induction
+import qualified Learning.Induction                  as Ind
 import qualified Learning.PDDL                       as PDDL
 import qualified Learning.PDDL.EffectKnowledge       as Eff
 import qualified Learning.PDDL.PreconditionKnowledge as Pre
@@ -101,16 +101,69 @@ initMapping :: Set (Predicate CArg)
             -> CArgMap
 initMapping = mapping (Map.empty, 0)
 
+patternMapping :: Pattern -> Pattern -> CArgMap
+patternMapping p1 p2 =
+  let ek p = PDDL.ekHyp (ctEffects p)
+      pk p = PDDL.pkHyp (ctPreconds p)
+
+      uKnl knl = TSet.union (PDDL.knowns knl) (PDDL.unknowns knl)
+
+      pkP1 = pk p1
+      pkP2 = pk p2
+      ekP1 = ek p1
+      ekP2 = ek p2
+
+      (ppos1,pneg1) = uKnl pkP1
+      (ppos2,pneg2) = uKnl pkP2
+
+      (epos1,eneg1) = uKnl ekP1
+      (epos2,eneg2) = uKnl ekP2
+
+      m = initMapping ppos1 ppos2
+      m' = mapping m pneg1 pneg2
+      m'' = mapping m' epos1 epos2
+      m''' = mapping m'' eneg1 eneg2
+
+   in m'''
+
+unify :: Pattern -> Pattern -> (Pattern, Pattern)
+unify p1 p2 =
+  let m = patternMapping p1 p2
+      (c1, c2) = combinations (p1,p2) m
+   in (unground p1 c1, unground p2 c2)
+
 -- Only works as long as effects doesn't contain more of each effect IE.
 -- p(x,y) p(y,z) <-- Not allowed
 -- p(x,y) f(y) <-- Allowed
 merge :: Pattern -> Pattern -> Pattern
 merge p1 p2 =
-  let ek p = PDDL.ekHyp (ctEffects p)
-      ekP1 = ek p1
-      ekP2 = ek p2
+  let (p1', p2') = unify p1 p2
+      pk p = PDDL.pkHyp (ctPreconds p)
+      ek p = PDDL.ekHyp (ctEffects p)
 
-   in undefined
+      uKnl knl = (PDDL.unknowns knl, PDDL.knowns knl)
+      preKnl1 = uKnl (pk p1')
+      effKnl1 = uKnl (ek p1')
+
+      preKnl2 = uKnl (pk p2')
+      effKnl2 = uKnl (ek p2')
+
+      newU (u1, _) (u2, _) = TSet.intersection u1 u2
+      newK (u1, k1) (u2, k2) = TSet.union (TSet.intersection k1 k2)
+                             ( TSet.union (TSet.intersection k1 u2)
+                                          (TSet.intersection k2 u1)
+                             )
+      newPre = PDDL.Hyp { PDDL.knowns = newK preKnl1 preKnl2
+                        , PDDL.unknowns = newU preKnl1 preKnl2
+                        }
+      newEff = PDDL.Hyp { PDDL.knowns = newK effKnl1 effKnl2
+                        , PDDL.unknowns = newU effKnl1 effKnl2
+                        }
+      newPre' = PDDL.PreKnowledge newPre Set.empty
+      newEff' = PDDL.EffKnowledge newEff
+
+
+   in Pattern { ctPreconds = newPre', ctEffects = newEff'}
 
 merges :: [Pattern] -> Maybe Pattern
 merges [] = Nothing
