@@ -12,7 +12,7 @@ import           Logic.Formula
 import           Planning
 import           Planning.PDDL
 
-import           Control.Monad
+import           Control.Monad                       (sequence)
 import           Data.Map                            (Map)
 import qualified Data.Map                            as Map
 import           Data.Maybe
@@ -53,19 +53,22 @@ type Match = (CArg, CArg)
 
 type Unification = Map Name [Set Match]
 
-data MetaPattern = MetaPattern { mtPres :: Unification
-                               , mtEffs :: Unification
+data MetaPattern = MetaPattern { mtPres :: (Unification, Unification)
+                               , mtEffs :: (Unification, Unification)
                                }
 
-data Combination = Combination { cPres :: Set (Predicate CArg)
-                               , cEffs :: Set (Predicate CArg)
+data Combination = Combination { cPres :: Set (Predicate Match)
+                               , cEffs :: Set (Predicate Match)
                                }
 
-getMapping :: CArgMap -> (CArg, CArg) -> CArg
-getMapping (m, _) k = case Map.lookup k m of
-                           Just v -> v
-                           Nothing -> error $ "Tried to lookup " ++ show k ++
-                                              " in CArgMap."
+-- getMapping :: CArgMap -> (CArg, CArg) -> CArg
+-- getMapping (m, _) k = case Map.lookup k m of
+--                            Just v -> v
+--                            Nothing -> error $ "Tried to lookup " ++ show k ++
+--                                               " in CArgMap."
+
+mapUnion :: (a -> Set b) -> Set a -> Set b
+mapUnion m s = Set.foldl (\a b -> a `Set.union` b) Set.empty s
 
 unsLookup :: String -> k -> Map k v -> v
 unsLookup err k m = case Map.lookup k m of
@@ -73,23 +76,39 @@ unsLookup err k m = case Map.lookup k m of
                          Nothing -> error $  "Tried to look up non-existing key"
                                           ++ " in map. (" ++ err ++ ")."
 
-checkComb :: TupleSet (Predicate CArg)
-          -> TupleSet (Predicate CArg)
-          -> Map CArg CArg
-          -> Bool
-checkComb (unkn, kn) (unkn', kn') m =
-    let mappedKnl = Set.map (\k -> unsLookup "checkComb" k m)
-        fills s s' = (mappedKnl kn) `Set.isSubsetOf` (mappedKnl s')
-    in     (kn  `fills` (unkn' `Set.intersection` kn'))
-        && (kn' `fills` (unkn  `Set.intersection` kn))
+instantiatePattern :: MetaPattern -> Pattern
+instantiatePattern = undefined
 
-combinations :: (Pattern, Pattern) -> CArgMap -> (Combinations, Combinations)
-combinations (p1, p2) cam@(m, _) = (combs1, combs2) where
 
-    combs1 = undefined
-    combs2 = undefined
 
-unground :: Pattern -> Combinations -> Pattern
+-- checkComb :: TupleSet (Predicate CArg)
+--           -> TupleSet (Predicate CArg)
+--           -> Map CArg CArg
+--           -> Bool
+-- checkComb (unkn, kn) (unkn', kn') m =
+--     let mappedKnl = Set.map (\k -> unsLookup "checkComb" k m)
+--         fills s s' = (mappedKnl kn) `Set.isSubsetOf` (mappedKnl s')
+--     in     (kn  `fills` (unkn' `Set.intersection` kn'))
+--         && (kn' `fills` (unkn  `Set.intersection` kn))
+
+allCombs :: MetaPattern -> Set Combination
+allCombs (MetaPattern (posPres, negPres) (posEffs, negEffs)) =
+    let expandPred :: Predicate (Set Match) -> Set (Predicate Match)
+        expandPred (Predicate pn ms) =
+            Set.fromList [Predicate pn ls | ls <- sequence (Set.toList ms)]
+
+        mapUnion expandPred effs `Set.union` mapUnion expandPred pres
+    in  undefined
+
+checkComb :: Pattern -> Pattern -> Combination -> Bool
+checkComb = undefined
+
+combinations :: Pattern -> Pattern -> MetaPattern -> [Combination]
+combinations p1 p2 cam@(m, _) = Set.filter (checkComb p1 p2) allCombs where
+    allCombs =
+
+
+unground :: Unification -> TSet (Predicate CArg) -> TSet (Predicate Match)
 unground = undefined
 
 matchPredicates :: CArgMap
