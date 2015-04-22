@@ -13,7 +13,7 @@ import           Planning
 import           Planning.PDDL
 
 import           Control.Monad
-import           Data.Map                            (Map, (!))
+import           Data.Map                            (Map)
 import qualified Data.Map                            as Map
 import           Data.Maybe
 import           Data.Set                            (Set, (\\))
@@ -49,17 +49,48 @@ data Pattern = Pattern
     , ctPreconds :: PDDL.PreKnowledge CArg
     } deriving (Eq, Ord)
 
-type CArgMap = (Map (CArg,CArg) CArg, CArg)
+data UniArg = UniArg
+    { arg        :: CArg
+    , validPreds :: [(Name, Int)]
+    }
+
+type CArgMap = (Map (CArg, CArg) [UniArg], CArg)
 
 type Combinations = [Map CArg CArg]
 
+-- (!) :: Map k v -> k -> v
+-- (!) m k = case Map.lookup k m of
+--                Just v -> v
+--                Nothing -> error "ERROR"
+
+getMapping :: CArgMap -> (CArg, CArg) -> CArg
+getMapping (m, _) k = case Map.lookup k m of
+                           Just v -> v
+                           Nothing -> error $ "Tried to lookup " ++ show k ++
+                                              " in CArgMap."
+
+unsLookup :: String -> k -> Map k v -> v
+unsLookup err k m = case Map.lookup k m of
+                         Just v -> v
+                         Nothing -> error $  "Tried to look up non-existing key"
+                                          ++ " in map. (" ++ err ++ ")."
+
+checkComb :: Set (Predicate CArg)
+          -> TupleSet (Predicate CArg)
+          -> Map CArg CArg
+          -> Bool
+checkComb kn1 (unkn, kn2) m =
+    let mappedKnl = Set.map (\k -> unsLookup "checkComb" k m) kn1
+    in  kn2 `Set.isSubsetOf` mappedKnl && (mappedKnl \\ kn2) `Set.isSubsetOf` unkn
+
 combinations :: (Pattern, Pattern) -> CArgMap -> (Combinations, Combinations)
-combinations = undefined
+combinations (p1, p2) cam@(m, _) = (combs1, combs2) where
+
+    combs1 = undefined
+    combs2 = undefined
 
 unground :: Pattern -> Combinations -> Pattern
 unground = undefined
-
-
 
 matchPredicates :: CArgMap
                 -> Predicate CArg
