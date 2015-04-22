@@ -49,19 +49,17 @@ data Pattern = Pattern
     , ctPreconds :: PDDL.PreKnowledge CArg
     } deriving (Eq, Ord)
 
-data UniArg = UniArg
-    { arg        :: CArg
-    , validPreds :: [(Name, Int)]
-    }
+type Match = (CArg, CArg)
 
-type CArgMap = (Map (CArg, CArg) [UniArg], CArg)
+type Unification = Map Name [Set Match]
 
-type Combinations = [Map CArg CArg]
+data MetaPattern = MetaPattern { mtPres :: Unification
+                               , mtEffs :: Unification
+                               }
 
--- (!) :: Map k v -> k -> v
--- (!) m k = case Map.lookup k m of
---                Just v -> v
---                Nothing -> error "ERROR"
+data Combination = Combination { cPres :: Set (Predicate CArg)
+                               , cEffs :: Set (Predicate CArg)
+                               }
 
 getMapping :: CArgMap -> (CArg, CArg) -> CArg
 getMapping (m, _) k = case Map.lookup k m of
@@ -75,13 +73,15 @@ unsLookup err k m = case Map.lookup k m of
                          Nothing -> error $  "Tried to look up non-existing key"
                                           ++ " in map. (" ++ err ++ ")."
 
-checkComb :: Set (Predicate CArg)
+checkComb :: TupleSet (Predicate CArg)
           -> TupleSet (Predicate CArg)
           -> Map CArg CArg
           -> Bool
-checkComb kn1 (unkn, kn2) m =
-    let mappedKnl = Set.map (\k -> unsLookup "checkComb" k m) kn1
-    in  kn2 `Set.isSubsetOf` mappedKnl && (mappedKnl \\ kn2) `Set.isSubsetOf` unkn
+checkComb (unkn, kn) (unkn', kn') m =
+    let mappedKnl = Set.map (\k -> unsLookup "checkComb" k m)
+        fills s s' = (mappedKnl kn) `Set.isSubsetOf` (mappedKnl s')
+    in     (kn  `fills` (unkn' `Set.intersection` kn'))
+        && (kn' `fills` (unkn  `Set.intersection` kn))
 
 combinations :: (Pattern, Pattern) -> CArgMap -> (Combinations, Combinations)
 combinations (p1, p2) cam@(m, _) = (combs1, combs2) where
