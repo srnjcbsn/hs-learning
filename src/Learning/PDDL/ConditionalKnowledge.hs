@@ -12,13 +12,14 @@ import           Logic.Formula
 import           Planning
 import           Planning.PDDL
 
-import           Control.Monad                       (sequence)
+import           Control.Monad                       (sequence, replicateM)
 import           Data.Map                            (Map)
 import qualified Data.Map                            as Map
 import           Data.Maybe
 import           Data.Set                            (Set, (\\))
 import qualified Data.Set                            as Set
 import           Data.Tree
+import           Data.TupleSet                       (TupleSet)
 import qualified Data.TupleSet                       as TSet
 
 type DomainKnowledge = Map Name Pattern
@@ -61,73 +62,35 @@ data Combination = Combination { cPres :: Set (Predicate Match)
                                , cEffs :: Set (Predicate Match)
                                }
 
--- getMapping :: CArgMap -> (CArg, CArg) -> CArg
--- getMapping (m, _) k = case Map.lookup k m of
---                            Just v -> v
---                            Nothing -> error $ "Tried to lookup " ++ show k ++
---                                               " in CArgMap."
+unsLookup :: Ord k => String -> k -> Map k v -> v
+unsLookup err k m =
+  case Map.lookup k m of
+     Just v -> v
+     Nothing -> error $  "Tried to look up non-existing key"
+                    ++ " in map. (" ++ err ++ ")."
 
-mapUnion :: (a -> Set b) -> Set a -> Set b
-mapUnion m s = Set.foldl (\a b -> a `Set.union` b) Set.empty s
-
-unsLookup :: String -> k -> Map k v -> v
-unsLookup err k m = case Map.lookup k m of
-                         Just v -> v
-                         Nothing -> error $  "Tried to look up non-existing key"
-                                          ++ " in map. (" ++ err ++ ")."
-
-instantiatePattern :: MetaPattern -> Pattern
+instantiatePattern :: (Pattern, Pattern) -> MetaPattern -> Pattern
 instantiatePattern = undefined
 
-
-
--- checkComb :: TupleSet (Predicate CArg)
---           -> TupleSet (Predicate CArg)
---           -> Map CArg CArg
---           -> Bool
--- checkComb (unkn, kn) (unkn', kn') m =
---     let mappedKnl = Set.map (\k -> unsLookup "checkComb" k m)
---         fills s s' = (mappedKnl kn) `Set.isSubsetOf` (mappedKnl s')
---     in     (kn  `fills` (unkn' `Set.intersection` kn'))
---         && (kn' `fills` (unkn  `Set.intersection` kn))
-
-allCombs :: MetaPattern -> Set Combination
-allCombs (MetaPattern (posPres, negPres) (posEffs, negEffs)) =
-    let expandPred :: Predicate (Set Match) -> Set (Predicate Match)
-        expandPred (Predicate pn ms) =
-            Set.fromList [Predicate pn ls | ls <- sequence (Set.toList ms)]
-
-        mapUnion expandPred effs `Set.union` mapUnion expandPred pres
-    in  undefined
-
-checkComb :: Pattern -> Pattern -> Combination -> Bool
-checkComb = undefined
-
-combinations :: Pattern -> Pattern -> MetaPattern -> [Combination]
-combinations p1 p2 cam@(m, _) = Set.filter (checkComb p1 p2) allCombs where
-    allCombs =
-
-
-unground :: Unification -> TSet (Predicate CArg) -> TSet (Predicate Match)
+unground :: Unification -> TupleSet (Predicate CArg) -> TupleSet (Predicate Match)
 unground = undefined
 
-matchPredicates :: CArgMap
+matchPredicates :: Unification
                 -> Predicate CArg
                 -> [[CArg]]
-                -> CArgMap
-matchPredicates argMap p argLs  =
-  let smerge :: [CArg] -> CArgMap -> [CArg] -> CArgMap
-      smerge  [] m [] = m
-      smerge (h1:rest1)  (m, newCArg) (h2:rest2) =
-        let f Nothing = Just newCArg
-            f val = val
-            newMapping = (h1,h2)
-            m' = Map.alter f newMapping m
-         in if Map.member newMapping m
-            then smerge rest1 (m', newCArg + 1) rest2
-            else smerge rest1 (m, newCArg) rest2
-      smerge _ _ _ = error ("Differnt arity for " ++ predName p)
-   in foldl (smerge $ predArgs p) argMap argLs
+                -> Unification
+matchPredicates uni p argLs  =
+  let zipMatches = zipWith Set.union
+      zipper :: [CArg] -> [Set Match] -> [CArg] -> [Set Match]
+      zipper args1 m args2 =
+          let zped = map Set.singleton $ zip args1 args2
+           in zipMatches zped m
+      initArgs = replicate (length $ predArgs p) Set.empty
+      newMatch = foldl (zipper $ predArgs p) initArgs argLs
+      f Nothing = Just newMatch
+      f (Just oldMatch) =  Just (zipMatches oldMatch newMatch)
+      uni' = Map.alter f (predName p) uni
+   in uni'
 
 group :: Set (Predicate CArg)
       -> Set (Predicate CArg)
@@ -137,10 +100,10 @@ group ps1 ps2 =
         matcher p = (== predName p) . predName
      in Set.toList $ Set.map (matched ps2) ps1
 
-mapping :: CArgMap
+mapping :: Unification
         -> Set (Predicate CArg)
         -> Set (Predicate CArg)
-        -> CArgMap
+        -> Unification
 mapping cArgMap knl1 knl2 =
   let knlgroup = group knl1 knl2
       f m (p,argLs) = matchPredicates m p argLs
@@ -148,10 +111,10 @@ mapping cArgMap knl1 knl2 =
 
 initMapping :: Set (Predicate CArg)
             -> Set (Predicate CArg)
-            -> CArgMap
-initMapping = mapping (Map.empty, 0)
+            -> Unification
+initMapping = mapping Map.empty
 
-patternMapping :: Pattern -> Pattern -> CArgMap
+patternMapping :: Pattern -> Pattern -> MetaPattern
 patternMapping p1 p2 =
   let ek p = PDDL.ekHyp (ctEffects p)
       pk p = PDDL.pkHyp (ctPreconds p)
@@ -169,18 +132,17 @@ patternMapping p1 p2 =
       (epos1,eneg1) = uKnl ekP1
       (epos2,eneg2) = uKnl ekP2
 
-      m = initMapping ppos1 ppos2
-      m' = mapping m pneg1 pneg2
-      m'' = mapping m' epos1 epos2
-      m''' = mapping m'' eneg1 eneg2
+      ppUni = initMapping ppos1 ppos2
+      npUni = initMapping pneg1 pneg2
+      peUni = initMapping epos1 epos2
+      neUni = initMapping eneg1 eneg2
 
-   in m'''
+   in MetaPattern { mtPres = (ppUni, npUni) , mtEffs = (peUni,neUni) }
 
 unify :: Pattern -> Pattern -> (Pattern, Pattern)
 unify p1 p2 =
   let m = patternMapping p1 p2
-      (c1, c2) = combinations (p1,p2) m
-   in (unground p1 c1, unground p2 c2)
+   in unground (p1, p2) m
 
 -- Only works as long as effects doesn't contain more of each effect IE.
 -- p(x,y) p(y,z) <-- Not allowed
@@ -261,7 +223,7 @@ fromTransition patt (s, _, s') pSpecs objs = fromMaybe patt mergedPattern where
              $ Set.map (Set.fromList . predsFromShape) allShapes
 
     cArgForm :: State -> Set (Predicate CArg)
-    cArgForm = Set.map (fmap (objMap !))
+    cArgForm = Set.map (fmap (\k -> unsLookup "fromTransition" k objMap))
 
     shapes :: Set (Predicate a) -> Set (String, Int)
     shapes set = Set.map (\p -> (predName p, predArity p)) set
