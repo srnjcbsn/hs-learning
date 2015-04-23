@@ -163,8 +163,23 @@ instantiatePattern pats mp = undefined where
     negEffUg = unground mpNegEff negEffKn
 
 
-unground :: Unification -> TupleSet (Predicate CArg) -> TupleSet (Predicate Match)
-unground = undefined
+
+unground :: Unification
+         -> TupleSet (Predicate CArg)
+         -> TupleSet (Predicate Match)
+unground uni (ps1, ps2) =
+  let selectMatches slctor p =
+        do argsUni <- Map.lookup (predName p) uni
+           let remover s e = Set.filter ((== e) . slctor) s
+               argsUni' = zipWith remover argsUni (predArgs p)
+               argsUni'' = map Set.toList argsUni'
+           return $ map (Predicate (predName p)) $ sequence argsUni''
+
+      ug slctor ps = Set.fromList
+                   $ concatMap id
+                   $ mapMaybe (selectMatches slctor)
+                   $ Set.toList ps
+   in (ug fst ps1, ug snd ps2)
 
 matchPredicates :: Unification
                 -> Predicate CArg
@@ -183,9 +198,10 @@ matchPredicates uni p argLs  =
       uni' = Map.alter f (predName p) uni
    in uni'
 
-group :: Set (Predicate CArg)
-      -> Set (Predicate CArg)
-      -> [(Predicate CArg,[[CArg]])]
+group :: (Ord a, Ord b)
+      => Set (Predicate a)
+      -> Set (Predicate b)
+      -> [(Predicate a,[[b]])]
 group ps1 ps2 =
     let matched ps p  = (p, map predArgs $ Set.toList $ Set.filter (matcher p) ps )
         matcher p = (== predName p) . predName
