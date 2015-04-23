@@ -58,19 +58,95 @@ data MetaPattern = MetaPattern { mtPres :: (Unification, Unification)
                                , mtEffs :: (Unification, Unification)
                                }
 
-data Combination = Combination { cPres :: Set (Predicate Match)
-                               , cEffs :: Set (Predicate Match)
-                               }
+-- toPredSet :: Map Name [Set Match] -> Set (Predicate a)
+-- toPredSet m = Map.mapWithKey
 
 unsLookup :: Ord k => String -> k -> Map k v -> v
 unsLookup err k m =
   case Map.lookup k m of
      Just v -> v
      Nothing -> error $  "Tried to look up non-existing key"
-                    ++ " in map. (" ++ err ++ ")."
+                      ++ " in map. (" ++ err ++ ")."
+
+-- q(x,y)
+--
+-- p({x, w}, {z})
+-- g({z}, {w})
+
+-- p(x,z)
+-- p(w,z)
+-- g(z,w)
+
+predConns :: (Match -> CArg)
+          -> Set CArg
+          -> [Set Match]
+          -> [Set Match]
+predConns fn aSet mSets = sigs significants where
+    reduced = map ((Set.intersection aSet) . (Set.map fn)) mSets
+    significants = length (filter ((> 0) . Set.size) reduced)
+    -- If no vars are connected, return list of empty sets
+    sigs 0 = map (const Set.empty) mSets
+    -- If exactly one argument place is connected by a set of arguments,
+    -- then all arguments are connected, except the unconnected ones in
+    -- that particular argument place
+    sigs 1 = zipWith (\a b -> if Set.null a then b else Set.filter ((`Set.member` a) . fn) b) reduced mSets
+    -- If more than one argument place contained connected arguments, all
+    -- arguments are connected
+    sigs _ = mSets
+
+connected :: Set CArg
+          -> Set CArg
+          -> (Match -> CArg)
+          -> (Unification, Unification)
+          -> Unification
+connected frontier expl sel space | Set.null frontier = Map.empty
+                                  | otherwise         = retval where
+    (space1, space2) = space
+    retval = Map.unionWith (zipWith Set.union) ret' conns
+    ret'   = connected frontier' expl' sel (space1', space2')
+    frontier' = Map.fold (\a b -> collectArgs a `Set.union` b) Set.empty conns
+    expl' = expl \\ frontier
+    mkConns sp = Map.map (predConns sel frontier) sp
+    conns = Map.unionWith (zipWith Set.union) (mkConns space1) (mkConns space2)
+    space1' = Map.mapWithKey removeConns space1
+    space2' = Map.mapWithKey removeConns space2
+
+    collectArgs :: [Set Match] -> Set CArg
+    collectArgs mSets = foldl (\acc this -> (this \\ expl) `Set.union` acc) Set.empty
+                      $ map (Set.map sel) mSets
+
+    removeConns :: Name -> [Set Match] -> [Set Match]
+    removeConns k a = case Map.lookup k conns of
+                           Just s  -> zipWith Set.difference a s
+                           Nothing -> a
+
+extractArguments :: Unification -> Set Match
+extractArguments uMap = Map.foldl extList Set.empty uMap where
+    extList set ls = (foldl Set.union Set.empty ls) `Set.union` set
+
+reachable :: MetaPattern
+          -> MetaPattern
+reachable (MetaPattern (posPre, negPre) (posEff, negEff)) =
+    let -- The initial frontier is all the args occurring in effects
+        frontier = extractArguments posEff `Set.union` extractArguments negEff
+
+        front1 = Set.map fst frontier
+        front2 = Set.map snd frontier
+
+        conns1 = connected front1 Set.empty fst (posPre, negPre)
+        conns2 = connected front2 Set.empty snd (posPre, negPre)
+
+        mapIntersect = Map.intersectionWith (zipWith Set.intersection)
+
+        mergedConns = mapIntersect conns1 conns2
+        posPre' = mapIntersect posPre mergedConns
+        negPre' = mapIntersect negPre mergedConns
+
+    in  (MetaPattern (posPre', negPre') (posEff, negEff))
 
 instantiatePattern :: (Pattern, Pattern) -> MetaPattern -> Pattern
-instantiatePattern = undefined
+instantiatePattern (p1, p2) mp = undefined
+
 
 unground :: Unification -> TupleSet (Predicate CArg) -> TupleSet (Predicate Match)
 unground = undefined
@@ -140,9 +216,9 @@ patternMapping p1 p2 =
    in MetaPattern { mtPres = (ppUni, npUni) , mtEffs = (peUni,neUni) }
 
 unify :: Pattern -> Pattern -> (Pattern, Pattern)
-unify p1 p2 =
-  let m = patternMapping p1 p2
-   in unground (p1, p2) m
+unify p1 p2 = undefined
+  -- let m = patternMapping p1 p2
+  --  in unground (p1, p2) m
 
 -- Only works as long as effects doesn't contain more of each effect IE.
 -- p(x,y) p(y,z) <-- Not allowed
