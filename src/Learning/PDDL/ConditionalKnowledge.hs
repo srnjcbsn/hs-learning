@@ -65,17 +65,8 @@ unsLookup :: Ord k => String -> k -> Map k v -> v
 unsLookup err k m =
   case Map.lookup k m of
      Just v -> v
-     Nothing -> error $  "Tried to look up non-existing key"
-                      ++ " in map. (" ++ err ++ ")."
-
--- q(x,y)
---
--- p({x, w}, {z})
--- g({z}, {w})
-
--- p(x,z)
--- p(w,z)
--- g(z,w)
+     Nothing -> error $  "Tried to look up non-existing key "
+                      ++ "in map. (" ++ err ++ ")."
 
 predConns :: (Match -> CArg)
           -> Set CArg
@@ -84,15 +75,19 @@ predConns :: (Match -> CArg)
 predConns fn aSet mSets = sigs significants where
     reduced = map ((Set.intersection aSet) . (Set.map fn)) mSets
     significants = length (filter ((> 0) . Set.size) reduced)
-    -- If no vars are connected, return list of empty sets
+    -- If no args are connected, return list of empty sets
     sigs 0 = map (const Set.empty) mSets
     -- If exactly one argument place is connected by a set of arguments,
     -- then all arguments are connected, except the unconnected ones in
     -- that particular argument place
-    sigs 1 = zipWith (\a b -> if Set.null a then b else Set.filter ((`Set.member` a) . fn) b) reduced mSets
+    sigs 1 = zipWith combine reduced mSets
     -- If more than one argument place contained connected arguments, all
     -- arguments are connected
     sigs _ = mSets
+
+    combine :: Set CArg -> Set Match -> Set Match
+    combine args ms | Set.null args = ms
+                    | otherwise     = Set.filter ((`Set.member` args) . fn) ms
 
 connected :: Set CArg
           -> Set CArg
@@ -144,8 +139,28 @@ reachable (MetaPattern (posPre, negPre) (posEff, negEff)) =
 
     in  (MetaPattern (posPre', negPre') (posEff, negEff))
 
+tupleMap :: (a -> b) -> (a, a) -> (b, b)
+tupleMap f (t1, t2) = (f t1, f t2)
+
 instantiatePattern :: (Pattern, Pattern) -> MetaPattern -> Pattern
-instantiatePattern (p1, p2) mp = undefined
+instantiatePattern pats mp = undefined where
+    MetaPattern (mpPosPre, mpNegPre) (mpPosEff, mpNegEff) = mp
+
+    pk p = PDDL.pkHyp (ctPreconds p)
+    ek p = PDDL.ekHyp (ctEffects p)
+
+    posPreKn   = tupleMap (PDDL.posKnown . pk) pats
+    negPreKn   = tupleMap (PDDL.negKnown . pk) pats
+    posPreUnkn = tupleMap (PDDL.posUnknown . pk) pats
+    negPreUnkn = tupleMap (PDDL.posUnknown . pk) pats
+
+    posEffKn   = tupleMap (PDDL.posKnown . ek) pats
+    negEffKn   = tupleMap (PDDL.negKnown . ek) pats
+    posEffUnkn = tupleMap (PDDL.posUnknown . ek) pats
+    negEffUnkn = tupleMap (PDDL.negUnknown . ek) pats
+
+    posEffUg = unground mpPosEff posEffKn
+    negEffUg = unground mpNegEff negEffKn
 
 
 unground :: Unification -> TupleSet (Predicate CArg) -> TupleSet (Predicate Match)
