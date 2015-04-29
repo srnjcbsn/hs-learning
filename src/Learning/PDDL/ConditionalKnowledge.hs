@@ -363,9 +363,17 @@ emptyHyp = PDDL.Hyp TSet.empty TSet.empty
 emptyPreKnl :: Ord a => PDDL.PreKnowledge a
 emptyPreKnl = PDDL.PreKnowledge emptyHyp Set.empty
 
-toPattern :: Transition -> Pattern
-toPattern (s, _ , s') = undefined where
+toPattern :: [Object] -> Transition -> Pattern
+toPattern objs (s, _ , s') = undefined where
+  -- The predicates that have been added to s'
+  deltaAdd = varForm $ s' \\ s
+  -- The predicates that have been removed from s
+  deltaRem = varForm $ s \\ s'
 
+  varForm :: State -> Set (Predicate CArg)
+  varForm = Set.map (fmap (\k -> unsLookup "fromTransition" k objMap))
+
+  objMap = Map.fromList $ zip objs [1 ..]
 
 fromTransition :: Pattern
                -> Transition
