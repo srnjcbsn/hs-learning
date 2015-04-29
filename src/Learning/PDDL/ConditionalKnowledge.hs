@@ -50,7 +50,7 @@ data Literal a = Pos a
                deriving (Eq, Ord)
 
 data Pattern = Pattern
-    { ctEffect  :: Literal [CArg]
+    { ctEffect  :: [CArg]
     , ctPreconds :: PDDL.PreKnowledge CArg
     } deriving (Eq, Ord)
 
@@ -62,7 +62,8 @@ data MetaPattern = MetaPattern { mtPres :: (Unification, Unification)
                                , mtEff  :: Predicate Match
                                }
 
-newtype ConditionalKnowledge = ConditionalKnowledge [Pattern]
+newtype ConditionalKnowledge =
+  ConditionalKnowledge (Map (Literal Name) Pattern)
 
 type Contradiction = EitherSame (Predicate CArg)
 type ContSet  = Set Contradiction
