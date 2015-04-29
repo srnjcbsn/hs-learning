@@ -50,7 +50,7 @@ data Literal a = Pos a
                deriving (Eq, Ord)
 
 data Pattern = Pattern
-    { ctEffect  :: [CArg]
+    { ctEffArg  :: [CArg]
     , ctPreconds :: PDDL.PreKnowledge CArg
     } deriving (Eq, Ord)
 
@@ -59,7 +59,7 @@ type Match = (CArg, CArg)
 type Unification = Set (Predicate Match) -- Map Name [Set Match]
 
 data MetaPattern = MetaPattern { mtPres :: (Unification, Unification)
-                               , mtEff  :: Predicate Match
+                               , mtEffArg  :: [Match]
                                }
 
 newtype ConditionalKnowledge =
@@ -291,7 +291,7 @@ intersectUnificatin = extendUnificatin Set.empty
 
 toMetaPattern :: Pattern -> Pattern -> MetaPattern
 toMetaPattern p1 p2 =
-  let ek p = undefined --PDDL.ekHyp (ctEffects p)
+  let ek p = ctEffArg p
       pk p = PDDL.pkHyp (ctPreconds p)
 
       uKnl knl = TSet.union (PDDL.knowns knl) (PDDL.unknowns knl)
@@ -304,15 +304,11 @@ toMetaPattern p1 p2 =
       (ppos1,pneg1) = uKnl pkP1
       (ppos2,pneg2) = uKnl pkP2
 
-      (epos1,eneg1) = uKnl ekP1
-      (epos2,eneg2) = uKnl ekP2
-
       ppUni = intersectUnificatin ppos1 ppos2
       npUni = intersectUnificatin pneg1 pneg2
-      peUni = intersectUnificatin epos1 epos2
-      neUni = intersectUnificatin eneg1 eneg2
 
-   in MetaPattern { mtPres = (ppUni, npUni) , mtEff = undefined } -- (peUni,neUni) }
+
+   in MetaPattern { mtPres = (ppUni, npUni) , mtEffArg = zip ekP1 ekP2 } -- (peUni,neUni) }
 
 unify :: Pattern -> Pattern -> (Pattern, Pattern)
 unify p1 p2 = undefined
@@ -350,7 +346,7 @@ merge p1 p2 =
       newEff' = PDDL.EffKnowledge newEff
 
 
-   in Pattern { ctPreconds = newPre', ctEffect = undefined } --newEff'}
+   in Pattern { ctPreconds = newPre', ctEffArg = undefined } --newEff'}
 
 merges :: [Pattern] -> Maybe Pattern
 merges [] = Nothing
