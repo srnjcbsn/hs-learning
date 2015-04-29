@@ -52,14 +52,28 @@ data Pattern = Pattern
 
 type Match = (CArg, CArg)
 
-type Unification = Map Name [Set Match]
+type Unification = Set (Predicate Match) -- Map Name [Set Match]
 
 data MetaPattern = MetaPattern { mtPres :: (Unification, Unification)
                                , mtEffs :: (Unification, Unification)
                                }
 
--- toPredSet :: Map Name [Set Match] -> Set (Predicate a)
--- toPredSet m = Map.mapWithKey
+type Contradiction = Int
+type ContSet  = Set Contradiction
+
+removeUnconnected :: MetaPattern -> MetaPattern
+removeUnconnected = undefined
+
+fromMetaPattern :: MetaPattern -> Pattern
+fromMetaPattern = undefined
+
+toContradiction :: Predicate Match -> Set Contradiction
+toContradiction = undefined
+
+contradicts :: Predicate Match -> Set Contradiction -> Bool
+contradicts p conts = toContradiction p `Set.intersection` conts == Set.empty
+
+
 
 unsLookup :: Ord k => String -> k -> Map k v -> v
 unsLookup err k m =
@@ -94,109 +108,129 @@ connected :: Set CArg
           -> (Match -> CArg)
           -> (Unification, Unification)
           -> Unification
-connected frontier expl sel space | Set.null frontier = Map.empty
-                                  | otherwise         = retval where
-    (space1, space2) = space
-    retval = Map.unionWith (zipWith Set.union) ret' conns
-    ret'   = connected frontier' expl' sel (space1', space2')
-    frontier' = Map.fold (\a b -> collectArgs a `Set.union` b) Set.empty conns
-    expl' = expl \\ frontier
-    mkConns sp = Map.map (predConns sel frontier) sp
-    conns = Map.unionWith (zipWith Set.union) (mkConns space1) (mkConns space2)
-    space1' = Map.mapWithKey removeConns space1
-    space2' = Map.mapWithKey removeConns space2
+connected frontier expl sel space = undefined
+    -- | Set.null frontier = Map.empty
+    -- | otherwise         = retval where
+    -- (space1, space2) = space
+    -- retval = Map.unionWith (zipWith Set.union) ret' conns
+    -- ret'   = connected frontier' expl' sel (space1', space2')
+    -- frontier' = Map.fold (\a b -> collectArgs a `Set.union` b) Set.empty conns
+    -- expl' = expl \\ frontier
+    -- mkConns sp = Map.map (predConns sel frontier) sp
+    -- conns = Map.unionWith (zipWith Set.union) (mkConns space1) (mkConns space2)
+    -- space1' = Map.mapWithKey removeConns space1
+    -- space2' = Map.mapWithKey removeConns space2
 
-    collectArgs :: [Set Match] -> Set CArg
-    collectArgs mSets = foldl (\acc this -> (this \\ expl) `Set.union` acc) Set.empty
-                      $ map (Set.map sel) mSets
-
-    removeConns :: Name -> [Set Match] -> [Set Match]
-    removeConns k a = case Map.lookup k conns of
-                           Just s  -> zipWith Set.difference a s
-                           Nothing -> a
+    -- collectArgs :: [Set Match] -> Set CArg
+    -- collectArgs mSets = foldl (\acc this -> (this \\ expl) `Set.union` acc) Set.empty
+    --                   $ map (Set.map sel) mSets
+    --
+    -- removeConns :: Name -> [Set Match] -> [Set Match]
+    -- removeConns k a = case Map.lookup k conns of
+    --                        Just s  -> zipWith Set.difference a s
+    --                        Nothing -> a
 
 extractArguments :: Unification -> Set Match
-extractArguments uMap = Map.foldl extList Set.empty uMap where
-    extList set ls = (foldl Set.union Set.empty ls) `Set.union` set
+extractArguments uMap = undefined
+    --  Map.foldl extList Set.empty uMap where
+    -- extList set ls = (foldl Set.union Set.empty ls) `Set.union` set
 
 reachable :: MetaPattern
           -> MetaPattern
-reachable (MetaPattern (posPre, negPre) (posEff, negEff)) =
-    let -- The initial frontier is all the args occurring in effects
-        frontier = extractArguments posEff `Set.union` extractArguments negEff
-
-        front1 = Set.map fst frontier
-        front2 = Set.map snd frontier
-
-        conns1 = connected front1 Set.empty fst (posPre, negPre)
-        conns2 = connected front2 Set.empty snd (posPre, negPre)
-
-        mapIntersect = Map.intersectionWith (zipWith Set.intersection)
-
-        mergedConns = mapIntersect conns1 conns2
-        posPre' = mapIntersect posPre mergedConns
-        negPre' = mapIntersect negPre mergedConns
-
-    in  (MetaPattern (posPre', negPre') (posEff, negEff))
+reachable (MetaPattern (posPre, negPre) (posEff, negEff)) = undefined
+    -- let -- The initial frontier is all the args occurring in effects
+    --     frontier = extractArguments posEff `Set.union` extractArguments negEff
+    --
+    --     front1 = Set.map fst frontier
+    --     front2 = Set.map snd frontier
+    --
+    --     conns1 = connected front1 Set.empty fst (posPre, negPre)
+    --     conns2 = connected front2 Set.empty snd (posPre, negPre)
+    --
+    --     mapIntersect = Map.intersectionWith (zipWith Set.intersection)
+    --
+    --     mergedConns = mapIntersect conns1 conns2
+    --     posPre' = mapIntersect posPre mergedConns
+    --     negPre' = mapIntersect negPre mergedConns
+    --
+    -- in  (MetaPattern (posPre', negPre') (posEff, negEff))
 
 tupleMap :: (a -> b) -> (a, a) -> (b, b)
 tupleMap f (t1, t2) = (f t1, f t2)
 
 instantiatePattern :: (Pattern, Pattern) -> MetaPattern -> Pattern
-instantiatePattern pats mp = undefined where
-    MetaPattern (mpPosPre, mpNegPre) (mpPosEff, mpNegEff) = mp
-
-    pk p = PDDL.pkHyp (ctPreconds p)
-    ek p = PDDL.ekHyp (ctEffects p)
-
-    posPreKn   = tupleMap (PDDL.posKnown . pk) pats
-    negPreKn   = tupleMap (PDDL.negKnown . pk) pats
-    posPreUnkn = tupleMap (PDDL.posUnknown . pk) pats
-    negPreUnkn = tupleMap (PDDL.posUnknown . pk) pats
-
-    posEffKn   = tupleMap (PDDL.posKnown . ek) pats
-    negEffKn   = tupleMap (PDDL.negKnown . ek) pats
-    posEffUnkn = tupleMap (PDDL.posUnknown . ek) pats
-    negEffUnkn = tupleMap (PDDL.negUnknown . ek) pats
-
-    posEffUg = unground mpPosEff posEffKn
-    negEffUg = unground mpNegEff negEffKn
-
-
+instantiatePattern pats mp = undefined
+    -- MetaPattern (mpPosPre, mpNegPre) (mpPosEff, mpNegEff) = mp
+    --
+    -- pk p = PDDL.pkHyp (ctPreconds p)
+    -- ek p = PDDL.ekHyp (ctEffects p)
+    --
+    -- posPreKn   = tupleMap (PDDL.posKnown . pk) pats
+    -- negPreKn   = tupleMap (PDDL.negKnown . pk) pats
+    -- posPreUnkn = tupleMap (PDDL.posUnknown . pk) pats
+    -- negPreUnkn = tupleMap (PDDL.posUnknown . pk) pats
+    --
+    -- posEffKn   = tupleMap (PDDL.posKnown . ek) pats
+    -- negEffKn   = tupleMap (PDDL.negKnown . ek) pats
+    -- posEffUnkn = tupleMap (PDDL.posUnknown . ek) pats
+    -- negEffUnkn = tupleMap (PDDL.negUnknown . ek) pats
+    --
+    -- posEffKnUg = unground mpPosEff posEffKn
+    -- negEffKnUg = unground mpNegEff negEffKn
+    -- posEffUnknUg = unground mpPosEff posEffUnkn
+    -- negEffUnknUg = unground mpNegEff negEffUnkn
+    --
+    -- newU (u1, u2) = TSet.intersection u1 u2
+    -- newK (u1, u2) (k1, k2) = TSet.union (TSet.intersection k1 k2)
+    --                        ( TSet.union (TSet.intersection k1 u2)
+    --                                     (TSet.intersection k2 u1)
+    --                        )
+    --
+    -- newEffKn = newK posEffUnknUg posEffUnknUg
+    -- newEff
+    --
+    -- newPre = PDDL.Hyp { PDDL.knowns = newK preKnl1 preKnl2
+    --                   , PDDL.unknowns = newU preKnl1 preKnl2
+    --                   }
+    -- newEff = PDDL.Hyp { PDDL.knowns = newK effKnl1 effKnl2
+    --                   , PDDL.unknowns = newU effKnl1 effKnl2
+    --                   }
+    -- newPre' = PDDL.PreKnowledge newPre Set.empty
+    -- newEff' = PDDL.EffKnowledge newEff
 
 unground :: Unification
          -> TupleSet (Predicate CArg)
          -> TupleSet (Predicate Match)
-unground uni (ps1, ps2) =
-  let selectMatches slctor p =
-        do argsUni <- Map.lookup (predName p) uni
-           let remover s e = Set.filter ((== e) . slctor) s
-               argsUni' = zipWith remover argsUni (predArgs p)
-               argsUni'' = map Set.toList argsUni'
-           return $ map (Predicate (predName p)) $ sequence argsUni''
-
-      ug slctor ps = Set.fromList
-                   $ concatMap id
-                   $ mapMaybe (selectMatches slctor)
-                   $ Set.toList ps
-   in (ug fst ps1, ug snd ps2)
+unground uni (ps1, ps2) = undefined
+  -- let selectMatches slctor p =
+   --      do argsUni <- Map.lookup (predName p) uni
+   --         let remover s e = Set.filter ((== e) . slctor) s
+   --             argsUni' = zipWith remover argsUni (predArgs p)
+   --             argsUni'' = map Set.toList argsUni'
+   --         return $ map (Predicate (predName p)) $ sequence argsUni''
+   --
+   --    ug slctor ps = Set.fromList
+   --                 $ concatMap id
+   --                 $ mapMaybe (selectMatches slctor)
+   --                 $ Set.toList ps
+   -- in (ug fst ps1, ug snd ps2)
 
 matchPredicates :: Unification
                 -> Predicate CArg
                 -> [[CArg]]
                 -> Unification
-matchPredicates uni p argLs  =
-  let zipMatches = zipWith Set.union
-      zipper :: [CArg] -> [Set Match] -> [CArg] -> [Set Match]
-      zipper args1 m args2 =
-          let zped = map Set.singleton $ zip args1 args2
-           in zipMatches zped m
-      initArgs = replicate (length $ predArgs p) Set.empty
-      newMatch = foldl (zipper $ predArgs p) initArgs argLs
-      f Nothing = Just newMatch
-      f (Just oldMatch) =  Just (zipMatches oldMatch newMatch)
-      uni' = Map.alter f (predName p) uni
-   in uni'
+matchPredicates uni p argLs  = undefined
+  -- let zipMatches = zipWith Set.union
+   --    zipper :: [CArg] -> [Set Match] -> [CArg] -> [Set Match]
+   --    zipper args1 m args2 =
+   --        let zped = map Set.singleton $ zip args1 args2
+   --         in zipMatches zped m
+   --    initArgs = replicate (length $ predArgs p) Set.empty
+   --    newMatch = foldl (zipper $ predArgs p) initArgs argLs
+   --    f Nothing = Just newMatch
+   --    f (Just oldMatch) =  Just (zipMatches oldMatch newMatch)
+   --    uni' = Map.alter f (predName p) uni
+   -- in uni'
 
 group :: (Ord a, Ord b)
       => Set (Predicate a)
@@ -219,7 +253,7 @@ mapping cArgMap knl1 knl2 =
 initMapping :: Set (Predicate CArg)
             -> Set (Predicate CArg)
             -> Unification
-initMapping = mapping Map.empty
+initMapping = undefined -- mapping Map.empty
 
 patternMapping :: Pattern -> Pattern -> MetaPattern
 patternMapping p1 p2 =
