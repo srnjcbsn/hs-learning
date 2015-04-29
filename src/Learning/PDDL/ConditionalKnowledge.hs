@@ -45,8 +45,12 @@ type Subst = Map Object Int
 
 type CArg = Int
 
+data Literal a = Pos a
+               | Neg a
+               deriving (Eq, Ord)
+
 data Pattern = Pattern
-    { ctEffects  :: PDDL.EffKnowledge CArg
+    { ctEffect  :: Literal [CArg]
     , ctPreconds :: PDDL.PreKnowledge CArg
     } deriving (Eq, Ord)
 
@@ -55,11 +59,14 @@ type Match = (CArg, CArg)
 type Unification = Set (Predicate Match) -- Map Name [Set Match]
 
 data MetaPattern = MetaPattern { mtPres :: (Unification, Unification)
-                               , mtEffs :: (Unification, Unification)
+                               , mtEff  :: Predicate Match
                                }
 
-type Contradiction = Int
+newtype ConditionalKnowledge = ConditionalKnowledge [Pattern]
+
+type Contradiction = EitherSame (Predicate CArg)
 type ContSet  = Set Contradiction
+type EitherSame a = Either a a
 
 removeUnconnected :: MetaPattern -> MetaPattern
 removeUnconnected = undefined
@@ -68,7 +75,10 @@ fromMetaPattern :: MetaPattern -> Pattern
 fromMetaPattern = undefined
 
 toContradiction :: Predicate Match -> Set Contradiction
-toContradiction = undefined
+toContradiction (Predicate n args)=
+  Set.fromList [ Left $ Predicate n (map fst args)
+               , Right $ Predicate n (map snd args)
+               ]
 
 contradicts :: Predicate Match -> Set Contradiction -> Bool
 contradicts p conts = toContradiction p `Set.intersection` conts == Set.empty
@@ -137,7 +147,7 @@ extractArguments uMap = undefined
 
 reachable :: MetaPattern
           -> MetaPattern
-reachable (MetaPattern (posPre, negPre) (posEff, negEff)) = undefined
+reachable (MetaPattern (posPre, negPre) eff) = undefined
     -- let -- The initial frontier is all the args occurring in effects
     --     frontier = extractArguments posEff `Set.union` extractArguments negEff
     --
@@ -203,61 +213,53 @@ unground :: Unification
          -> TupleSet (Predicate Match)
 unground uni (ps1, ps2) = undefined
   -- let selectMatches slctor p =
-   --      do argsUni <- Map.lookup (predName p) uni
-   --         let remover s e = Set.filter ((== e) . slctor) s
-   --             argsUni' = zipWith remover argsUni (predArgs p)
-   --             argsUni'' = map Set.toList argsUni'
-   --         return $ map (Predicate (predName p)) $ sequence argsUni''
-   --
-   --    ug slctor ps = Set.fromList
-   --                 $ concatMap id
-   --                 $ mapMaybe (selectMatches slctor)
-   --                 $ Set.toList ps
-   -- in (ug fst ps1, ug snd ps2)
+  --       do argsUni <- Map.lookup (predName p) uni
+  --          let remover s e = Set.filter ((== e) . slctor) s
+  --              argsUni' = zipWith remover argsUni (predArgs p)
+  --              argsUni'' = map Set.toList argsUni'
+  --          return $ map (Predicate (predName p)) $ sequence argsUni''
+  --
+  --     ug slctor ps = Set.fromList
+  --                  $ concatMap id
+  --                  $ mapMaybe (selectMatches slctor)
+  --                  $ Set.toList ps
+  --  in (ug fst ps1, ug snd ps2)
 
+-- Gets the intersection between pattern1 and pattern 2
 matchPredicates :: Unification
                 -> Predicate CArg
                 -> [[CArg]]
                 -> Unification
-matchPredicates uni p argLs  = undefined
-  -- let zipMatches = zipWith Set.union
-   --    zipper :: [CArg] -> [Set Match] -> [CArg] -> [Set Match]
-   --    zipper args1 m args2 =
-   --        let zped = map Set.singleton $ zip args1 args2
-   --         in zipMatches zped m
-   --    initArgs = replicate (length $ predArgs p) Set.empty
-   --    newMatch = foldl (zipper $ predArgs p) initArgs argLs
-   --    f Nothing = Just newMatch
-   --    f (Just oldMatch) =  Just (zipMatches oldMatch newMatch)
-   --    uni' = Map.alter f (predName p) uni
-   -- in uni'
+matchPredicates uni (Predicate n leftArgs) argLs  =
+  let folder s args2  = Set.insert (Predicate n $ zip leftArgs args2) s
+   in foldl folder uni argLs
 
 group :: (Ord a, Ord b)
       => Set (Predicate a)
       -> Set (Predicate b)
       -> [(Predicate a,[[b]])]
-group ps1 ps2 =
+group psA psB =
     let matched ps p  = (p, map predArgs $ Set.toList $ Set.filter (matcher p) ps )
         matcher p = (== predName p) . predName
-     in Set.toList $ Set.map (matched ps2) ps1
+     in Set.toList $ Set.map (matched psB) psA
 
-mapping :: Unification
-        -> Set (Predicate CArg)
-        -> Set (Predicate CArg)
-        -> Unification
-mapping cArgMap knl1 knl2 =
-  let knlgroup = group knl1 knl2
+extendUnificatin :: Unification
+                 -> Set (Predicate CArg)
+                 -> Set (Predicate CArg)
+                 -> Unification
+extendUnificatin uni knl1 knl2 =
+  let knlGroup = group knl1 knl2
       f m (p,argLs) = matchPredicates m p argLs
-   in foldl f cArgMap knlgroup
+   in  foldl f uni knlGroup
 
-initMapping :: Set (Predicate CArg)
+intersectUnificatin :: Set (Predicate CArg)
             -> Set (Predicate CArg)
             -> Unification
-initMapping = undefined -- mapping Map.empty
+intersectUnificatin = extendUnificatin Set.empty
 
-patternMapping :: Pattern -> Pattern -> MetaPattern
-patternMapping p1 p2 =
-  let ek p = PDDL.ekHyp (ctEffects p)
+toMetaPattern :: Pattern -> Pattern -> MetaPattern
+toMetaPattern p1 p2 =
+  let ek p = undefined --PDDL.ekHyp (ctEffects p)
       pk p = PDDL.pkHyp (ctPreconds p)
 
       uKnl knl = TSet.union (PDDL.knowns knl) (PDDL.unknowns knl)
@@ -273,16 +275,16 @@ patternMapping p1 p2 =
       (epos1,eneg1) = uKnl ekP1
       (epos2,eneg2) = uKnl ekP2
 
-      ppUni = initMapping ppos1 ppos2
-      npUni = initMapping pneg1 pneg2
-      peUni = initMapping epos1 epos2
-      neUni = initMapping eneg1 eneg2
+      ppUni = intersectUnificatin ppos1 ppos2
+      npUni = intersectUnificatin pneg1 pneg2
+      peUni = intersectUnificatin epos1 epos2
+      neUni = intersectUnificatin eneg1 eneg2
 
-   in MetaPattern { mtPres = (ppUni, npUni) , mtEffs = (peUni,neUni) }
+   in MetaPattern { mtPres = (ppUni, npUni) , mtEff = undefined } -- (peUni,neUni) }
 
 unify :: Pattern -> Pattern -> (Pattern, Pattern)
 unify p1 p2 = undefined
-  -- let m = patternMapping p1 p2
+  -- let m = toMetaPattern p1 p2
   --  in unground (p1, p2) m
 
 -- Only works as long as effects doesn't contain more of each effect IE.
@@ -292,7 +294,7 @@ merge :: Pattern -> Pattern -> Pattern
 merge p1 p2 =
   let (p1', p2') = unify p1 p2
       pk p = PDDL.pkHyp (ctPreconds p)
-      ek p = PDDL.ekHyp (ctEffects p)
+      ek p = undefined -- PDDL.ekHyp (ctEffects p)
 
       uKnl knl = (PDDL.unknowns knl, PDDL.knowns knl)
       preKnl1 = uKnl (pk p1')
@@ -309,14 +311,14 @@ merge p1 p2 =
       newPre = PDDL.Hyp { PDDL.knowns = newK preKnl1 preKnl2
                         , PDDL.unknowns = newU preKnl1 preKnl2
                         }
-      newEff = PDDL.Hyp { PDDL.knowns = newK effKnl1 effKnl2
-                        , PDDL.unknowns = newU effKnl1 effKnl2
+      newEff = PDDL.Hyp { PDDL.knowns = undefined -- newK effKnl1 effKnl2
+                        , PDDL.unknowns = undefined -- newU effKnl1 effKnl2
                         }
       newPre' = PDDL.PreKnowledge newPre Set.empty
       newEff' = PDDL.EffKnowledge newEff
 
 
-   in Pattern { ctPreconds = newPre', ctEffects = newEff'}
+   in Pattern { ctPreconds = newPre', ctEffect = undefined } --newEff'}
 
 merges :: [Pattern] -> Maybe Pattern
 merges [] = Nothing
@@ -339,6 +341,11 @@ emptyHyp = PDDL.Hyp TSet.empty TSet.empty
 
 emptyPreKnl :: Ord a => PDDL.PreKnowledge a
 emptyPreKnl = PDDL.PreKnowledge emptyHyp Set.empty
+
+toPattern :: Transition -> Pattern
+toPattern (s, _ , s') = undefined where
+
+
 
 fromTransition :: Pattern
                -> Transition
@@ -401,11 +408,11 @@ fromTransition patt (s, _, s') pSpecs objs = fromMaybe patt mergedPattern where
     negPreKnl p = PDDL.PreKnowledge (PDDL.Hyp TSet.empty TSet.empty)
                                     (negCands p)
 
-    posSuccPatternFor p = Pattern (posEffKnl p) emptyPreKnl
-    negSuccPatternFor p = Pattern (negEffKnl p) emptyPreKnl
+    posSuccPatternFor p = undefined -- Pattern (posEffKnl p) emptyPreKnl
+    negSuccPatternFor p = undefined --Pattern (negEffKnl p) emptyPreKnl
 
-    posFailPatternFor p = Pattern (posEffKnl p) (posPreKnl p)
-    negFailPatternFor p = Pattern (negEffKnl p) (negPreKnl p)
+    posFailPatternFor p = undefined --Pattern (posEffKnl p) (posPreKnl p)
+    negFailPatternFor p = undefined --Pattern (negEffKnl p) (negPreKnl p)
 
     mergedPattern = merges (  posSuccPatterns ++ negSuccPatterns
                            ++ posFailPatterns ++ negFailPatterns
