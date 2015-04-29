@@ -98,10 +98,10 @@ connected conts space focus = ret where
 
 removeUnconnected :: MetaPattern -> MetaPattern
 removeUnconnected mp = undefined where
-    MetaPattern (posPres, negPres) (posEffs, negEffs) = mp
-    lala = connected Set.empty (posPres `Set.union` negPres) args
-    args = Set.fromList
-         $ concatMap predArgs (Set.toList (posEffs `Set.union` negEffs))
+    -- MetaPattern (posPres, negPres) (posEffs, negEffs) = mp
+    -- lala = connected Set.empty (posPres `Set.union` negPres) args
+    -- args = Set.fromList
+    --      $ concatMap predArgs (Set.toList (posEffs `Set.union` negEffs))
 
 
 fromMetaPattern :: MetaPattern -> Pattern
