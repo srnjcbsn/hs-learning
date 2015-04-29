@@ -66,17 +66,13 @@ newtype ConditionalKnowledge =
   ConditionalKnowledge (Map (Literal Name) Pattern)
 
 type Contradiction = EitherSame (Predicate CArg)
-type ContSet  = Set Contradiction
 type EitherSame a = Either a a
 
--- setUnion :: Ord a => Set (Set a) -> Set a
--- setUnion = Set.unions . Set.toList
-
-connected :: Set (Contradiction)
+connected :: Set Contradiction
           -> Set (Predicate Match)
           -> Set Match --Predicate Match
           -> Set (Predicate Match)
-connected conts space focus = ret where
+connected conts space focus = Set.foldl collect Set.empty front where
     collect found foc = connected (contsFor foc)
                                   (spaceFor foc)
                                   (Set.fromList $ predArgs foc)
@@ -90,18 +86,20 @@ connected conts space focus = ret where
     space'            = Set.filter (not . flip contradicts conts) space
     isConnected (Predicate _ args) = any (`elem` args) (Set.toList focus)
 
-    ret = Set.foldl collect Set.empty front
-
 removeUnconnected :: MetaPattern -> MetaPattern
-removeUnconnected (MetaPattern (posPres, negPres) eff) = mp' where
-    mp' = MetaPattern (posPres', negPres') eff
+removeUnconnected (MetaPattern (posPres, negPres) args) = mp' where
+    mp'      = MetaPattern (posPres', negPres') args
     posPres' = posPres `Set.intersection` conns
     negPres' = negPres `Set.intersection` conns
-    conns = connected Set.empty (posPres `Set.union` negPres) effArgs
-    effArgs = Set.fromList $ predArgs eff
+    conns    = connected Set.empty allPres (Set.fromList args)
+    allPres  = posPres `Set.union` negPres
+
+
 
 fromMetaPattern :: MetaPattern -> Pattern
-fromMetaPattern = undefined
+fromMetaPattern (MetaPattern (posPres, negPres) args) =
+    undefined
+
 
 toContradiction :: Predicate Match -> Set Contradiction
 toContradiction (Predicate n args)=
@@ -369,7 +367,6 @@ toPattern :: Transition -> Pattern
 toPattern (s, _ , s') = undefined where
 
 
-
 fromTransition :: Pattern
                -> Transition
                -> [PredicateSpec]
@@ -393,13 +390,15 @@ fromTransition patt (s, _, s') pSpecs objs = fromMaybe patt mergedPattern where
     allPreds = Set.unions $ Set.toList
              $ Set.map (Set.fromList . predsFromShape) allShapes
 
-    cArgForm :: State -> Set (Predicate CArg)
-    cArgForm = Set.map (fmap (\k -> unsLookup "fromTransition" k objMap))
+    -- cArgForm :: State -> Set (Predicate CArg)
+    -- cArgForm = Set.map (fmap (\k -> unsLookup "fromTransition" k objMap))
 
     shapes :: Set (Predicate a) -> Set (String, Int)
     shapes set = Set.map (\p -> (predName p, predArity p)) set
 
     predsFromShape (n, a) = [Predicate n os | os <- (replicateM a objs)]
+
+    cArgForm = undefined
 
     -- The predicates whose shape was in deltaS, but were not themselves in s'
     posFailed = cArgForm $ Set.unions $ Set.toList
