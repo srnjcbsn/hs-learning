@@ -84,26 +84,21 @@ connected conts space focus = ret where
 
     contsFor foc      = toContradiction foc `Set.union` conts
     spaceFor foc      = Set.delete foc space'
-
-    front = Set.filter isConnected space'
+    front             = Set.filter isConnected space'
 
     -- Remove all predicates that contradict the focus from the search space
     space'            = Set.filter (not . flip contradicts conts) space
-    -- (front, space')   = Set.partition memberCheck space
-    -- conts'            = conts `Set.union` toContradiction focus
-    -- memberCheck p     = isAllowed p && isConnected p
-    -- isAllowed p       = undefined -- not (p `contradicts` conts')
     isConnected (Predicate _ args) = any (`elem` args) (Set.toList focus)
 
     ret = Set.foldl collect Set.empty front
 
 removeUnconnected :: MetaPattern -> MetaPattern
-removeUnconnected mp = undefined where
-    -- MetaPattern (posPres, negPres) (posEffs, negEffs) = mp
-    -- lala = connected Set.empty (posPres `Set.union` negPres) args
-    -- args = Set.fromList
-    --      $ concatMap predArgs (Set.toList (posEffs `Set.union` negEffs))
-
+removeUnconnected (MetaPattern (posPres, negPres) eff) = mp' where
+    mp' = MetaPattern (posPres', negPres') eff
+    posPres' = posPres `Set.intersection` conns
+    negPres' = negPres `Set.intersection` conns
+    conns = connected Set.empty (posPres `Set.union` negPres) effArgs
+    effArgs = Set.fromList $ predArgs eff
 
 fromMetaPattern :: MetaPattern -> Pattern
 fromMetaPattern = undefined
