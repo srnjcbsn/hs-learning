@@ -9,7 +9,6 @@ import qualified Data.TupleSet as TSet
 
 import           Control.Monad
 import           Data.Map      (Map)
-import qualified Data.Map      as Map
 import           Data.Set      (Set)
 import qualified Data.Set      as Set
 
@@ -93,40 +92,3 @@ allPreds :: PredicateSpec -> [Object] -> Set GroundedPredicate
 allPreds ps objs = Set.fromList
                  $ map (Predicate (predName ps))
                  $ replicateM (length . predArgs $ ps) objs
-
--- fBindPred :: PredicateSpec -> Predicate FBind
--- fBindPred ps = Predicate (predName ps) (take (predArity ps) [1 .. ])
-
-posOrNegCand :: PredicateSpec
-             -> [Object]
-             -> State
-             -> TupleSet PredicateSpec
-             -> TupleSet PredicateSpec
-posOrNegCand ps objs s (pos, neg)
-    | Set.isSubsetOf (allPreds ps objs) s =
-        (pos, Set.insert ps neg)
-    | Set.null (Set.intersection (allPreds ps objs) s) =
-        (Set.insert ps pos, neg)
-    | otherwise = (pos, neg)
-
-tmp :: [PredicateSpec] -> [Object] -> ActionHyp -> P.Transition -> ActionHyp
-tmp ps objs ah t@(s, a, s') | s == s' = undefined
-
-forAllFromDomain :: [P.Type] -> [PredicateSpec] -> ForAllHyp
--- TODO: The content of the forall should no tbe the empty list, but a single
---       conditional with no preconds and one of each effect (bound to the
---       variables defined by fTypes)
-forAllFromDomain types preds = ForAllHyp fTypes [] where
-    fTypes = concatMap (\t -> replicate (maxTypeOccurrence t preds) t) types
-
-fromActionSpec :: [P.Type] -> [PredicateSpec] -> ActionSpec -> ActionHyp
-fromActionSpec types precs aSpec = ActionHyp
-    { name = asName aSpec
-    , params = Map.toList $ asTypes aSpec
-    -- FIXME: Constants in actionspec should have embedded type information
-    , consts = zip (asConstants aSpec) (repeat baseType)
-    , condEffs = [forAllFromDomain types precs]
-    }
-
-initialHypothesis :: PDDLDomain -> ActionSpec -> DomainHyp
-initialHypothesis = undefined
