@@ -61,8 +61,41 @@ data MetaPattern = MetaPattern { mtPres :: (Unification, Unification)
 type Contradiction = Int
 type ContSet  = Set Contradiction
 
+-- setUnion :: Ord a => Set (Set a) -> Set a
+-- setUnion = Set.unions . Set.toList
+
+connected :: Set (Contradiction)
+          -> Set (Predicate Match)
+          -> Set Match --Predicate Match
+          -> Set (Predicate Match)
+connected conts space focus = ret where
+    collect found foc = connected (contsFor foc)
+                                  (spaceFor foc)
+                                  (Set.fromList $ predArgs foc)
+                      `Set.union` found
+
+    contsFor foc      = toContradiction foc `Set.union` conts
+    spaceFor foc      = Set.delete foc space'
+
+    front = Set.filter isConnected space'
+
+    -- Remove all predicates that contradict the focus from the search space
+    space'            = Set.filter (not . flip contradicts conts) space
+    -- (front, space')   = Set.partition memberCheck space
+    -- conts'            = conts `Set.union` toContradiction focus
+    -- memberCheck p     = isAllowed p && isConnected p
+    -- isAllowed p       = undefined -- not (p `contradicts` conts')
+    isConnected (Predicate _ args) = any (`elem` args) (Set.toList focus)
+
+    ret = Set.foldl collect Set.empty front
+
 removeUnconnected :: MetaPattern -> MetaPattern
-removeUnconnected = undefined
+removeUnconnected mp = undefined where
+    MetaPattern (posPres, negPres) (posEffs, negEffs) = mp
+    lala = connected Set.empty (posPres `Set.union` negPres) args
+    args = Set.fromList
+         $ concatMap predArgs (Set.toList (posEffs `Set.union` negEffs))
+
 
 fromMetaPattern :: MetaPattern -> Pattern
 fromMetaPattern = undefined
@@ -72,8 +105,6 @@ toContradiction = undefined
 
 contradicts :: Predicate Match -> Set Contradiction -> Bool
 contradicts p conts = toContradiction p `Set.intersection` conts == Set.empty
-
-
 
 unsLookup :: Ord k => String -> k -> Map k v -> v
 unsLookup err k m =
@@ -103,12 +134,12 @@ predConns fn aSet mSets = sigs significants where
     combine args ms | Set.null args = ms
                     | otherwise     = Set.filter ((`Set.member` args) . fn) ms
 
-connected :: Set CArg
-          -> Set CArg
-          -> (Match -> CArg)
-          -> (Unification, Unification)
-          -> Unification
-connected frontier expl sel space = undefined
+-- connected :: Set CArg
+--           -> Set CArg
+--           -> (Match -> CArg)
+--           -> (Unification, Unification)
+--           -> Unification
+-- connected frontier expl sel space = undefined
     -- | Set.null frontier = Map.empty
     -- | otherwise         = retval where
     -- (space1, space2) = space
