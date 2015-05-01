@@ -12,7 +12,7 @@ import           Logic.Formula
 import           Planning
 import           Planning.PDDL
 
-import           Control.Monad                       (sequence, replicateM)
+import           Control.Monad                       (sequence, replicateM, liftM)
 import           Data.Map                            (Map)
 import qualified Data.Map                            as Map
 import           Data.Maybe
@@ -22,7 +22,7 @@ import           Data.Tree
 import           Data.TupleSet                       (TupleSet)
 import qualified Data.TupleSet                       as TSet
 
-type DomainKnowledge = Map Name Pattern
+type DomainKnowledge = Map Name ConditionalKnowledge
 
 data Binding = Bound Int
              | Free  Int
@@ -45,8 +45,8 @@ type Subst = Map Object Int
 
 type CArg = Int
 
-data Literal a = Pos a
-               | Neg a
+data EffectType a = AddEff a
+                  | RemEff a
                deriving (Eq, Ord)
 
 data Pattern = Pattern
@@ -61,9 +61,9 @@ type Unification = Set (Predicate Match) -- Map Name [Set Match]
 data MetaPattern = MetaPattern { mtPres :: (Unification, Unification)
                                , mtEffArg  :: [Match]
                                }
-
+type PatternKnl = (Map (EffectType Name) Pattern)
 newtype ConditionalKnowledge =
-  ConditionalKnowledge (Map (Literal Name) Pattern)
+  ConditionalKnowledge PatternKnl
 
 type Contradiction = EitherSame (Predicate CArg)
 type EitherSame a = Either a a
@@ -363,90 +363,44 @@ emptyHyp = PDDL.Hyp TSet.empty TSet.empty
 emptyPreKnl :: Ord a => PDDL.PreKnowledge a
 emptyPreKnl = PDDL.PreKnowledge emptyHyp Set.empty
 
-toPattern :: [Object] -> Transition -> Pattern
-toPattern objs (s, _ , s') = undefined where
+universeState :: [PredicateSpec]
+              -> [Object]
+              -> State
+universeState = undefined
+
+rmUnConns :: [CArg] -> Set (Predicate CArg) -> Set (Predicate CArg)
+rmUnConns = undefined
+
+constructPattern :: [CArg] -> PDDL.Knowledge CArg -> PDDL.Cands CArg -> Pattern
+constructPattern effArgs predUnks cands =
+  Pattern { ctEffArg = effArgs
+          , ctPreconds =
+            PDDL.PreKnowledge
+             (PDDL.Hyp { PDDL.knowns = TSet.empty
+                  , PDDL.unknowns = predUnks }) (cands) }
+
+toPatternKnl :: [PredicateSpec] -> [Object] -> Transition -> PatternKnl
+toPatternKnl specs objs (s, _ , s') = Map.union deltaAddPatns deltaRemPatns where
   -- The predicates that have been added to s'
-  deltaAdd = varForm $ s' \\ s
+  deltaAdd = Set.toList $ varForm $ s' \\ s
   -- The predicates that have been removed from s
-  deltaRem = varForm $ s \\ s'
+  deltaRem = Set.toList $ varForm $ s \\ s'
+  -- Possible positive preconditions
+  posPre = varForm $ s
+  -- Possible negative preconditions
+  negPre = varForm $ universeState specs objs \\ s
 
-  varForm :: State -> Set (Predicate CArg)
-  varForm = Set.map (fmap (\k -> unsLookup "fromTransition" k objMap))
+  deltaAddPatns = Map.fromList $ map (toPattern AddEff) deltaAdd
+  deltaRemPatns = Map.fromList $ map (toPattern RemEff) deltaRem
 
+  toPattern et (Predicate n args) =
+      let cnn = rmUnConns args
+       in (et n, constructPattern args (cnn posPre, cnn negPre) Set.empty)
+
+  varForm objForm = Set.fromList $ mapMaybe f $ Set.toList objForm
+  f (Predicate n os) = liftM (Predicate n) $ mapM (`Map.lookup` objMap) os
+  objMap :: Map Object CArg
   objMap = Map.fromList $ zip objs [1 ..]
 
-fromTransition :: Pattern
-               -> Transition
-               -> [PredicateSpec]
-               -> [Object]
-               -> Pattern
-
-fromTransition patt (s, _, s') pSpecs objs = fromMaybe patt mergedPattern where
-    -- The predicates that have been added to s'
-    deltaAdd = cArgForm $ s' \\ s
-    -- The predicates that have been removed from s
-    deltaRem = cArgForm $ s \\ s'
-
-    -- The predicates that were in both s and s'
-    omegaS = cArgForm $ s' `Set.intersection` s
-
-    -- The predicates that were not present in s, and could have been positive
-    -- preconditions for failed actions
-    notS   = cArgForm $ allPreds \\ s
-
-    allShapes = shapes (Set.fromList pSpecs)
-    allPreds = Set.unions $ Set.toList
-             $ Set.map (Set.fromList . predsFromShape) allShapes
-
-    -- cArgForm :: State -> Set (Predicate CArg)
-    -- cArgForm = Set.map (fmap (\k -> unsLookup "fromTransition" k objMap))
-
-    shapes :: Set (Predicate a) -> Set (String, Int)
-    shapes set = Set.map (\p -> (predName p, predArity p)) set
-
-    predsFromShape (n, a) = [Predicate n os | os <- (replicateM a objs)]
-
-    cArgForm = undefined
-
-    -- The predicates whose shape was in deltaS, but were not themselves in s'
-    posFailed = cArgForm $ Set.unions $ Set.toList
-              $ Set.map ((\\ s') . Set.fromList . predsFromShape) (shapes deltaAdd)
-
-    negFailed = undefined
-
-    objMap = Map.fromList $ zip objs [1 ..]
-
-    posSuccPatterns = Set.toList $ Set.map posSuccPatternFor deltaAdd
-    negSuccPatterns = Set.toList $ Set.map negSuccPatternFor deltaRem
-    posFailPatterns = Set.toList $ Set.map posFailPatternFor posFailed
-    negFailPatterns = Set.toList $ Set.map negFailPatternFor negFailed
-
-    posEffKnl p = PDDL.EffKnowledge $ PDDL.Hyp
-                        (Set.singleton p, Set.empty)
-                        (omegaS,          Set.empty)
-
-    negEffKnl p = PDDL.EffKnowledge $ PDDL.Hyp
-                        (Set.empty, Set.singleton p)
-                        (Set.empty, notS)
-
-    posCands p = Set.singleton (notS \\ Set.singleton p, cArgForm s)
-    negCands p = Set.singleton (cArgForm s, notS \\ Set.singleton p)
-
-    posPreKnl p = PDDL.PreKnowledge (PDDL.Hyp TSet.empty TSet.empty)
-                                    (posCands p)
-
-    negPreKnl p = PDDL.PreKnowledge (PDDL.Hyp TSet.empty TSet.empty)
-                                    (negCands p)
-
-    posSuccPatternFor p = undefined -- Pattern (posEffKnl p) emptyPreKnl
-    negSuccPatternFor p = undefined --Pattern (negEffKnl p) emptyPreKnl
-
-    posFailPatternFor p = undefined --Pattern (posEffKnl p) (posPreKnl p)
-    negFailPatternFor p = undefined --Pattern (negEffKnl p) (negPreKnl p)
-
-    mergedPattern = merges (  posSuccPatterns ++ negSuccPatterns
-                           ++ posFailPatterns ++ negFailPatterns
-                           )
-
-update :: DomainKnowledge -> Transition -> Pattern
+update :: DomainKnowledge -> Transition -> DomainKnowledge
 update dk (s, a, s') = undefined
