@@ -8,12 +8,12 @@ import qualified Learning.Induction                  as Ind
 import qualified Learning.PDDL                       as PDDL
 import qualified Learning.PDDL.EffectKnowledge       as Eff
 import qualified Learning.PDDL.PreconditionKnowledge as Pre
-import           Logic.Formula                       hiding (Formula)
+import           Logic.Formula                       hiding (Formula,Neg)
 import qualified Logic.Formula                       as LF
 import           Planning
-import           Planning.PDDL
+import           Planning.PDDL                       hiding (Formula,Neg)
 
-import           Control.Monad                       (replicateM, sequence)
+import           Control.Monad                       (replicateM, sequence, liftM)
 import           Data.Map                            (Map)
 import qualified Data.Map                            as Map
 import           Data.Maybe
@@ -90,8 +90,40 @@ failed :: [PredicateSpec]
        -> [Pattern]
 failed = undefined
 
-succeeded :: [PredicateSpec] -> [Object] -> Transition -> [Pattern]
-succeeded = undefined
+universeState :: [PredicateSpec]
+              -> [Object]
+              -> State
+universeState = undefined
+
+
+constructPattern :: CondPred ->  Set CondPred -> Pattern
+constructPattern ep predUnks =
+  Pattern { ctEffArg = ep
+          , ctPreconds = predUnks
+          }
+
+toPatterns :: [PredicateSpec] -> [Object] -> Transition -> [Pattern]
+toPatterns specs objs (s, _ , s') = deltaAddPatns ++ deltaRemPatns where
+  -- The predicates that have been added to s'
+  deltaAdd = Set.toList $ varForm $ s' \\ s
+  -- The predicates that have been removed from s
+  deltaRem = Set.toList $ varForm $ s \\ s'
+  -- Possible positive preconditions
+  posPre = varForm $ s
+  -- Possible negative preconditions
+  negPre = varForm $ universeState specs objs \\ s
+
+  allPreconditions = (Set.map Pos posPre) `Set.union` (Set.map Neg negPre)
+  deltaAddPatns = map (toPattern Pos) deltaAdd
+  deltaRemPatns = map (toPattern Neg) deltaRem
+
+  --toPattern :: (a -> Literal a) -> Predicate CArg -> (Literal Name, Pattern)
+  toPattern et p = constructPattern (et p) allPreconditions
+
+  varForm objForm = Set.fromList $ mapMaybe f $ Set.toList objForm
+  f (Predicate n os) = liftM (Predicate n) $ mapM (`Map.lookup` objMap) os
+  objMap :: Map Object Binding
+  objMap = Map.fromList $ zip objs (map Bound [1 ..])
 
 updateKnowledge :: PDDLDomain
                 -> PDDLProblem
