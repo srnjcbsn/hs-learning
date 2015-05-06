@@ -75,7 +75,7 @@ data Pattern = Pattern
     } deriving (Ord, Eq, Show)
 
 data ConditionalKnowledge = ConditionalKnowledge
-    { ckEffect   :: Predicate Binding
+    { ckEffectArgs   :: [Binding]
     , ckPreconds :: Set CondPred
     , ckMaxArg   :: CArg
     , ckCands    :: Cands Binding
@@ -101,20 +101,27 @@ universeState specs objs = Set.fromList allPreds where
 initialConditionalKnowledge :: Pattern -> ConditionalKnowledge
 initialConditionalKnowledge pat =
   ConditionalKnowledge
-    { ckEffect   = undefined
-    , ckPreconds = undefined
-    , ckCands    = undefined
-    , ckKnown    = undefined
+    { ckEffectArgs   = fromJust $ objsToArgs $ (predArgs . getLit) eff
+    , ckPreconds = negPreLit `Set.union` posPreLit
+    , ckCands    = Set.empty
+    , ckKnown    = Set.empty
+    , ckMaxArg   = length objs
     } where
   s = patPreconds pat
+  eff = patEffect pat
   objs = patObjects pat
-  -- Possible positive preconditions
-  posPre = varForm s
-  -- Possible negative preconditions
-  negPre = varForm $ universeState (patPredSpecs pat) objs \\ s
 
-  varForm objForm = Set.fromList $ mapMaybe f $ Set.toList objForm
-  f (Predicate n os) = liftM (Predicate n) $ mapM (`Map.lookup` objMap) os
+  -- Possible positive preconditions
+  posPre = setVarForm s
+  -- Possible negative preconditions
+  negPre = setVarForm $ universeState (patPredSpecs pat) objs \\ s
+
+  negPreLit = Set.map Not negPre
+  posPreLit = Set.map Pos posPre
+
+  setVarForm objForm = Set.fromList $ mapMaybe varForm $ Set.toList objForm
+  varForm (Predicate n os) = liftM (Predicate n) $ objsToArgs os
+  objsToArgs = mapM (`Map.lookup` objMap)
   objMap :: Map Object Binding
   objMap = Map.fromList $ zip objs (map Bound [1 .. ])
 
