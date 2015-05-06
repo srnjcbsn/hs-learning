@@ -128,7 +128,7 @@ initialConditionalKnowledge pat =
 updateConditionalKnowledge :: ConditionalKnowledge
                            -> Pattern
                            -> ConditionalKnowledge
-updateConditionalKnowledge = undefined
+updateConditionalKnowledge = onSuccess
 
 updateActionKnowledge :: ActionKnowledge -> Pattern -> ActionKnowledge
 updateActionKnowledge (ActionKnowledge ak) pat =

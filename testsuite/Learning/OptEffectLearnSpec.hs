@@ -10,7 +10,7 @@ import           Test.Hspec
 import           Test.Hspec.QuickCheck
 import           Test.QuickCheck
 
-import           Learning.OptEffectLearn
+import           Learning.PDDL.EffectKnowledge
 import           Logic.Formula
 import           Planning.PDDL
 import           Planning.PDDL.Logic

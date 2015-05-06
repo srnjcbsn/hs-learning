@@ -116,7 +116,7 @@ main = do
                                             --  , (lsEnv, lsProb)
                                             --  , (bsEnv, bsProb)
                                              ]
-    chartKnowledge hist
+    -- chartKnowledge hist
     -- hist <- scientificMethod writeSim optStrat initKnl ssEnv ssProb
     -- (knl'', world'') <- scientificMethod emptyIO optStrat knl' lsEnv lsProb
     -- (knl''', world''') <- scientificMethod emptyIO optStrat knl'' bsEnv bsProb
