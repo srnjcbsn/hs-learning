@@ -76,7 +76,7 @@ data Pattern = Pattern
 
 data ConditionalKnowledge = ConditionalKnowledge
     { ckEffect   :: Predicate Binding
-    , ckPreconds :: Set (Predicate Binding)
+    , ckPreconds :: Set CondPred
     , ckCands    :: Cands Binding
     , ckKnown    :: Set CondPred
     } deriving (Ord, Eq, Show)
@@ -86,8 +86,33 @@ newtype ActionKnowledge =
 
 newtype DomainKnowledge = DomainKnowledge (Map Name ActionKnowledge)
 
+universeState :: [PredicateSpec]
+              -> [Object]
+              -> State
+universeState specs objs = Set.fromList allPreds where
+  args = flip replicateM objs
+  toPreds (Predicate n a) = map (Predicate n) (args $ length a)
+  allPreds = concatMap toPreds specs
+
 initialConditionalKnowledge :: Pattern -> ConditionalKnowledge
-initialConditionalKnowledge = undefined
+initialConditionalKnowledge pat =
+  ConditionalKnowledge
+    { ckEffect   = undefined
+    , ckPreconds = undefined
+    , ckCands    = undefined
+    , ckKnown    = undefined
+    } where
+  s = patPreconds pat
+  objs = patObjects pat
+  -- Possible positive preconditions
+  posPre = varForm s
+  -- Possible negative preconditions
+  negPre = varForm $ universeState (patPredSpecs pat) objs \\ s
+
+  varForm objForm = Set.fromList $ mapMaybe f $ Set.toList objForm
+  f (Predicate n os) = liftM (Predicate n) $ mapM (`Map.lookup` objMap) os
+  objMap :: Map Object Binding
+  objMap = Map.fromList $ zip objs (map Bound [1 .. ])
 
 updateConditionalKnowledge :: ConditionalKnowledge
                            -> Pattern
@@ -160,40 +185,43 @@ failed :: [PredicateSpec]
        -> [Pattern]
 failed = undefined
 
-universeState :: [PredicateSpec]
-              -> [Object]
-              -> State
-universeState = undefined
 
 
-constructPattern :: CondPred ->  Set CondPred -> Pattern
-constructPattern ep predUnks = undefined
-  -- Pattern { ctEffArg = ep
-  --         , ctPreconds = predUnks
-  --         }
+constructPattern :: [PredicateSpec]
+                 -> [Object]
+                 -> State
+                 -> LitPred Object
+                 -> Pattern
+constructPattern specs objs predUnks ep =
+  Pattern { patEffect = ep
+          , patPreconds = predUnks
+          , patPredSpecs = specs
+          , patObjects   = objs
+          }
 
 toPatterns :: [PredicateSpec] -> [Object] -> Transition -> [Pattern]
-toPatterns specs objs (s, _ , s') = undefined where -- deltaAddPatns ++ deltaRemPatns where
+toPatterns specs objs (s, _ , s') = deltaAddPatns ++ deltaRemPatns where
   -- The predicates that have been added to s'
-  deltaAdd = Set.toList $ varForm $ s' \\ s
+  deltaAdd = Set.toList $ s' \\ s
   -- The predicates that have been removed from s
-  deltaRem = Set.toList $ varForm $ s \\ s'
-  -- Possible positive preconditions
-  posPre = varForm $ s
-  -- Possible negative preconditions
-  negPre = varForm $ universeState specs objs \\ s
+  deltaRem = Set.toList $ s \\ s'
+  -- -- Possible positive preconditions
+  -- posPre = varForm $ s
+  -- -- Possible negative preconditions
+  -- negPre = varForm $ universeState specs objs \\ s
 
+  cPat = constructPattern specs objs s
   --allPreconditions = (Set.map Pos posPre) `Set.union` (Set.map Neg negPre)
-  --deltaAddPatns = map (toPattern Pos) deltaAdd
-  --deltaRemPatns = map (toPattern Neg) deltaRem
+  deltaAddPatns = map (cPat . Pos) deltaAdd
+  deltaRemPatns = map (cPat . Not) deltaRem
 
   --toPattern :: (a -> Literal a) -> Predicate CArg -> (Literal Name, Pattern)
   --toPattern et p = constructPattern (et p) allPreconditions
 
-  varForm objForm = Set.fromList $ mapMaybe f $ Set.toList objForm
-  f (Predicate n os) = liftM (Predicate n) $ mapM (`Map.lookup` objMap) os
-  objMap :: Map Object Binding
-  objMap = Map.fromList $ zip objs (map Bound [1 ..])
+  -- varForm objForm = Set.fromList $ mapMaybe f $ Set.toList objForm
+  -- f (Predicate n os) = liftM (Predicate n) $ mapM (`Map.lookup` objMap) os
+  -- objMap :: Map Object Binding
+  -- objMap = Map.fromList $ zip objs (map Bound [1 ..])
 
 updateKnowledge :: PDDLDomain
                 -> PDDLProblem
