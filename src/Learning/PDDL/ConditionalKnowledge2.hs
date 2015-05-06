@@ -167,13 +167,13 @@ universeState = undefined
 
 
 constructPattern :: CondPred ->  Set CondPred -> Pattern
-constructPattern ep predUnks =
-  Pattern { ctEffArg = ep
-          , ctPreconds = predUnks
-          }
+constructPattern ep predUnks = undefined
+  -- Pattern { ctEffArg = ep
+  --         , ctPreconds = predUnks
+  --         }
 
 toPatterns :: [PredicateSpec] -> [Object] -> Transition -> [Pattern]
-toPatterns specs objs (s, _ , s') = deltaAddPatns ++ deltaRemPatns where
+toPatterns specs objs (s, _ , s') = undefined where -- deltaAddPatns ++ deltaRemPatns where
   -- The predicates that have been added to s'
   deltaAdd = Set.toList $ varForm $ s' \\ s
   -- The predicates that have been removed from s
@@ -183,12 +183,12 @@ toPatterns specs objs (s, _ , s') = deltaAddPatns ++ deltaRemPatns where
   -- Possible negative preconditions
   negPre = varForm $ universeState specs objs \\ s
 
-  allPreconditions = (Set.map Pos posPre) `Set.union` (Set.map Neg negPre)
-  deltaAddPatns = map (toPattern Pos) deltaAdd
-  deltaRemPatns = map (toPattern Neg) deltaRem
+  --allPreconditions = (Set.map Pos posPre) `Set.union` (Set.map Neg negPre)
+  --deltaAddPatns = map (toPattern Pos) deltaAdd
+  --deltaRemPatns = map (toPattern Neg) deltaRem
 
   --toPattern :: (a -> Literal a) -> Predicate CArg -> (Literal Name, Pattern)
-  toPattern et p = constructPattern (et p) allPreconditions
+  --toPattern et p = constructPattern (et p) allPreconditions
 
   varForm objForm = Set.fromList $ mapMaybe f $ Set.toList objForm
   f (Predicate n os) = liftM (Predicate n) $ mapM (`Map.lookup` objMap) os
