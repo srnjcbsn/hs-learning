@@ -76,7 +76,8 @@ data Pattern = Pattern
 
 data ConditionalKnowledge = ConditionalKnowledge
     { ckEffect   :: Predicate Binding
-    , ckPreconds :: Set (Predicate Binding)
+    , ckPreconds :: Set CondPred
+    , ckMaxArg   :: CArg
     , ckCands    :: Cands Binding
     , ckKnown    :: Set CondPred
     } deriving (Ord, Eq, Show)
@@ -85,6 +86,9 @@ newtype ActionKnowledge =
     ActionKnowledge (Map (Literal Name) ConditionalKnowledge)
 
 newtype DomainKnowledge = DomainKnowledge (Map Name ActionKnowledge)
+
+nextMax :: ConditionalKnowledge -> (CArg, ConditionalKnowledge)
+nextMax ck = (m', ck { ckMaxArg = m' }) where m' = succ (ckMaxArg ck)
 
 initialConditionalKnowledge :: Pattern -> ConditionalKnowledge
 initialConditionalKnowledge = undefined
@@ -101,18 +105,6 @@ updateActionKnowledge (ActionKnowledge ak) pat =
         ak' = Map.alter (alteration) (getLitName . patEffect $ pat) ak
     in  ActionKnowledge ak'
 
--- type Connection = (Int, Int, Literal Name)
-
--- rebind :: CondPred -> CondPred -> Binding -> CondPred
--- rebind (Pos p1) (Pos p2) = undefined
--- rebind (Not p1) (Not p2) = undefined
--- rebind _ _ =
-
--- connections :: CondPred -> Set CondPred -> [(Connection, CondPred)]
--- connections focus set = conns where
---     -- test p = any (\e -> elem e (predArgs focus)) (predArgs p)
---     conns =
-
 type Connection = (Int, Literal Name)
 
 connections :: Binding -> Set CondPred -> [(Connection, CondPred)]
@@ -125,12 +117,16 @@ change :: Int -> a -> [a] -> [a]
 change n el ls = hl ++ (el : (tail ll)) where
     (hl, ll) = splitAt n ls
 
+containsConnection :: Pattern -> Connection -> Bool
+containsConnection pat conn = undefined
+
 removeBindings :: Binding -> [(Int, CondPred)] -> Set CondPred -> Set CondPred
 removeBindings newB bs cps = foldl modify cps bs where
     modify :: Set CondPred -> (Int, CondPred) -> Set CondPred
     modify cps' (n, p) = Set.insert (newPred n p) cps' -- $ Set.delete p cps'
+
     newPred :: Int -> CondPred -> CondPred
-    newPred n (Pos p) = Pos $ Predicate ((predName) p)
+    newPred n (Pos p)  = Pos $ Predicate ((predName) p)
                             (change n newB (predArgs p))
 
 merge :: Binding
