@@ -7,3 +7,5 @@ class Ord v => Graph g v e | g -> v e where
   edgeCost :: g -> v -> e -> Int
   adjacentVertices :: g -> v -> [v]
   adjacentVertices g v = mapMaybe (adjacentVertex g v) $ adjacentEdges g v
+
+-- class Ord v =

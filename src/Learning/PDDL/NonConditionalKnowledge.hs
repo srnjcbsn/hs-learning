@@ -9,6 +9,7 @@ import qualified Learning.PDDL.EffectKnowledge       as Eff
 import qualified Learning.PDDL.PreconditionKnowledge as Pre
 import           Planning
 import           Planning.PDDL
+import Data.UnsafeMap
 
 import           Data.Map                            (Map)
 import qualified Data.Map                            as Map
@@ -27,6 +28,16 @@ domainKnowledge (PDDLKnowledge (_, dk, _)) = dk
 
 pddlDomain :: PDDLKnowledge env -> PDDLDomain
 pddlDomain (PDDLKnowledge (dom, _, _)) = dom
+
+knlFromDomKnl :: DomainKnowledge
+              -> Name
+              -> (Pre.PreKnowledge, Eff.EffectKnowledge)
+knlFromDomKnl dmknl actname =
+  unsLookup
+    ("no action " ++ actname ++ " in " ++ dmknl)
+    actname
+    dmknl
+
 
 updateKnowledge :: PDDLKnowledge env -> Transition -> PDDLKnowledge env
 updateKnowledge (PDDLKnowledge (dom, dk, _)) trans@(_, (aname, _), s') =
@@ -52,6 +63,15 @@ allPredsForAction :: PDDLDomain -> Name -> Set FluentPredicate
 allPredsForAction dom n =
     let aSpec = unsActionSpec dom n
     in allPreds (dmConstants dom) (dmPredicates dom) (asParas aSpec)
+
+actionKnowledgeEff :: [Name]
+                -> [PredicateSpec]
+                -> [Name]
+                -> Eff.EffectKnowledge
+actionKnowledgeEff consts allPs paras =
+    let unkns = allPreds consts allPs paras
+        hyp = Lrn.Hyp (Set.empty, Set.empty) (unkns, unkns)
+    in Lrn.EffKnowledge hyp
 
 actionKnowledge :: [Name]
                 -> [PredicateSpec]
