@@ -2,6 +2,7 @@
 
 module Charting where
 
+import qualified Learning.PDDL.NonConditionalTypes as NCT
 import           Data.TupleSet                            (TupleSet)
 import qualified Data.TupleSet                            as TSet
 import           Environment                              as Env
@@ -50,7 +51,7 @@ instance ExternalPlanner Astar PDDLDomain PDDLProblem ActionSpec where
 type SokoSimStep = SimStep (OptimisticStrategy Astar SokobanPDDL)
                            SokobanPDDL
                            PDDLProblem
-                           (PDDLKnowledge SokobanPDDL)
+                           (NCT.PDDLKnowledge SokobanPDDL)
                            (PDDLExperiment SokobanPDDL)
                            (PDDL.PDDLInfo SokobanPDDL)
 
@@ -60,8 +61,8 @@ lastAction step =
         ((_, act, _) : _) -> act
         [] -> error "lastAction: Empty transition list in PDDLInfo."
 
-extractKnowledge :: SokoSimStep -> (PDDL.Knowledge Argument, PDDL.Knowledge Argument)
-extractKnowledge step = (PDDL.knlFromPk (fst actKnl), PDDL.knlFromEk (snd actKnl))  where
+extractKnowledge :: SokoSimStep -> (NCT.Knowledge, NCT.Knowledge)
+extractKnowledge step = (NCT.knlFromPk (fst actKnl), NCT.knlFromEk (snd actKnl))  where
     domKnl = (domainKnowledge . ssKnl)
     act = lastAction step
     actKnl = case Map.lookup (aName act) (domKnl step) of
@@ -75,21 +76,21 @@ extractKnowledge step = (PDDL.knlFromPk (fst actKnl), PDDL.knlFromEk (snd actKnl
 --     preds = allPredsForAction (pddlDomain (ssKnl step)) act
 --     act = aName (lastAction step)
 
-hypRatio :: Int -> PDDL.Knowledge Argument -> ChartKnl
-hypRatio universe h = ( (ratio (PDDL.posKnown h), ratio (PDDL.posUnknown h))
-                      , (ratio (PDDL.negKnown h), ratio (PDDL.negUnknown h))
+hypRatio :: Int -> NCT.Knowledge -> ChartKnl
+hypRatio universe h = ( (ratio (NCT.posKnown h), ratio (NCT.posUnknown h))
+                      , (ratio (NCT.negKnown h), ratio (NCT.negUnknown h))
                       )
     where ratio set = fromIntegral (Set.size set) / fromIntegral universe
 
 toRatio :: PDDLDomain
         -> String
-        -> (Pre.PreKnowledge, Eff.EffectKnowledge)
+        -> (NCT.PreKnowledge, NCT.EffKnowledge)
         -> (ChartKnl, ChartKnl)
 toRatio dom name (pk, ek) =
     let n = Set.size $ allPredsForAction dom name
-    in (hypRatio n (PDDL.knlFromPk pk), hypRatio n (PDDL.knlFromEk ek))
+    in (hypRatio n (NCT.knlFromPk pk), hypRatio n (NCT.knlFromEk ek))
 
-toRatios :: PDDLKnowledge e -> Map String (ChartKnl, ChartKnl)
+toRatios :: NCT.PDDLKnowledge e -> Map String (ChartKnl, ChartKnl)
 toRatios knl = Map.mapWithKey (toRatio dom) dk where
     dk = domainKnowledge knl
     dom = pddlDomain knl

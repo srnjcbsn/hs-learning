@@ -1,0 +1,46 @@
+module Learning.PDDL.NonConditionalTypes where
+
+import Data.TupleSet (TupleSet)
+import qualified Data.TupleSet as TSet
+import           Planning
+import           Planning.PDDL
+import Environment
+import Logic.Formula
+
+import           Data.Map                            (Map)
+import           Data.Set                            (Set)
+
+type Cands = Set (LiteralSet Argument)
+data PreKnowledge = PreKnowledge Knowledge Cands deriving (Eq, Ord, Show)
+data EffKnowledge = EffKnowledge Knowledge deriving (Eq, Ord, Show)
+
+type DomainKnowledge = Map Name (PreKnowledge, EffKnowledge)
+
+newtype Environment env => PDDLKnowledge env =
+  PDDLKnowledge (PDDLDomain, DomainKnowledge, State)
+    deriving (Show, Eq)
+
+-- | (Positive, Negative)
+type LiteralSet a = TupleSet (Predicate a)
+
+data Knowledge = Knowledge
+    { knowns   :: LiteralSet Argument
+    , unknowns :: LiteralSet Argument
+    } deriving (Eq, Ord, Show)
+
+posKnown, posUnknown, negKnown, negUnknown :: Knowledge -> Set (Predicate Argument)
+posKnown   = fst . knowns
+posUnknown = fst . unknowns
+negKnown   = snd . knowns
+negUnknown = snd . unknowns
+
+deltaKnl :: Knowledge -> Knowledge -> Knowledge
+deltaKnl h1 h2 = Knowledge ks us where
+    ks = knowns h2 `TSet.difference` knowns h1
+    us = unknowns h1 `TSet.difference` unknowns h2
+
+knlFromPk :: PreKnowledge -> Knowledge
+knlFromPk (PreKnowledge h _) = h
+
+knlFromEk :: EffKnowledge -> Knowledge
+knlFromEk (EffKnowledge h) = h
