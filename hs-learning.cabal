@@ -26,6 +26,7 @@ library
                  , Learning
                  , Learning.Induction
                  , Learning.PDDL.NonConditionalKnowledge
+                 , Learning.PDDL.NonConditionalTypes
                  , Learning.PDDL.EffectKnowledge
                  , Learning.PDDL.PreconditionKnowledge
                  , Learning.PDDL.OptimisticStrategy

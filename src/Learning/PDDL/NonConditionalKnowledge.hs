@@ -13,6 +13,7 @@ import qualified Learning.PDDL as PDDL
 import           Learning.Induction
 import           Planning
 import           Planning.PDDL
+import Data.UnsafeMap
 
 -- import           Data.Map                            (Map)
 import qualified Data.Map                            as Map
@@ -28,6 +29,16 @@ domainKnowledge (PDDLKnowledge (_, dk, _)) = dk
 
 pddlDomain :: PDDLKnowledge env -> PDDLDomain
 pddlDomain (PDDLKnowledge (dom, _, _)) = dom
+
+knlFromDomKnl :: DomainKnowledge
+              -> Name
+              -> (PreKnowledge, EffKnowledge)
+knlFromDomKnl dmknl actname =
+  unsLookup
+    ("no action " ++ actname ++ " in " ++ show dmknl)
+    actname
+    dmknl
+
 
 updateKnowledge :: PDDLKnowledge env -> Transition -> PDDLKnowledge env
 updateKnowledge (PDDLKnowledge (dom, dk, _)) trans@(_, (aname, _), s') =
@@ -50,6 +61,15 @@ allPredsForAction dom n =
     let aSpec = unsActionSpec dom n
     in allPreds (dmConstants dom) (dmPredicates dom) (asParas aSpec)
 
+actionKnowledgeEff :: [Name]
+                -> [PredicateSpec]
+                -> [Name]
+                -> EffKnowledge
+actionKnowledgeEff consts allPs paras =
+    let unkns = allPreds consts allPs paras
+        knl = Knowledge (Set.empty, Set.empty) (unkns, unkns)
+    in EffKnowledge knl
+
 actionKnowledge :: [Name]
                 -> [PredicateSpec]
                 -> [Name]
@@ -67,4 +87,3 @@ initialKnowledge dom s = PDDLKnowledge (dom, kn, s) where
                                      (asParas aSpec)
                    )
     kn = Map.fromList $ fmap mapper (dmActionsSpecs dom)
-
