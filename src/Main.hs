@@ -12,7 +12,7 @@ import           Environment.Sokoban.SokobanDomain
 import           Environment.Sokoban.SokobanView
 import           Graph.Search.Astar                       as Astar
 import           Learning
-import           Learning.PDDL
+import qualified Learning.PDDL							  as PDDL
 import qualified Learning.PDDL.EffectKnowledge            as Eff
 import           Learning.PDDL.Experiment
 import           Learning.PDDL.NonConditionalKnowledge
@@ -31,26 +31,26 @@ import           System.Directory                         (removeFile)
 import           System.IO.Error
 import           Text.Show.Pretty
 
-instance Inquirable SokobanPDDL PDDLProblem (PDDLInfo SokobanPDDL) where
+instance Inquirable SokobanPDDL PDDLProblem (PDDL.PDDLInfo SokobanPDDL) where
     inquire _ _ = return Nothing
 
 deltaKnl :: (Pre.PreKnowledge, Eff.EffectKnowledge)
          -> (Pre.PreKnowledge, Eff.EffectKnowledge)
-         -> (Hyp Argument, Hyp Argument)
+         -> (PDDL.Knowledge Argument, PDDL.Knowledge Argument)
 deltaKnl (pk1, ek1) (pk2, ek2) =
-    ( deltaHyp (pkHyp pk1) (pkHyp pk2)
-    , deltaHyp (ekHyp ek1) (ekHyp ek2)
+    ( PDDL.deltaKnl (PDDL.knlFromPk pk1) (PDDL.knlFromPk pk2)
+    , PDDL.deltaKnl (PDDL.knlFromEk ek1) (PDDL.knlFromEk ek2)
     )
 
-actKnl :: SokoSimStep -> (Hyp Argument, Hyp Argument)
-actKnl step = (pkHyp p, ekHyp e) where
+actKnl :: SokoSimStep -> (PDDL.Knowledge Argument, PDDL.Knowledge Argument)
+actKnl step = (PDDL.knlFromPk p, PDDL.knlFromEk e) where
     domKnl = domainKnowledge $ ssKnl step
     act = lastAction step
     (p, e) = case Map.lookup (aName act) domKnl of
                Just k -> k
                Nothing -> error "ERROR"
 
-learned :: SokoSimStep -> SokoSimStep -> (Hyp Argument, Hyp Argument)
+learned :: SokoSimStep -> SokoSimStep -> (PDDL.Knowledge Argument, PDDL.Knowledge Argument)
 learned prev latest = deltaKnl (actKnl prev) (actKnl latest) where
    domKnl = domainKnowledge . ssKnl
    act = lastAction latest
@@ -63,10 +63,10 @@ showWorld (step : _) = visualize $ ssWorld step
 showWorld [] = return ()
 
 showLearned :: [SokoSimStep] -> IO ()
-showLearned (step : prev : _) =  print (Set.size (posKnown precs'))
-                              >> print (Set.size (negKnown precs'))
-                              >> print (Set.size (posKnown effs'))
-                              >> print (Set.size (negKnown effs'))
+showLearned (step : prev : _) =  print (Set.size (PDDL.posKnown precs'))
+                              >> print (Set.size (PDDL.negKnown precs'))
+                              >> print (Set.size (PDDL.posKnown effs'))
+                              >> print (Set.size (PDDL.negKnown effs'))
                               >> posPrecMessage >> negPrecMessage
                               >> posEffMessage >> negEffMessage
                               >> nPosPrecMessage >> nNegPrecMessage
@@ -77,15 +77,15 @@ showLearned (step : prev : _) =  print (Set.size (posKnown precs'))
     message set str = unless (Set.null set)
                     $ putStrLn $ baseMessage ++ str ++ ppShow set
 
-    posPrecMessage = message (posKnown precs) "positive preconditions: "
-    negPrecMessage = message (negKnown precs) "negative preconditions: "
-    posEffMessage = message (posKnown effs) "positive effects: "
-    negEffMessage = message (negKnown effs) "negative effects: "
+    posPrecMessage  = message (PDDL.posKnown precs) "positive preconditions: "
+    negPrecMessage  = message (PDDL.negKnown precs) "negative preconditions: "
+    posEffMessage   = message (PDDL.posKnown effs) "positive effects: "
+    negEffMessage   = message (PDDL.negKnown effs) "negative effects: "
 
-    nPosPrecMessage = message (posUnknown precs) "NOT pos prec: "
-    nNegPrecMessage = message (negUnknown precs) "NOT neg prec: "
-    nPosEffMessage  = message (posUnknown effs) "NOT pos effs: "
-    nNegEffMessage  = message (negUnknown effs) "NOT neg effs: "
+    nPosPrecMessage = message (PDDL.posUnknown precs) "NOT pos prec: "
+    nNegPrecMessage = message (PDDL.negUnknown precs) "NOT neg prec: "
+    nPosEffMessage  = message (PDDL.posUnknown effs) "NOT pos effs: "
+    nNegEffMessage  = message (PDDL.negUnknown effs) "NOT neg effs: "
 showLearned _ = return ()
 
 showAct :: [SokoSimStep] -> IO ()

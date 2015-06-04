@@ -12,14 +12,14 @@ import qualified Data.Set                as Set
 type EffectKnowledge = Lrn.EffKnowledge Argument
 
 -- | Updates the effect hypothesis based on the transition
-updateEffectHyp :: PDDLDomain
+updateEffectKnl :: PDDLDomain
                 -> EffectKnowledge
                 -> Transition
                 -> EffectKnowledge
 -- if the action application was unsuccessful, we cannot learn anything
-updateEffectHyp domain (Lrn.EffKnowledge hyp) (s, action, s')
-    | s == s' = Lrn.EffKnowledge hyp
-    | otherwise = Lrn.EffKnowledge hyp' where
+updateEffectKnl domain (Lrn.EffKnowledge knl) (s, action, s')
+    | s == s' = Lrn.EffKnowledge knl
+    | otherwise = Lrn.EffKnowledge knl' where
         aSpec = findActionSpec domain action
         aSpecParas = asParas aSpec
 
@@ -42,10 +42,10 @@ updateEffectHyp domain (Lrn.EffKnowledge hyp) (s, action, s')
         kDelUg = Set.map unground' kDel
 
         alphaAdd = unions kAddUg `Set.intersection`
-                    (Lrn.posKnown hyp `Set.union` Lrn.posUnknown hyp)
-        betaAdd  = unions uAddUg `Set.intersection` Lrn.posUnknown hyp
+                    (Lrn.posKnown knl `Set.union` Lrn.posUnknown knl)
+        betaAdd  = unions uAddUg `Set.intersection` Lrn.posUnknown knl
 
-        alphaDel = unions kDelUg `Set.intersection` Lrn.negUnknown hyp
+        alphaDel = unions kDelUg `Set.intersection` Lrn.negUnknown knl
 
         tmpUnkAdd = alphaAdd `Set.union` betaAdd
 
@@ -55,12 +55,12 @@ updateEffectHyp domain (Lrn.EffKnowledge hyp) (s, action, s')
             Set.foldl (extractUnambiguous alphaDel) (Set.empty, Set.empty) kDelUg
 
         posUnkEff' = betaAdd `Set.union` posAmb
-        posKnEff' = Lrn.posKnown hyp `Set.union` posUamb
+        posKnEff' = Lrn.posKnown knl `Set.union` posUamb
 
         negUnkEff' = negAmb
-        negKnEff' = Lrn.negKnown hyp `Set.union` negUamb
+        negKnEff' = Lrn.negKnown knl `Set.union` negUamb
 
-        hyp' = Lrn.Hyp (posKnEff', negKnEff') (posUnkEff', negUnkEff')
+        knl' = Lrn.Knowledge (posKnEff', negKnEff') (posUnkEff', negUnkEff')
 
 
 -- | Takes a set of uknowns, a pair of unambiguous/ambiguous to add to,

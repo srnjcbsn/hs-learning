@@ -14,7 +14,7 @@ type CNF = Lrn.Cands Argument
 type PreKnowledge = Lrn.PreKnowledge Argument
 
 update :: PDDLDomain -> PreKnowledge -> Transition -> PreKnowledge
-update domain (Lrn.PreKnowledge hyp cnfs) (s, action, s')
+update domain (Lrn.PreKnowledge knl cnfs) (s, action, s')
     | s == s'   =
         let -- All predicates that are not in the state are candidates
             -- for being positive preconditions
@@ -32,10 +32,10 @@ update domain (Lrn.PreKnowledge hyp cnfs) (s, action, s')
                                       )
                 | otherwise =  (posKns, negKns, addToCandiates cnfs cands)
 
-            hyp' = Lrn.Hyp (posKns', negKns')
+            knl' = Lrn.Knowledge (posKns', negKns')
                          (posUnkns \\ posKns', negUnkns \\ negKns')
 
-        in Lrn.PreKnowledge hyp' cnfs'
+        in Lrn.PreKnowledge knl' cnfs'
 
     | otherwise =
         let -- All preds not in the state cant be a positive precond
@@ -46,21 +46,21 @@ update domain (Lrn.PreKnowledge hyp cnfs) (s, action, s')
             cnfs' = Set.map (TSet.intersection (posUnkns', negUnkns')) cnfs
             (extractPosKns, extractNegKns, cnfs'')  = extractKnowns cnfs'
 
-            hyp' = Lrn.Hyp ( Set.union extractPosKns posKns
+            knl' = Lrn.Knowledge ( Set.union extractPosKns posKns
                            , Set.union extractNegKns negKns
                            )
                            (posUnkns' \\ extractPosKns, negUnkns \\ extractNegKns)
 
-        in Lrn.PreKnowledge hyp' cnfs''
+        in Lrn.PreKnowledge knl' cnfs''
 
     where unground' :: GroundedPredicate -> Set FluentPredicate
           unground' = ungroundNExpand aSpecParas (aArgs action)
           aSpecParas = asParas $ findActionSpec domain action
 
-          posUnkns = (fst . Lrn.unknowns) hyp
-          posKns   = (fst . Lrn.knowns) hyp
-          negUnkns = (snd . Lrn.unknowns) hyp
-          negKns   = (snd . Lrn.knowns) hyp
+          posUnkns = (fst . Lrn.unknowns) knl
+          posKns   = (fst . Lrn.knowns) knl
+          negUnkns = (snd . Lrn.unknowns) knl
+          negKns   = (snd . Lrn.knowns) knl
 
           rel unkns = Set.unions
                     $ Set.toList

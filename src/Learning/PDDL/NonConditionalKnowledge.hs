@@ -33,7 +33,7 @@ updateKnowledge (PDDLKnowledge (dom, dk, _)) trans@(_, (aname, _), s') =
   PDDLKnowledge (dom, dk', s')
   where dk' = Map.adjust (f (uppPre, uppEff)) aname dk
         f (f1, f2) (o1, o2) = (f1 o1, f2 o2)
-        uppEff = flip (Eff.updateEffectHyp dom) trans
+        uppEff = flip (Eff.updateEffectKnl dom) trans
         uppPre = flip (Pre.update dom) trans
 
 instance Environment env => Knowledge (PDDLKnowledge env) (Lrn.PDDLInfo env) PDDLProblem where
@@ -59,8 +59,8 @@ actionKnowledge :: [Name]
                 -> (Pre.PreKnowledge, Eff.EffectKnowledge)
 actionKnowledge consts allPs paras =
     let unkns = allPreds consts allPs paras
-        hyp = Lrn.Hyp (Set.empty, Set.empty) (unkns, unkns)
-    in (Lrn.PreKnowledge hyp Set.empty, Lrn.EffKnowledge hyp)
+        knl = Lrn.Knowledge (Set.empty, Set.empty) (unkns, unkns)
+    in (Lrn.PreKnowledge knl Set.empty, Lrn.EffKnowledge knl)
 
 initialKnowledge :: PDDLDomain -> State -> PDDLKnowledge env
 initialKnowledge dom s = PDDLKnowledge (dom, kn, s) where

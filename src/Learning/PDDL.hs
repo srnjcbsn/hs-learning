@@ -34,38 +34,38 @@ data Binding a b = Bound a
 type FBind = Binding Int Argument
 
 -- | (Positive, Negative)
-type Knowledge a = TupleSet (Predicate a)
+type LiteralSet a = TupleSet (Predicate a)
 
-type Cands a = Set (Knowledge a)
+type Cands a = Set (LiteralSet a)
 
-data Hyp a = Hyp
-    { knowns   :: Knowledge a
-    , unknowns :: Knowledge a
+data Knowledge a = Knowledge
+    { knowns   :: LiteralSet a
+    , unknowns :: LiteralSet a
     } deriving (Eq, Ord, Show)
 
-posKnown, posUnknown, negKnown, negUnknown :: Hyp a -> Set (Predicate a)
+posKnown, posUnknown, negKnown, negUnknown :: Knowledge a -> Set (Predicate a)
 posKnown   = fst . knowns
 posUnknown = fst . unknowns
 negKnown   = snd . knowns
 negUnknown = snd . unknowns
 
-data PreKnowledge a = PreKnowledge (Hyp a) (Cands a) deriving (Eq, Ord, Show)
-data EffKnowledge a = EffKnowledge (Hyp a) deriving (Eq, Ord, Show)
+data PreKnowledge a = PreKnowledge (Knowledge a) (Cands a) deriving (Eq, Ord, Show)
+data EffKnowledge a = EffKnowledge (Knowledge a) deriving (Eq, Ord, Show)
 
-deltaHyp :: Ord a => Hyp a -> Hyp a -> Hyp a
-deltaHyp h1 h2 = Hyp ks us where
-    ks = (knowns h2) `TSet.difference` (knowns h1)
-    us = (unknowns h1) `TSet.difference` (unknowns h2)
+deltaKnl :: Ord a => Knowledge a -> Knowledge a -> Knowledge a
+deltaKnl h1 h2 = Knowledge ks us where
+    ks = knowns h2 `TSet.difference` knowns h1
+    us = unknowns h1 `TSet.difference` unknowns h2
 
-pkHyp :: PreKnowledge a -> Hyp a
-pkHyp (PreKnowledge h _) = h
+knlFromPk :: PreKnowledge a -> Knowledge a
+knlFromPk (PreKnowledge h _) = h
 
-ekHyp :: EffKnowledge a -> Hyp a
-ekHyp (EffKnowledge h) = h
+knlFromEk :: EffKnowledge a -> Knowledge a
+knlFromEk (EffKnowledge h) = h
 
 type ConditionalEffect = (PreKnowledge FBind, EffKnowledge FBind)
 
-data ForAllHyp = ForAllHyp
+data ForAllKnowledge = ForAllKnowledge
     { parameters :: [P.Type]
     , cEffects   :: [ConditionalEffect]
     }
@@ -74,7 +74,7 @@ data ActionHyp = ActionHyp
     { name        :: String
     , params      :: [(Name, P.Type)]
     , consts      :: [(Name, P.Type)]
-    , condEffs    :: [ForAllHyp]
+    , condEffs    :: [ForAllKnowledge]
     , commonConds :: PreKnowledge FBind
     }
 
