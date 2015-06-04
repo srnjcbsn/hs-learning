@@ -33,8 +33,8 @@ import           System.Directory                         (removeFile)
 import           System.IO.Error
 import           Text.Show.Pretty
 
-import           Diagrams.Backend.SVG
-import           Diagrams.Prelude
+-- import           Diagrams.Backend.SVG
+-- import           Diagrams.Prelude
 
 data Astar = Astar (Maybe Int) deriving Show
 
@@ -68,12 +68,12 @@ extractKnowledge step = (pkHyp (fst actKnl), ekHyp (snd actKnl))  where
                Just k -> k
                Nothing -> error "ERROR message"
 
-chartSingleKnowledge :: SokoSimStep -> Diagram SVG R2
-chartSingleKnowledge step = rect 0.3 knsRatio # fc green where
-    knsRatio = fromIntegral ((Set.size . posKnown) (fst $ extractKnowledge step))
-             / fromIntegral (Set.size preds)
-    preds = allPredsForAction (pddlDomain (ssKnl step)) act
-    act = aName (lastAction step)
+-- chartSingleKnowledge :: SokoSimStep -> Diagram SVG R2
+-- chartSingleKnowledge step = rect 0.3 knsRatio # fc green where
+--     knsRatio = fromIntegral ((Set.size . posKnown) (fst $ extractKnowledge step))
+--              / fromIntegral (Set.size preds)
+--     preds = allPredsForAction (pddlDomain (ssKnl step)) act
+--     act = aName (lastAction step)
 
 hypRatio :: Int -> Hyp Argument -> ChartKnl
 hypRatio universe h = ( (ratio (posKnown h), ratio (posUnknown h))
@@ -109,24 +109,24 @@ knowledgeRatios (step : rest) = Map.unionWith (++) ratioMap nextMap where
     nextMap = knowledgeRatios rest
 knowledgeRatios [] = Map.empty
 
-chartKnowledge :: [SokoSimStep] -> IO ()
-chartKnowledge steps =
-    let ratios = Map.toList $ knowledgeRatios steps
-        size = mkSizeSpec (Just 100) (Just 100)
-        chartPrecs, chartEffs :: (String, [(ChartKnl, ChartKnl)]) -> IO ()
-        chartPrecs (name, ls) = renderSVG (name ++ "Precs.svg")
-                                          size
-                                          (chartRatios $ map (fst . fst) ls)
-
-        chartEffs (name, ls) = renderSVG (name ++ "Effects.svg")
-                                         size
-                                         (chartRatios $ map (fst . snd) ls)
-
-        chartRatios :: [RatioKnl] -> Diagram SVG R2
-        chartRatios rs = hcat $ map chartRatio rs
-        chartRatio (r1, r2) = if r2 > 0 then Debug.traceShow r1 $ rect 0.1 (r1 * 100) # fc green -- rect 0.1 r2 # fc green
-                              else rect 0.1 (r1 * 100) # fc green
-    in mapM_ (chartPrecs >> chartEffs) ratios
+-- chartKnowledge :: [SokoSimStep] -> IO ()
+-- chartKnowledge steps =
+--     let ratios = Map.toList $ knowledgeRatios steps
+--         size = mkSizeSpec (Just 100) (Just 100)
+--         chartPrecs, chartEffs :: (String, [(ChartKnl, ChartKnl)]) -> IO ()
+--         chartPrecs (name, ls) = renderSVG (name ++ "Precs.svg")
+--                                           size
+--                                           (chartRatios $ map (fst . fst) ls)
+--
+--         chartEffs (name, ls) = renderSVG (name ++ "Effects.svg")
+--                                          size
+--                                          (chartRatios $ map (fst . snd) ls)
+--
+--         chartRatios :: [RatioKnl] -> Diagram SVG R2
+--         chartRatios rs = hcat $ map chartRatio rs
+--         chartRatio (r1, r2) = if r2 > 0 then Debug.traceShow r1 $ rect 0.1 (r1 * 100) # fc green -- rect 0.1 r2 # fc green
+--                               else rect 0.1 (r1 * 100) # fc green
+--     in mapM_ (chartPrecs >> chartEffs) ratios
     -- renderSVG "chart.svg" sizeSpec c where
     -- sizeSpec = mkSizeSpec (Just 100) (Just 100)
     -- c = chartSingleKnowledge step
