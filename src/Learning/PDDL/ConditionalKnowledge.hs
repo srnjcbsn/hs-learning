@@ -197,7 +197,7 @@ instantiatePattern :: (Pattern, Pattern) -> MetaPattern -> Pattern
 instantiatePattern pats mp = undefined
     -- MetaPattern (mpPosPre, mpNegPre) (mpPosEff, mpNegEff) = mp
     --
-    -- pk p = PDDL.pkHyp (ctPreconds p)
+    -- pk p = PDDL.knlFromPk (ctPreconds p)
     -- ek p = PDDL.ekHyp (ctEffects p)
     --
     -- posPreKn   = tupleMap (PDDL.posKnown . pk) pats
@@ -285,7 +285,7 @@ intersectUnificatin = extendUnificatin Set.empty
 toMetaPattern :: Pattern -> Pattern -> MetaPattern
 toMetaPattern p1 p2 =
   let ek p = ctEffArg p
-      pk p = PDDL.pkHyp (ctPreconds p)
+      pk p = PDDL.knlFromPk (ctPreconds p)
 
       uKnl knl = TSet.union (PDDL.knowns knl) (PDDL.unknowns knl)
 
@@ -314,7 +314,7 @@ unify p1 p2 = undefined
 merge :: Pattern -> Pattern -> Pattern
 merge p1 p2 =
   let (p1', p2') = unify p1 p2
-      pk p = PDDL.pkHyp (ctPreconds p)
+      pk p = PDDL.knlFromPk (ctPreconds p)
       ek p = undefined -- PDDL.ekHyp (ctEffects p)
 
       uKnl knl = (PDDL.unknowns knl, PDDL.knowns knl)
