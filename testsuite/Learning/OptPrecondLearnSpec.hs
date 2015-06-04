@@ -36,6 +36,11 @@ initDomain = PDDLDomain
     , dmTypes = []
     }
 
+precondKnl :: PDDLKnowledge -> Name -> PreKnowledge
+precondKnl pddlknl actname = preKnl
+  where dk = domainKnowledge pddlknl
+        (preKnl, _) = knlFromDomKnl dk actname
+
 expected :: PreKnowledge
 expected = (TSet.empty, TSet.empty, Set.empty)
 
@@ -43,22 +48,33 @@ testPrecondLearnSpec :: Spec
 testPrecondLearnSpec = do
     describe "update predicate hypothesis" $ do
         it "can prove that a positive predicate can not be a precondition" $
-            let s0 = Set.empty
+            let asName = "as"
+                s0 = Set.empty
                 s1 = Set.empty
-                kn0 = initialPreDomainHyp initDomain
-                transition = (s0, ("as", ["a", "b", "c"]), Just s1)
-                expected = TSet.empty
-                (actual, _, _) = updatePreDomainHyp initDomain kn0 transition ! "as"
-             in actual `shouldBe` expected
+                kn0 = initialKnowledge initDomain s0
+                transition = (s0, (asName, ["a", "b", "c"]), s1)
+                kn1 = updateKnowledge kn0 transition
+
+                preknl = precondKnl kn1 asName
+                actualUnknowns = (posUnknown . knlFromPk) preknl
+                expectedUnknowns = TSet.empty
+
+             in actualUnknowns `shouldBe` expectedUnknowns
         it "can prove that a negative predicate can not be a precondition" $
-            let s0 = Set.singleton $ p id "a" "b"
+            let asName = "as"
+                s0 = Set.singleton $ p id "a" "b"
                 s1 = Set.empty
-                kn0 = initialPreDomainHyp initDomain
-                (_, negs, _) = kn0 ! "as"
-                transition = (s0, ("as", ["a", "b", "c"]), Just s1)
-                expected = (Set.delete (p Ref "x" "y") $ (fst negs), Set.empty)
-                (_, actual, _) = updatePreDomainHyp initDomain kn0 transition ! "as"
-             in actual `shouldBe` expected
+                kn0 = initialKnowledge initDomain s0
+                (_, negs, _) = kn0 ! asName
+                transition = (s0, (asName, ["a", "b", "c"]), s1)
+                kn1 = updateKnowledge kn0 transition
+
+                preknl = precondKnl kn1 asName
+                actualUnknowns = (negUnknown . knlFromPk) preknl
+
+                expectedUnknowns = (Set.delete (p Ref "x" "y") $ (fst negs), Set.empty)
+             in actualUnknowns `shouldBe` expectedUnknowns
+             
         it "can prove that a positive predicate is a precondition when an action fails" $
             let s = Set.empty
                 posUnks = Set.fromList [p Ref "x" "y"]
