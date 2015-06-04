@@ -32,10 +32,10 @@ pddlDomain (PDDLKnowledge (dom, _, _)) = dom
 
 knlFromDomKnl :: DomainKnowledge
               -> Name
-              -> (Pre.PreKnowledge, Eff.EffectKnowledge)
+              -> (PreKnowledge, EffKnowledge)
 knlFromDomKnl dmknl actname =
   unsLookup
-    ("no action " ++ actname ++ " in " ++ dmknl)
+    ("no action " ++ actname ++ " in " ++ show dmknl)
     actname
     dmknl
 
@@ -64,11 +64,11 @@ allPredsForAction dom n =
 actionKnowledgeEff :: [Name]
                 -> [PredicateSpec]
                 -> [Name]
-                -> Eff.EffectKnowledge
+                -> EffKnowledge
 actionKnowledgeEff consts allPs paras =
     let unkns = allPreds consts allPs paras
-        hyp = Lrn.Hyp (Set.empty, Set.empty) (unkns, unkns)
-    in Lrn.EffKnowledge hyp
+        knl = Knowledge (Set.empty, Set.empty) (unkns, unkns)
+    in EffKnowledge knl
 
 actionKnowledge :: [Name]
                 -> [PredicateSpec]
@@ -87,4 +87,3 @@ initialKnowledge dom s = PDDLKnowledge (dom, kn, s) where
                                      (asParas aSpec)
                    )
     kn = Map.fromList $ fmap mapper (dmActionsSpecs dom)
-

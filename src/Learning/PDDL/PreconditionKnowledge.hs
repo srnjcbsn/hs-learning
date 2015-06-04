@@ -46,7 +46,7 @@ update domain (NCT.PreKnowledge knl cnfs) (s, action, s')
             knl' = NCT.Knowledge ( Set.union extractPosKns posKns
                            , Set.union extractNegKns negKns
                            )
-                           (posUnkns' \\ extractPosKns, negUnkns \\ extractNegKns)
+                           (posUnkns' \\ extractPosKns, negUnkns' \\ extractNegKns)
 
         in NCT.PreKnowledge knl' cnfs''
 
