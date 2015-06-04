@@ -15,392 +15,96 @@ import           Planning.PDDL
 import           Control.Monad                       (sequence, replicateM, liftM)
 import           Data.Map                            (Map)
 import qualified Data.Map                            as Map
-import           Data.Maybe
+import           Data.Maybe                          (isJust, fromMaybe, catMaybes, listToMaybe)
 import           Data.Set                            (Set, (\\))
 import qualified Data.Set                            as Set
 import           Data.Tree
 import           Data.TupleSet                       (TupleSet)
 import qualified Data.TupleSet                       as TSet
+import qualified Data.List as List
+import Control.Arrow ((***))
 
-type DomainKnowledge = Map Name ConditionalKnowledge
+data Literal a = Pos a
+               | Not a
+               deriving (Eq, Ord, Show)
 
-data Binding = Bound Int
-             | Free  Int
+type EdgeSet a = Set (Vertex a)
 
-type Knowledge = TupleSet (Predicate Binding)
+type PredInfo = (PType, Literal Name, Int)
 
-data Theory = Theory
-    { known   :: Knowledge
-    , unknown :: Knowledge
-    }
+data Ord a => Vertex a = Vertex a PredInfo deriving (Eq, Ord)
 
-data Cond = Cond
-    { precs     :: Theory
-    , precCands :: Set Knowledge
-    }
+data PType = Effect 
+           | Precond
+           deriving (Eq, Ord)
 
-type ActionTheory = Map (Predicate Int) Cond
+data Ord a => Edge a = BindingEdge         (EdgeSet a) 
+                     | PredicateEdge  (EdgeSet a)
+                     deriving (Eq, Ord)
 
-type Subst = Map Object Int
+edgeSet :: Ord a => Edge a -> EdgeSet a
+edgeSet (BindingEdge e)   = e
+edgeSet (PredicateEdge e) = e
 
-type CArg = Int
+isEffect :: Ord a => Edge a -> Bool
+isEffect (PredicateEdge e) = not $ null [ () | Vertex _ (Effect, _, _) <- Set.toList e ]
+isEffect _ = False
 
-data EffectType a = AddEff a
-                  | RemEff a
-               deriving (Eq, Ord)
+type HyperGraph a = Set (Edge a)
 
-data Pattern = Pattern
-    { ctEffArg  :: [CArg]
-    , ctPreconds :: PDDL.PreKnowledge CArg
-    } deriving (Eq, Ord)
+getEffectP :: Ord a => HyperGraph a -> Edge a
+getEffectP hg = fromMaybe (error "could not find effect in hyper graph") 
+              $ List.find isEffect (Set.toList hg)
 
-type Match = (CArg, CArg)
+newId :: Ord a => Vertex a -> Vertex a -> Maybe (Vertex (a, a))
+newId (Vertex i n) (Vertex j m) | n == m    = Just (Vertex (i, j) n)
+                                | otherwise = Nothing
 
-type Unification = Set (Predicate Match) -- Map Name [Set Match]
+newIdInv :: Ord a => Vertex (a, a) -> (Vertex a, Vertex a)
+newIdInv (Vertex (i, j) n) = (Vertex i n, Vertex j n)
 
-data MetaPattern = MetaPattern { mtPres :: (Unification, Unification)
-                               , mtEffArg  :: [Match]
-                               }
-type PatternKnl = (Map (EffectType Name) Pattern)
-newtype ConditionalKnowledge =
-  ConditionalKnowledge PatternKnl
+similarTo :: Ord a => Vertex a -> Vertex a -> Bool
+similarTo v1 v2 = isJust $ newId v1 v2
 
-type Contradiction = EitherSame (Predicate CArg)
-type EitherSame a = Either a a
+edgeIntersection :: Ord a => EdgeSet a -> EdgeSet a -> [Vertex (a, a)]
+edgeIntersection e1 e2 = catMaybes [ newId v1 v2 | v1 <- Set.toList e1, v2 <- Set.toList e2, v1 `similarTo` v2 ]
 
-connected :: Set Contradiction
-          -> Set (Predicate Match)
-          -> Set Match --Predicate Match
-          -> Set (Predicate Match)
-connected conts space focus = Set.foldl collect Set.empty front where
-    collect found foc = connected (contsFor foc)
-                                  (spaceFor foc)
-                                  (Set.fromList $ predArgs foc)
-                      `Set.union` found
+merge :: HyperGraph a -> HyperGraph a -> HyperGraph a
+merge h1 h2 = undefined
 
-    contsFor foc      = toContradiction foc `Set.union` conts
-    spaceFor foc      = Set.delete foc space'
-    front             = Set.filter isConnected space'
+edgeMember :: Ord a => Vertex a -> Edge a -> Bool
+edgeMember v e = Set.member v (edgeSet e)
 
-    -- Remove all predicates that contradict the focus from the search space
-    space'            = Set.filter (not . flip contradicts conts) space
-    isConnected (Predicate _ args) = any (`elem` args) (Set.toList focus)
+isInBindingEdge :: Ord a => HyperGraph a -> Vertex a -> Bool
+isInBindingEdge hg = isJust . (containingBindingEdge hg)
 
-removeUnconnected :: MetaPattern -> MetaPattern
-removeUnconnected (MetaPattern (posPres, negPres) args) = mp' where
-    mp'      = MetaPattern (posPres', negPres') args
-    posPres' = posPres `Set.intersection` conns
-    negPres' = negPres `Set.intersection` conns
-    conns    = connected Set.empty allPres (Set.fromList args)
-    allPres  = posPres `Set.union` negPres
+isInPredicateEdge :: Ord a => HyperGraph a -> Vertex a -> Bool
+isInPredicateEdge hg = isJust . (containingPredicateEdge hg)
 
+containingEdges :: Ord a => HyperGraph a -> Vertex a -> [Edge a]
+containingEdges hg v = filter (edgeMember v) $ Set.toList hg
 
+containingPredicateEdge :: Ord a => HyperGraph a -> Vertex a -> Maybe (Edge a)
+containingPredicateEdge hg v = listToMaybe [ PredicateEdge e | PredicateEdge e <- containingEdges hg v ]
 
-fromMetaPattern :: MetaPattern -> Pattern
-fromMetaPattern (MetaPattern (posPres, negPres) args) =
+containingBindingEdge :: Ord a => HyperGraph a -> Vertex a -> Maybe (Edge a)
+containingBindingEdge hg v = listToMaybe [ BindingEdge e | BindingEdge e <- containingEdges hg v ]
+
+mergeEdges :: Ord a 
+           => HyperGraph a
+           -> HyperGraph a
+           -> HyperGraph (a, a)
+           -> Edge a 
+           -> Edge a
+           -> HyperGraph (a, a)
+mergeEdges h1 h2 h' (PredicateEdge e1) (PredicateEdge e2) = undefined where
+    int    = edgeIntersection e1 e2
+    intSet = PredicateEdge $ Set.fromList int
+    h''    = Set.insert intSet h'
+    invs   = [ newIdInv v | v <- int, not $ isInBindingEdge h' v ]
+    oldes  = map ((containingBindingEdge h1) *** (containingBindingEdge h2)) invs
+    valid  = [ (e1, e2) | (Just e1, Just e2) <- oldes ]
+    rest   = foldl (\hh (e1', e2') -> mergeEdges h1 h2 hh e1' e2') h'' valid
+mergeEdges h1 h2 h' (BindingEdge e1) (BindingEdge e2) =
     undefined
 
-
-toContradiction :: Predicate Match -> Set Contradiction
-toContradiction (Predicate n args)=
-  Set.fromList [ Left $ Predicate n (map fst args)
-               , Right $ Predicate n (map snd args)
-               ]
-
-contradicts :: Predicate Match -> Set Contradiction -> Bool
-contradicts p conts = toContradiction p `Set.intersection` conts == Set.empty
-
-unsLookup :: Ord k => String -> k -> Map k v -> v
-unsLookup err k m =
-  case Map.lookup k m of
-     Just v -> v
-     Nothing -> error $  "Tried to look up non-existing key "
-                      ++ "in map. (" ++ err ++ ")."
-
-predConns :: (Match -> CArg)
-          -> Set CArg
-          -> [Set Match]
-          -> [Set Match]
-predConns fn aSet mSets = sigs significants where
-    reduced = map ((Set.intersection aSet) . (Set.map fn)) mSets
-    significants = length (filter ((> 0) . Set.size) reduced)
-    -- If no args are connected, return list of empty sets
-    sigs 0 = map (const Set.empty) mSets
-    -- If exactly one argument place is connected by a set of arguments,
-    -- then all arguments are connected, except the unconnected ones in
-    -- that particular argument place
-    sigs 1 = zipWith combine reduced mSets
-    -- If more than one argument place contained connected arguments, all
-    -- arguments are connected
-    sigs _ = mSets
-
-    combine :: Set CArg -> Set Match -> Set Match
-    combine args ms | Set.null args = ms
-                    | otherwise     = Set.filter ((`Set.member` args) . fn) ms
-
--- connected :: Set CArg
---           -> Set CArg
---           -> (Match -> CArg)
---           -> (Unification, Unification)
---           -> Unification
--- connected frontier expl sel space = undefined
-    -- | Set.null frontier = Map.empty
-    -- | otherwise         = retval where
-    -- (space1, space2) = space
-    -- retval = Map.unionWith (zipWith Set.union) ret' conns
-    -- ret'   = connected frontier' expl' sel (space1', space2')
-    -- frontier' = Map.fold (\a b -> collectArgs a `Set.union` b) Set.empty conns
-    -- expl' = expl \\ frontier
-    -- mkConns sp = Map.map (predConns sel frontier) sp
-    -- conns = Map.unionWith (zipWith Set.union) (mkConns space1) (mkConns space2)
-    -- space1' = Map.mapWithKey removeConns space1
-    -- space2' = Map.mapWithKey removeConns space2
-
-    -- collectArgs :: [Set Match] -> Set CArg
-    -- collectArgs mSets = foldl (\acc this -> (this \\ expl) `Set.union` acc) Set.empty
-    --                   $ map (Set.map sel) mSets
-    --
-    -- removeConns :: Name -> [Set Match] -> [Set Match]
-    -- removeConns k a = case Map.lookup k conns of
-    --                        Just s  -> zipWith Set.difference a s
-    --                        Nothing -> a
-
-extractArguments :: Unification -> Set Match
-extractArguments uMap = undefined
-    --  Map.foldl extList Set.empty uMap where
-    -- extList set ls = (foldl Set.union Set.empty ls) `Set.union` set
-
-reachable :: MetaPattern
-          -> MetaPattern
-reachable (MetaPattern (posPre, negPre) eff) = undefined
-    -- let -- The initial frontier is all the args occurring in effects
-    --     frontier = extractArguments posEff `Set.union` extractArguments negEff
-    --
-    --     front1 = Set.map fst frontier
-    --     front2 = Set.map snd frontier
-    --
-    --     conns1 = connected front1 Set.empty fst (posPre, negPre)
-    --     conns2 = connected front2 Set.empty snd (posPre, negPre)
-    --
-    --     mapIntersect = Map.intersectionWith (zipWith Set.intersection)
-    --
-    --     mergedConns = mapIntersect conns1 conns2
-    --     posPre' = mapIntersect posPre mergedConns
-    --     negPre' = mapIntersect negPre mergedConns
-    --
-    -- in  (MetaPattern (posPre', negPre') (posEff, negEff))
-
-tupleMap :: (a -> b) -> (a, a) -> (b, b)
-tupleMap f (t1, t2) = (f t1, f t2)
-
-instantiatePattern :: (Pattern, Pattern) -> MetaPattern -> Pattern
-instantiatePattern pats mp = undefined
-    -- MetaPattern (mpPosPre, mpNegPre) (mpPosEff, mpNegEff) = mp
-    --
-    -- pk p = PDDL.knlFromPk (ctPreconds p)
-    -- ek p = PDDL.ekHyp (ctEffects p)
-    --
-    -- posPreKn   = tupleMap (PDDL.posKnown . pk) pats
-    -- negPreKn   = tupleMap (PDDL.negKnown . pk) pats
-    -- posPreUnkn = tupleMap (PDDL.posUnknown . pk) pats
-    -- negPreUnkn = tupleMap (PDDL.posUnknown . pk) pats
-    --
-    -- posEffKn   = tupleMap (PDDL.posKnown . ek) pats
-    -- negEffKn   = tupleMap (PDDL.negKnown . ek) pats
-    -- posEffUnkn = tupleMap (PDDL.posUnknown . ek) pats
-    -- negEffUnkn = tupleMap (PDDL.negUnknown . ek) pats
-    --
-    -- posEffKnUg = unground mpPosEff posEffKn
-    -- negEffKnUg = unground mpNegEff negEffKn
-    -- posEffUnknUg = unground mpPosEff posEffUnkn
-    -- negEffUnknUg = unground mpNegEff negEffUnkn
-    --
-    -- newU (u1, u2) = TSet.intersection u1 u2
-    -- newK (u1, u2) (k1, k2) = TSet.union (TSet.intersection k1 k2)
-    --                        ( TSet.union (TSet.intersection k1 u2)
-    --                                     (TSet.intersection k2 u1)
-    --                        )
-    --
-    -- newEffKn = newK posEffUnknUg posEffUnknUg
-    -- newEff
-    --
-    -- newPre = PDDL.Hyp { PDDL.knowns = newK preKnl1 preKnl2
-    --                   , PDDL.unknowns = newU preKnl1 preKnl2
-    --                   }
-    -- newEff = PDDL.Hyp { PDDL.knowns = newK effKnl1 effKnl2
-    --                   , PDDL.unknowns = newU effKnl1 effKnl2
-    --                   }
-    -- newPre' = PDDL.PreKnowledge newPre Set.empty
-    -- newEff' = PDDL.EffKnowledge newEff
-
-unground :: Unification
-         -> TupleSet (Predicate CArg)
-         -> TupleSet (Predicate Match)
-unground uni (ps1, ps2) = undefined
-  -- let selectMatches slctor p =
-  --       do argsUni <- Map.lookup (predName p) uni
-  --          let remover s e = Set.filter ((== e) . slctor) s
-  --              argsUni' = zipWith remover argsUni (predArgs p)
-  --              argsUni'' = map Set.toList argsUni'
-  --          return $ map (Predicate (predName p)) $ sequence argsUni''
-  --
-  --     ug slctor ps = Set.fromList
-  --                  $ concatMap id
-  --                  $ mapMaybe (selectMatches slctor)
-  --                  $ Set.toList ps
-  --  in (ug fst ps1, ug snd ps2)
-
--- Gets the intersection between pattern1 and pattern 2
-matchPredicates :: Unification
-                -> Predicate CArg
-                -> [[CArg]]
-                -> Unification
-matchPredicates uni (Predicate n leftArgs) argLs  =
-  let folder s args2  = Set.insert (Predicate n $ zip leftArgs args2) s
-   in foldl folder uni argLs
-
-group :: (Ord a, Ord b)
-      => Set (Predicate a)
-      -> Set (Predicate b)
-      -> [(Predicate a,[[b]])]
-group psA psB =
-    let matched ps p  = (p, map predArgs $ Set.toList $ Set.filter (matcher p) ps )
-        matcher p = (== predName p) . predName
-     in Set.toList $ Set.map (matched psB) psA
-
-extendUnificatin :: Unification
-                 -> Set (Predicate CArg)
-                 -> Set (Predicate CArg)
-                 -> Unification
-extendUnificatin uni knl1 knl2 =
-  let knlGroup = group knl1 knl2
-      f m (p,argLs) = matchPredicates m p argLs
-   in  foldl f uni knlGroup
-
-intersectUnificatin :: Set (Predicate CArg)
-            -> Set (Predicate CArg)
-            -> Unification
-intersectUnificatin = extendUnificatin Set.empty
-
-toMetaPattern :: Pattern -> Pattern -> MetaPattern
-toMetaPattern p1 p2 =
-  let ek p = ctEffArg p
-      pk p = PDDL.knlFromPk (ctPreconds p)
-
-      uKnl knl = TSet.union (PDDL.knowns knl) (PDDL.unknowns knl)
-
-      pkP1 = pk p1
-      pkP2 = pk p2
-      ekP1 = ek p1
-      ekP2 = ek p2
-
-      (ppos1,pneg1) = uKnl pkP1
-      (ppos2,pneg2) = uKnl pkP2
-
-      ppUni = intersectUnificatin ppos1 ppos2
-      npUni = intersectUnificatin pneg1 pneg2
-
-
-   in MetaPattern { mtPres = (ppUni, npUni) , mtEffArg = zip ekP1 ekP2 } -- (peUni,neUni) }
-
-unify :: Pattern -> Pattern -> (Pattern, Pattern)
-unify p1 p2 = undefined
-  -- let m = toMetaPattern p1 p2
-  --  in unground (p1, p2) m
-
--- Only works as long as effects doesn't contain more of each effect IE.
--- p(x,y) p(y,z) <-- Not allowed
--- p(x,y) f(y) <-- Allowed
-merge :: Pattern -> Pattern -> Pattern
-merge p1 p2 =
-  let (p1', p2') = unify p1 p2
-      pk p = PDDL.knlFromPk (ctPreconds p)
-      ek p = undefined -- PDDL.ekHyp (ctEffects p)
-
-      uKnl knl = (PDDL.unknowns knl, PDDL.knowns knl)
-      preKnl1 = uKnl (pk p1')
-      effKnl1 = uKnl (ek p1')
-
-      preKnl2 = uKnl (pk p2')
-      effKnl2 = uKnl (ek p2')
-
-      newU (u1, _) (u2, _) = TSet.intersection u1 u2
-      newK (u1, k1) (u2, k2) = TSet.union (TSet.intersection k1 k2)
-                             ( TSet.union (TSet.intersection k1 u2)
-                                          (TSet.intersection k2 u1)
-                             )
-      newPre = PDDL.Hyp { PDDL.knowns = newK preKnl1 preKnl2
-                        , PDDL.unknowns = newU preKnl1 preKnl2
-                        }
-      newEff = PDDL.Hyp { PDDL.knowns = undefined -- newK effKnl1 effKnl2
-                        , PDDL.unknowns = undefined -- newU effKnl1 effKnl2
-                        }
-      newPre' = PDDL.PreKnowledge newPre Set.empty
-      newEff' = PDDL.EffKnowledge newEff
-
-
-   in Pattern { ctPreconds = newPre', ctEffArg = undefined } --newEff'}
-
-merges :: [Pattern] -> Maybe Pattern
-merges [] = Nothing
-merges ps = Just $ foldl1 merge ps
-
-type Shape = Predicate Int
-
-shapeOf :: Ord a => Predicate a -> Shape
-shapeOf (Predicate pn args) = Predicate pn (shapeOf' args 0 Map.empty)  where
-    shapeOf' :: Ord a => [a] -> Int -> Map a Int -> [Int]
-    shapeOf' (a : as) maxVal m =
-        case Map.lookup a m of
-             Just s  -> s : shapeOf' as maxVal m
-             Nothing -> maxVal : shapeOf' as (maxVal + 1) m' where
-                        m' = (Map.insert a (maxVal + 1) m)
-    shapeOf' [] _ _ = []
-
-emptyHyp :: Ord a => PDDL.Hyp a
-emptyHyp = PDDL.Hyp TSet.empty TSet.empty
-
-emptyPreKnl :: Ord a => PDDL.PreKnowledge a
-emptyPreKnl = PDDL.PreKnowledge emptyHyp Set.empty
-
-universeState :: [PredicateSpec]
-              -> [Object]
-              -> State
-universeState = undefined
-
-rmUnConns :: [CArg] -> Set (Predicate CArg) -> Set (Predicate CArg)
-rmUnConns = undefined
-
-constructPattern :: [CArg] -> PDDL.Knowledge CArg -> PDDL.Cands CArg -> Pattern
-constructPattern effArgs predUnks cands =
-  Pattern { ctEffArg = effArgs
-          , ctPreconds =
-            PDDL.PreKnowledge
-             (PDDL.Hyp { PDDL.knowns = TSet.empty
-                  , PDDL.unknowns = predUnks }) (cands) }
-
-toPatternKnl :: [PredicateSpec] -> [Object] -> Transition -> PatternKnl
-toPatternKnl specs objs (s, _ , s') = Map.union deltaAddPatns deltaRemPatns where
-  -- The predicates that have been added to s'
-  deltaAdd = Set.toList $ varForm $ s' \\ s
-  -- The predicates that have been removed from s
-  deltaRem = Set.toList $ varForm $ s \\ s'
-  -- Possible positive preconditions
-  posPre = varForm $ s
-  -- Possible negative preconditions
-  negPre = varForm $ universeState specs objs \\ s
-
-  deltaAddPatns = Map.fromList $ map (toPattern AddEff) deltaAdd
-  deltaRemPatns = Map.fromList $ map (toPattern RemEff) deltaRem
-
-  toPattern et (Predicate n args) =
-      let cnn = rmUnConns args
-       in (et n, constructPattern args (cnn posPre, cnn negPre) Set.empty)
-
-  varForm objForm = Set.fromList $ mapMaybe f $ Set.toList objForm
-  f (Predicate n os) = liftM (Predicate n) $ mapM (`Map.lookup` objMap) os
-  objMap :: Map Object CArg
-  objMap = Map.fromList $ zip objs [1 ..]
-
-update :: DomainKnowledge -> Transition -> DomainKnowledge
-update dk (s, a, s') = undefined
