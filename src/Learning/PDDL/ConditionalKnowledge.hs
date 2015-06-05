@@ -32,17 +32,17 @@ type EdgeSet a = Set (Vertex a)
 
 type PredInfo = (PType, Literal Name, Int)
 
-data Ord a => Vertex a = Vertex a PredInfo deriving (Eq, Ord)
+data Ord a => Vertex a = Vertex a PredInfo deriving (Eq, Ord, Show)
 
 data PType = Effect 
            | Precond
-           deriving (Eq, Ord)
+           deriving (Eq, Ord, Show)
 
 data EdgeType = BindingEdge
               | PredicateEdge
-              deriving (Eq, Ord)
+              deriving (Eq, Ord, Show)
 
-data Edge a = Edge EdgeType (EdgeSet a) deriving (Eq, Ord)
+data Edge a = Edge EdgeType (EdgeSet a) deriving (Eq, Ord, Show)
 
 edgeSet :: Ord a => Edge a -> EdgeSet a
 edgeSet (Edge _ e) = e
