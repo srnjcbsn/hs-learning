@@ -38,16 +38,30 @@ data PType = Effect
            | Precond
            deriving (Eq, Ord)
 
-data Ord a => Edge a = BindingEdge         (EdgeSet a) 
-                     | PredicateEdge  (EdgeSet a)
-                     deriving (Eq, Ord)
+data EdgeType = BindingEdge
+              | PredicateEdge
+              deriving (Eq, Ord)
+
+data Edge a = Edge EdgeType (EdgeSet a)
+
+-- data Ord a => Edge a = BindingEdge         (EdgeSet a) 
+--                      | PredicateEdge  (EdgeSet a)
+--                      deriving (Eq, Ord)
 
 edgeSet :: Ord a => Edge a -> EdgeSet a
-edgeSet (BindingEdge e)   = e
-edgeSet (PredicateEdge e) = e
+edgeSet (Edge _ e) = e
 
+edgeType :: Ord a => Edge a -> EdgeType
+edgeType (Edge et _) = et
+
+-- edgeSet :: Ord a => Edge a -> EdgeSet a
+-- edgeSet (BindingEdge e)   = e
+-- edgeSet (PredicateEdge e) = e
+
+-- | An edge is an effect edge if it is a predicate edge and contains a vertex
+--   marked as an effect.
 isEffect :: Ord a => Edge a -> Bool
-isEffect (PredicateEdge e) = not $ null [ () | Vertex _ (Effect, _, _) <- Set.toList e ]
+isEffect (Edge PredicateE e) = not $ null [ () | Vertex _ (Effect, _, _) <- Set.toList e ]
 isEffect _ = False
 
 type HyperGraph a = Set (Edge a)
@@ -66,8 +80,8 @@ newIdInv (Vertex (i, j) n) = (Vertex i n, Vertex j n)
 similarTo :: Ord a => Vertex a -> Vertex a -> Bool
 similarTo v1 v2 = isJust $ newId v1 v2
 
-edgeIntersection :: Ord a => EdgeSet a -> EdgeSet a -> [Vertex (a, a)]
-edgeIntersection e1 e2 = catMaybes [ newId v1 v2 | v1 <- Set.toList e1, v2 <- Set.toList e2, v1 `similarTo` v2 ]
+intersect :: Ord a => EdgeSet a -> EdgeSet a -> [Vertex (a, a)]
+intersect e1 e2 = catMaybes [ newId v1 v2 | v1 <- Set.toList e1, v2 <- Set.toList e2, v1 `similarTo` v2 ]
 
 merge :: HyperGraph a -> HyperGraph a -> HyperGraph a
 merge h1 h2 = undefined
@@ -90,6 +104,16 @@ containingPredicateEdge hg v = listToMaybe [ PredicateEdge e | PredicateEdge e <
 containingBindingEdge :: Ord a => HyperGraph a -> Vertex a -> Maybe (Edge a)
 containingBindingEdge hg v = listToMaybe [ BindingEdge e | BindingEdge e <- containingEdges hg v ]
 
+mergeEdges :: Ord a
+           => HyperGraph a
+           -> HyperGraph a
+           -> HyperGraph (a, a)
+           -> Edge a
+           -> Edge a
+           -> HyperGraph (a, a)
+mergeEdges h1 h2 h' e1 e2 = undefined where
+    int    = edgeSet e1 `intersect` edgeSet e2
+
 mergeEdges :: Ord a 
            => HyperGraph a
            -> HyperGraph a
@@ -97,14 +121,14 @@ mergeEdges :: Ord a
            -> Edge a 
            -> Edge a
            -> HyperGraph (a, a)
-mergeEdges h1 h2 h' (PredicateEdge e1) (PredicateEdge e2) = undefined where
+mergeEdges h1 h2 h' (PredicateEdge e1) (PredicateEdge e2) = rest where
     int    = edgeIntersection e1 e2
     intSet = PredicateEdge $ Set.fromList int
     h''    = Set.insert intSet h'
     invs   = [ newIdInv v | v <- int, not $ isInBindingEdge h' v ]
     oldes  = map ((containingBindingEdge h1) *** (containingBindingEdge h2)) invs
-    valid  = [ (e1, e2) | (Just e1, Just e2) <- oldes ]
-    rest   = foldl (\hh (e1', e2') -> mergeEdges h1 h2 hh e1' e2') h'' valid
+    valids = [ (e1', e2') | (Just e1', Just e2') <- oldes ]
+    rest   = foldl (\hh (e1', e2') -> mergeEdges h1 h2 hh e1' e2') h'' valids
 mergeEdges h1 h2 h' (BindingEdge e1) (BindingEdge e2) =
     undefined
 
