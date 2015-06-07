@@ -14,14 +14,14 @@ import           Data.Map      (Map, (!))
 import qualified Data.Map      as Map
 import           Data.Set      (Set)
 import qualified Data.Set      as Set
-import           Data.Tuple    (swap)
-import qualified Data.TupleSet as TSet
+-- import           Data.Tuple    (swap)
+-- import qualified Data.TupleSet as TSet
 import           Graph
 import           Graph.Search
-import           Logic.Formula
+-- import           Logic.Formula
 import           Planning
 import           Planning.PDDL
-import           Data.Maybe
+-- import           Data.Maybe
 
 -- | Finds the action spec of an action in a domain
 findActionSpec :: PDDLDomain -> Action -> ActionSpec
