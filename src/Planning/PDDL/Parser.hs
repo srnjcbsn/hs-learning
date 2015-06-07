@@ -59,10 +59,10 @@ sameTypedList p = do
 typedList :: Parser a -> Parser [(a, Type)]
 typedList p = liftM concat $ many (sameTypedList p)
 
-parseArgument :: Parser Argument
+parseArgument :: Parser Term
 parseArgument =
-        liftM Const parseName
-    <|> liftM Ref   parseArgRef
+        liftM TName parseName
+    <|> liftM TVar  parseArgRef
 
 groundedPredicate :: Parser GroundedPredicate
 groundedPredicate = parens $ do
@@ -97,30 +97,51 @@ parseFluent =
         args <- parseArgument `sepBy` spaces
         return $ Predicate fname args
 
-parseConjunction :: (Show a, Ord a, Eq a)
-                 => Parser (Formula a)
-                 -> Parser (Formula a)
-parseConjunction f =
-    parens $ liftM Con $ string "and" >> spaces >> f `sepBy` spaces
+parseConjunction :: Parser a -> Parser [a]
+parseConjunction f = parens $ string "and" >> spaces >> (f `sepBy` spaces)
 
-parseNegation :: (Show a, Ord a, Eq a) => Parser (Formula a) -> Parser (Formula a)
-parseNegation f =
-    parens $ liftM Neg $ string "not" >> spaces >> f
+parseNegation :: Parser a -> Parser a
+parseNegation f = parens $ string "not" >> spaces >> f
 
-parseFormula :: Parser (Formula Argument)
-parseFormula =
-        try (parseConjunction parseFormula)
-    <|> try (parseNegation parseFormula)
-    <|> liftM Pred parseFluent
+-- parseConjunction :: (Show a, Ord a, Eq a)
+--                  => Parser (Formula a)
+--                  -> Parser (Formula a)
+-- parseConjunction f =
+--     parens $ liftM Con $ string "and" >> spaces >> f `sepBy` spaces
+--
+-- parseNegation :: (Show a, Ord a, Eq a) => Parser (Formula a) -> Parser (Formula a)
+-- parseNegation f =
+--     parens $ liftM Neg $ string "not" >> spaces >> f
+--
+-- parseFormula :: Parser (Formula Argument)
+-- parseFormula =
+--         try (parseConjunction parseFormula)
+--     <|> try (parseNegation parseFormula)
+--     <|> liftM Pred parseFluent
 
 parseType :: Parser String
 parseType = char '-' >> spaces >> parseName
 
-groundedFormula :: Parser (Formula Name)
-groundedFormula =
-        try (parseConjunction groundedFormula)
-    <|> try (parseNegation groundedFormula)
-    <|> liftM Pred groundedPredicate
+-- groundedFormula :: Parser (Formula Name)
+-- groundedFormula =
+--         try (parseConjunction groundedFormula)
+--     <|> try (parseNegation groundedFormula)
+--     <|> liftM Pred groundedPredicate
+
+parseLiteral :: Parser (LitPred Term)
+parseLiteral = try (parens $ string "not" >> spaces >> parseFluent >>= return . Neg)
+                <|> (parseFluent >>= return . Pos)
+
+parseGoalDescription :: Parser GoalDesc
+parseGoalDescription = 
+        try (liftM GAnd $ parseConjunction parseGoalDescription)
+    <|> try (liftM GNot $ parseNegation parseGoalDescription)
+    <|> liftM GLit parseLiteral
+
+parseEffect :: Parser Effect
+parseEffect = 
+        try (liftM EAnd (parseConjunction parseEffect))
+    <|> liftM ELit parseLiteral
 
 parseActionSpec :: Parser ActionSpec
 parseActionSpec =
@@ -132,10 +153,10 @@ parseActionSpec =
         --params <- parens $ typedList --(parseArgRef `sepBy` spaces)
         spaces
         string ":precondition " >> spaces
-        precond <- parseFormula
+        precond <- parseGoalDescription
         spaces
         string ":effect " >> spaces
-        eff <- parseFormula
+        eff <- parseEffect
         spaces
         return ActionSpec { asName      = aname
                           , asParas     = map fst ts
@@ -179,7 +200,7 @@ parseProblem =
         spaces
         ini <- parens $ string ":init " >> groundedPredicate `sepBy` comments
         spaces
-        g <- parens $ string ":goal " >> groundedFormula
+        g <- parens $ string ":goal " >> parseGoalDescription
         _ <- comments
         return PDDLProblem { probName = pname
                            , probDomain = dom
