@@ -24,7 +24,7 @@ updateEffectKnl domain (NCT.EffKnowledge knl) (s, action, s')
         aSpecParas = asParas aSpec
 
         unground' :: GroundedPredicate -> Set FluentPredicate
-        unground' = ungroundNExpand aSpecParas (aArgs action)
+        unground' = unground aSpecParas (aArgs action)
 
         unions :: Ord a => Set (Set a) -> Set a
         unions = Set.unions . Set.toList

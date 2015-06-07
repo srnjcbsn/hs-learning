@@ -83,18 +83,18 @@ asPDDL res = pddl
     pddl = List.map (Set.map toPDDL) res
 
 -- | Takes a grounded predicate and produces all ungrounded possibilities
-unground ::  [Name] -- ^ the paramters of the action spec
+ungroundCollected ::  [Name] -- ^ the paramters of the action spec
           -> [Object] -- ^ the arguments the action was executed with
           -> [Object]  -- ^ the predicate it produced
           -> [Set Term] -- ^ a list of possibilities [Arg1, Arg2,..., ArgN ] where the Args are sets of options
-unground paras args objs = induction
+ungroundCollected paras args objs = induction
   where
     induction = asPDDL $ induct paras args objs
 
-ungroundNExpand :: [Name] -> [Object] -> GroundedPredicate -> Set FluentPredicate
-ungroundNExpand paras args gp = Set.fromList
+unground :: [Name] -> [Object] -> GroundedPredicate -> Set FluentPredicate
+unground paras args gp = Set.fromList
                               $ expandFluents (predName gp)
-                              $ unground paras args (predArgs gp)
+                              $ ungroundCollected paras args (predArgs gp)
 
 -- | Expands the output of unground and provides all the ungrounded predicates that could be produced
 --   given [{x,y}, {x}] and "p" produces p(x,x) p(y,x)

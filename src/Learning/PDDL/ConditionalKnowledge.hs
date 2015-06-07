@@ -35,11 +35,11 @@ type EdgeSet a = Set (Vertex a)
 
 type PredInfo = (PType, Literal Name, Int)
 
--- | A 'Vertex' consists of a unique identifier and a description of which 
+-- | A 'Vertex' consists of a unique identifier and a description of which
 --   predicate argument it represents
 data Ord a => Vertex a = Vertex a PredInfo deriving (Eq, Ord, Show)
 
--- | The type of a predicate, denoting whether it describes an effect or a 
+-- | The type of a predicate, denoting whether it describes an effect or a
 --   precondition.
 data PType = Effect
            | Precond
@@ -113,12 +113,12 @@ fromTransitionWithId initId specs objs  (s,_,s') = map effToHypergraph effData w
 
 
   negPreInitId = posPreInitId + lengthAsId posPreNodeBindings
-  negPreNodeData = idPreds negPreInitId $ split Precond Not negPre
+  negPreNodeData = idPreds negPreInitId $ split Precond Neg negPre
   negPreNodeBindings = concatMap (map toNodeBind) negPreNodeData
 
   effInitId = negPreInitId + lengthAsId negPreNodeBindings
   effData = (zip (map (Pos . predName) posEff) $ split Effect Pos posEff)
-          ++ (zip (map (Not . predName) negEff) $ split Effect Not negEff)
+          ++ (zip (map (Neg . predName) negEff) $ split Effect Neg negEff)
 
   predEdges nodeData = map ((Edge PredicateEdge) . Set.fromList)
                      $ map (map toNode) nodeData
@@ -219,22 +219,22 @@ mergeEdges h1 h2 h' e1 e2 = rest where
     valids = [ (e1', e2') | (Just e1', Just e2') <- oldes ]
     rest   = foldl (\ hh (e1', e2') -> mergeEdges h1 h2 hh e1' e2') h'' valids
 
--- | Construct all possible predicates given predicate specification from a 
+-- | Construct all possible predicates given predicate specification from a
 --   domain and objects from a problem.
 allGroundedPredicates :: PDDLEnvSpec -> Set GroundedPredicate
-allGroundedPredicates eSpec = 
+allGroundedPredicates eSpec =
     Set.fromList $ concatMap fromSpec $ envsPredSpecs eSpec where
         fromSpec :: PredicateSpec -> [GroundedPredicate]
-        fromSpec (Predicate pn pa) = [ Predicate pn p 
+        fromSpec (Predicate pn pa) = [ Predicate pn p
                                      | p <- replicateM (length pa) (envsObjs eSpec)
-                                     ] 
+                                     ]
 
 -- | Constructs a set of grounded predicates not occuring in the given state
 notInState :: State -> PDDLEnvSpec -> State
 notInState s eSpec = allGroundedPredicates eSpec \\ s
 
 totalState :: State -> PDDLEnvSpec -> TotalState
-totalState s eSpec = Set.map Pos s `Set.union` Set.map Not ns where
+totalState s eSpec = Set.map Pos s `Set.union` Set.map Neg ns where
     ns = notInState s eSpec
 
 toPredEdge :: Literal GroundedPredicate -> PType -> Int -> Edge (Object, Int)
@@ -244,8 +244,8 @@ toPredEdge lgp pt n = e where
     vertList = zipWith3 mkVertex [1 ..] args [n ..]
     mkVertex n' a m = Vertex (a, m) (pt, nm `signAs` lgp, n')
 
--- | Construct the binding edges for a hypergraph based on a list of predicate 
---   edges that have already been constructed, and are carrying information 
+-- | Construct the binding edges for a hypergraph based on a list of predicate
+--   edges that have already been constructed, and are carrying information
 --   specifying which object they represent.
 mkBindingEdges :: Ord a => [Edge (Object, a)] -> Set (Edge a)
 mkBindingEdges pes = bes where
@@ -259,12 +259,12 @@ mkBindingEdges pes = bes where
 -- | Constructs a hyper graph from a state and an effect (a grounded predicate)
 fromState :: PDDLEnvSpec
           -> TotalState                -- ^ The state the action was executed in
-          -> Literal GroundedPredicate -- ^ An effect of the action to 
+          -> Literal GroundedPredicate -- ^ An effect of the action to
                                        --   construct a hypergraph from
           -> HyperGraph Int
 fromState espec s lgp = undefined where
     -- effEdge = toPredEdge lgp Effect 1
-    -- predPreds = foldl 
+    -- predPreds = foldl
 
 -- fromTransition :: PDDLEnvSpec
 --                -> Transition

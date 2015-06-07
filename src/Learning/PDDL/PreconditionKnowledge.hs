@@ -51,7 +51,7 @@ update domain (NCT.PreKnowledge knl cnfs) (s, action, s')
         in NCT.PreKnowledge knl' cnfs''
 
     where unground' :: GroundedPredicate -> Set FluentPredicate
-          unground' = ungroundNExpand aSpecParas (aArgs action)
+          unground' = unground aSpecParas (aArgs action)
           aSpecParas = asParas $ findActionSpec domain action
 
           posUnkns = (fst . NCT.unknowns) knl

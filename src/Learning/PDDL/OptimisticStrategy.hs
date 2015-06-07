@@ -48,21 +48,21 @@ instance ( Environment env
 
 
 effectSchema :: NCT.EffKnowledge
-                      -> ActionSpec
-                      -> ActionSpec
+             -> ActionSpec
+             -> ActionSpec
 effectSchema (NCT.EffKnowledge kn) aSpec = aSpec { asEffect = eff } where
-    addL = Set.map Pred $ (NCT.posUnknown kn) `Set.union` (NCT.posKnown kn)
-    delL = Set.map (Neg . Pred) (NCT.negKnown kn)
-    eff = Con $ Set.toList $ addL `Set.union` delL
+    addL = Set.map (ELit . Pos) $ (NCT.posUnknown kn) `Set.union` (NCT.posKnown kn)
+    delL = Set.map (ELit . Neg) (NCT.negKnown kn)
+    eff = EAnd $ Set.toList $ addL `Set.union` delL
 
-precondFormula :: NCT.PreKnowledge -> Formula Argument
+precondFormula :: NCT.PreKnowledge -> GoalDesc
 precondFormula (NCT.PreKnowledge hyp cnf) =
-    Con predList
-    where negPredList (poss,negs) =  Set.toList (Set.map Pred negs)
-                                  ++ Set.toList (Set.map (Neg . Pred) poss)
-          orList = Neg . Con . negPredList
-          predList =  Set.toList (Set.map Pred (NCT.posKnown hyp))
-                   ++ Set.toList (Set.map (Neg . Pred) (NCT.negKnown hyp))
+    GAnd predList
+    where negPredList (poss,negs) =  Set.toList (Set.map (GLit . Neg) negs)
+                                  ++ Set.toList (Set.map (GLit . Pos) poss)
+          orList = GOr . negPredList
+          predList =  Set.toList (Set.map (GLit . Pos) (NCT.posKnown hyp))
+                   ++ Set.toList (Set.map (GLit . Neg) (NCT.negKnown hyp))
                    ++ Set.toList (Set.map orList cnf)
 
 precondSchema :: NCT.PreKnowledge -> ActionSpec -> ActionSpec
