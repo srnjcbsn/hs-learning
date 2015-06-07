@@ -10,7 +10,7 @@ import Logic.Formula
 import           Data.Map                            (Map)
 import           Data.Set                            (Set)
 
-type Cands = Set (LiteralSet Argument)
+type Cands = Set (LiteralSet Term)
 data PreKnowledge = PreKnowledge Knowledge Cands deriving (Eq, Ord, Show)
 data EffKnowledge = EffKnowledge Knowledge deriving (Eq, Ord, Show)
 
@@ -24,11 +24,11 @@ newtype Environment env => PDDLKnowledge env =
 type LiteralSet a = TupleSet (Predicate a)
 
 data Knowledge = Knowledge
-    { knowns   :: LiteralSet Argument
-    , unknowns :: LiteralSet Argument
+    { knowns   :: LiteralSet Term
+    , unknowns :: LiteralSet Term
     } deriving (Eq, Ord, Show)
 
-posKnown, posUnknown, negKnown, negUnknown :: Knowledge -> Set (Predicate Argument)
+posKnown, posUnknown, negKnown, negUnknown :: Knowledge -> Set (Predicate Term)
 posKnown   = fst . knowns
 posUnknown = fst . unknowns
 negKnown   = snd . knowns

@@ -30,8 +30,8 @@ module Planning.PDDL
 
     -- * Grounded data
     , GroundedPredicate
-    , GroundedChanges
-    -- , GroundedAction
+    , GroundedEffects
+    , GroundedAction
     , State
     , Plan
 
@@ -61,11 +61,11 @@ import qualified Data.Set      as Set
 
 type FluentPredicate = Predicate Term
 type PredicateSpec = Predicate (Name, Type)
-
+type GroundedAction = (ActionSpec, Action, GroundedEffects)
 -- type GrFormula = Formula Name
 -- type UngrFormula = Formula Argument
 
-type GroundedChanges = (Set GroundedPredicate, Set GroundedPredicate)
+type GroundedEffects = (Set GroundedPredicate, Set GroundedPredicate)
 -- type GroundedAction = (GrFormula, GroundedChanges)
 
 type Variable = String
@@ -75,7 +75,7 @@ data Term = TName Name
           deriving (Eq, Ord, Show)
 
 data LitPred a = Pos (Predicate a)
-               | Neg (Predicate a)  
+               | Neg (Predicate a)
                deriving (Eq, Ord, Show)
 
 data GoalDesc = GAnd [GoalDesc]
@@ -128,7 +128,7 @@ data PDDLEnvSpec = PDDLEnvSpec
 data PDDLGraph = PDDLGraph (PDDLDomain, PDDLProblem)
 
 pddlEnvSpec :: PDDLDomain -> PDDLProblem -> PDDLEnvSpec
-pddlEnvSpec dom prob = PDDLEnvSpec 
+pddlEnvSpec dom prob = PDDLEnvSpec
     { envsPredSpecs = dmPredicates dom
     , envsConsts    = dmConstants dom
     , envsObjs      = probObjs prob
@@ -213,7 +213,7 @@ writeActionSpec as =
               precond = writeGoalDescription (asPrecond as)
               eff     = writeEffect (asEffect as)
 
-writeGoalDescription :: GoalDesc -> String 
+writeGoalDescription :: GoalDesc -> String
 writeGoalDescription = undefined
 
 writeEffect :: Effect -> String

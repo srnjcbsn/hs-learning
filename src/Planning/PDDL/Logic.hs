@@ -36,46 +36,46 @@ findActionSpec domain (n, _) = case actionSpec domain n of
                     $ map asName (dmActionsSpecs domain)
 
 
--- | Instantiates a formula into the actual positive and negative changes
-insForm :: Map Argument Object -> Formula Argument -> GroundedChanges
-insForm m (Pred p) =
-    (Set.singleton (Predicate (pName p) (mapMaybe (`Map.lookup` m) $ pArgs p)), Set.empty)
-insForm m (Neg f) = swap $ insForm m f
-insForm m (Con fs) =
-    List.foldl (\changes f -> TSet.union changes $ insForm m f ) TSet.empty fs
+-- -- | Instantiates a formula into the actual positive and negative changes
+-- insForm :: Map Argument Object -> Formula Argument -> GroundedChanges
+-- insForm m (Pred p) =
+--     (Set.singleton (Predicate (pName p) (mapMaybe (`Map.lookup` m) $ pArgs p)), Set.empty)
+-- insForm m (Neg f) = swap $ insForm m f
+-- insForm m (Con fs) =
+--     List.foldl (\changes f -> TSet.union changes $ insForm m f ) TSet.empty fs
 
 -- | Checks if the preconditions of a grounded action are satisfied
 isActionValid :: State -> GroundedAction -> Bool
-isActionValid s (gForm, _) = evaluateFormuala gForm s
+isActionValid s (as, _, _) =  isSatisfied (asPrecond as) s
 
 -- | Applies the grounded actions to a state, if the action is not valid nothing is returned
 applyAction :: State -> GroundedAction -> Maybe State
-applyAction s act@(_,(posEff,negEff))
+applyAction s act@(_,_,(posEff,negEff))
     | isActionValid s act = Just $ Set.union (Set.difference s negEff) posEff
     | otherwise           = Nothing
 
-constMap :: [Name] -> Map Argument Object
+constMap :: [Name] -> Map Term Object
 constMap consts =
-    Map.fromList $ List.map (\n -> (Const n, n)) consts
+    Map.fromList $ List.map (\n -> (TName n, n)) consts
 
 -- | Instantiates a formula into the actual positive and negative changes
 instantiateAction :: ActionSpec -> Action -> GroundedAction
-instantiateAction as a = ga where
-    m = constMap (asConstants as)
-    pairs = List.zip (List.map Ref $ asParas as) (aArgs a)
-    paraMap = Map.fromList pairs
-    fullMap = Map.union paraMap m
-    ga = (groundPreconditions as (aArgs a), insForm fullMap (asEffect as))
+instantiateAction as a = undefined where
+    -- m = constMap (asConstants as)
+    -- pairs = List.zip (List.map Ref $ asParas as) (aArgs a)
+    -- paraMap = Map.fromList pairs
+    -- fullMap = Map.union paraMap m
+    -- ga = (groundPreconditions as (aArgs a), insForm fullMap (asEffect as))
 
 
 substMap :: [Name] -> [Name] -> Map Name Name
 substMap paras args = Map.fromList $ zip paras args
 
-subst :: Map Name Name -> Argument -> Name
-subst m (Ref r)   = m ! r
-subst _ (Const c) = c
+subst :: Map Name Name -> Term -> Name
+subst m (TVar r)   = m ! r
+subst _ (TName c) = c
 
-substitute :: [Name] -> [Name] -> Argument -> Name
+substitute :: [Name] -> [Name] -> Term -> Name
 substitute paras args = subst $ substMap paras args
 
 ground' :: [Name] -> [Name] -> Set FluentPredicate -> Set GroundedPredicate
@@ -98,30 +98,29 @@ apply' domain state action =
 applyActionSpec :: ActionSpec -> [Name] -> Action
 applyActionSpec aSpec args = (asName aSpec, args)
 
-isSatisfied :: Formula Name -> State -> Bool
-isSatisfied = evaluateCWA
+isSatisfied :: GoalDesc -> State -> Bool
+isSatisfied = undefined
 
-groundPreconditions :: ActionSpec -> [Name] -> Formula Name
-groundPreconditions as args = fmap (substitute (asParas as) args) (asPrecond as)
+-- groundPreconditions :: ActionSpec -> [Name] -> GoalDesc
+-- groundPreconditions as args = fmap (substitute (asParas as) args) (asPrecond as)
 
-evaluateFormuala :: Formula Name -> State -> Bool
-evaluateFormuala = evaluateCWA
+-- applicable :: ActionSpec -> State -> [Name] -> Bool
+-- applicable as s args = isSatisfied (groundPreconditions as args) s
 
-applicable :: ActionSpec -> State -> [Name] -> Bool
-applicable as s args = evaluateCWA (groundPreconditions as args) s
+numberOfSatisfied :: GoalDesc -> State -> Int
+numberOfSatisfied _ _ = 1
+-- numberOfSatisfied (Pred p) s | Set.member p s = 1
+--                              | otherwise = 0
+--
+-- numberOfSatisfied (Neg f) s | not $ isSatisfied f s = numberOfSatisfied f s
+--                             | otherwise = 0
+-- numberOfSatisfied (Con fs) s = sum $ map (`numberOfSatisfied` s) fs
 
-numberOfSatisfied :: Formula Name -> State -> Int
-numberOfSatisfied (Pred p) s | Set.member p s = 1
-                             | otherwise = 0
-
-numberOfSatisfied (Neg f) s | not $ isSatisfied f s = numberOfSatisfied f s
-                            | otherwise = 0
-numberOfSatisfied (Con fs) s = sum $ map (`numberOfSatisfied` s) fs
-
-numberOfPredicates :: Formula Name -> Int
-numberOfPredicates (Pred _) = 1
-numberOfPredicates (Neg f) = numberOfPredicates f
-numberOfPredicates (Con fs) = sum $ map numberOfPredicates fs
+numberOfPredicates :: GoalDesc -> Int
+numberOfPredicates _ = 1
+-- numberOfPredicates (Pred _) = 1
+-- numberOfPredicates (Neg f) = numberOfPredicates f
+-- numberOfPredicates (Con fs) = sum $ map numberOfPredicates fs
 
 applicableActions' :: PDDLProblem -> State -> ActionSpec -> [Action]
 applicableActions' prob s aSpec = filter (isApplicable aSpec s . aArgs) apps
