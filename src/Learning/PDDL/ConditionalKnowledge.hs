@@ -26,6 +26,8 @@ import           Data.Tree
 import           Data.TupleSet                       (TupleSet)
 import qualified Data.TupleSet                       as TSet
 
+type HyperGraph a = Set (Edge a)
+
 data Literal a = Pos a
                | Not a
                deriving (Eq, Ord, Show)
@@ -69,11 +71,102 @@ data EdgeType = BindingEdge
 -- | An edge is an 'EdgeType' and a collection of vertices.
 data Edge a = Edge EdgeType (EdgeSet a) deriving (Eq, Ord, Show)
 
+universeState :: [PredicateSpec]
+              -> [Object]
+              -> State
+universeState specs objs = Set.fromList allPreds where
+  args = flip replicateM objs
+  toPreds (Predicate n a) = map (Predicate n) (args $ length a)
+  allPreds = concatMap toPreds specs
+
+
+toPredInfo :: PType
+           -> (Name -> Literal Name)
+           -> GroundedPredicate
+           -> [(Object,PredInfo)]
+toPredInfo ptype litType (Predicate n objs) = map toPInfo infos where
+  infos = zip (map ((,) n) objs) [1..]
+  toPInfo ((na,obj), pos) = (,) obj (ptype, litType na, pos)
+
+
+fromTransition :: [PredicateSpec]
+               -> [Object]
+               -> Transition
+               -> [(Literal Name, HyperGraph Int)]
+fromTransition = fromTransitionWithId 0
+
+fromTransitionWithId :: (Num idType, Enum idType, Ord idType)
+          => idType
+          -> [PredicateSpec]
+          -> [Object]
+          -> Transition
+          -> [(Literal Name, HyperGraph idType)]
+fromTransitionWithId initId specs objs  (s,_,s') = map effToHypergraph effData where
+  negPre = Set.toList $ universeState specs objs \\ s
+  posPre = Set.toList s
+
+  posEff = Set.toList $ s' \\ s
+  negEff = Set.toList $ s \\ s'
+
+  split pt lt preds = map (toPredInfo pt lt) preds
+
+  idPred idStart p = zip [idStart..] p
+
+  lengthAsId l = fromInteger (toInteger (length l))
+
+  idPreds idStart (p : rest) = idPred idStart p : idPreds (idStart + lengthAsId p) rest
+  idPreds _ [] = []
+
+  toNode (idv, (_, pinfo)) = Vertex idv pinfo
+  toNodeBind (idv, (b, pinfo)) = (b, Vertex idv pinfo)
+
+  groupBindings elems = Map.elems
+                      $ Map.fromListWith (++) [(k, [v]) | (k, v) <- elems]
+
+  posPreInitId = initId
+  posPreNodeData = idPreds posPreInitId $ split Precond Pos posPre
+  posPreNodeBindings = concatMap (map toNodeBind) posPreNodeData
+
+
+
+  negPreInitId = posPreInitId + lengthAsId posPreNodeBindings
+  negPreNodeData = idPreds negPreInitId $ split Precond Not negPre
+  negPreNodeBindings = concatMap (map toNodeBind) negPreNodeData
+
+  effInitId = negPreInitId + lengthAsId negPreNodeBindings
+  effData = (zip (map (Pos . predName) posEff) $ split Effect Pos posEff)
+          ++ (zip (map (Not . predName) negEff) $ split Effect Not negEff)
+
+  predEdges nodeData = map ((Edge PredicateEdge) . Set.fromList)
+                     $ map (map toNode) nodeData
+  bindingEdges binding = map ((Edge BindingEdge) . Set.fromList)
+                       $ groupBindings binding
+
+  prePredEdges =  predEdges posPreNodeData
+               ++ predEdges negPreNodeData
+  preNodeBindings = posPreNodeBindings
+                  ++  negPreNodeBindings
+
+  effToHypergraph (litname, pEffData) =
+    let vData = idPred effInitId pEffData
+        pEdges = [Edge PredicateEdge $ Set.fromList $ map toNode vData]
+               ++ prePredEdges
+        bEdges = bindingEdges $ map toNodeBind vData ++ preNodeBindings
+     in (litname, Set.fromList $ pEdges ++ bEdges)
+
+-- data Ord a => Edge a = BindingEdge         (EdgeSet a)
+--                      | PredicateEdge  (EdgeSet a)
+--                      deriving (Eq, Ord)
+
 edgeSet :: Ord a => Edge a -> EdgeSet a
 edgeSet (Edge _ e) = e
 
 edgeType :: Ord a => Edge a -> EdgeType
 edgeType (Edge et _) = et
+
+isEdgeOfType :: Ord a => EdgeType ->  Edge a -> Bool
+isEdgeOfType et = (== et) . edgeType
+
 
 otherEdgeType :: EdgeType -> EdgeType
 otherEdgeType PredicateEdge = BindingEdge
@@ -85,7 +178,6 @@ isEffect :: Ord a => Edge a -> Bool
 isEffect (Edge PredicateEdge e) = not $ null [ () | Vertex _ (Effect, _, _) <- Set.toList e ]
 isEffect _ = False
 
-type HyperGraph a = Set (Edge a)
 
 getEffectP :: Ord a => HyperGraph a -> Edge a
 getEffectP hg = fromMaybe (error "could not find effect in hyper graph")
@@ -198,5 +290,4 @@ fromState :: TotalState                -- ^ The state the action was executed in
 fromState s lgp prob dom = undefined where
     -- effEdge = toPredEdge lgp Effect 1
     -- predPreds = foldl 
-
 
