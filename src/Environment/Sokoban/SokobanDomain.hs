@@ -7,8 +7,8 @@ import           Planning
 import           Planning.PDDL
 -- import           Planning.PDDL.Logic ()
 
-fluentPredicate :: PredicateSpec -> [Name] -> FluentPredicate
-fluentPredicate (Predicate pname _) ns = Predicate pname $ map Ref ns
+fluentPredicate :: PredicateSpec -> [Variable] -> FluentPredicate
+fluentPredicate (Predicate pname _) ns = Predicate pname $ map TVar ns
 
 groundedPredicate :: PredicateSpec -> [Name] -> GroundedPredicate
 groundedPredicate (Predicate pname _) = Predicate pname
@@ -43,14 +43,15 @@ mkActionSpec aname paras t conds effs =
                , asTypes   = t
                }
 
-con :: [(PredicateSpec, [Name])] -> GoalDesc
-con = GAnd . map (G . Pos . uncurry fluentPredicate)
+con :: [Literal (PredicateSpec, [Name])] -> GoalDesc
+con = GAnd . map (GLit . (fmap uncurry fluentPredicate))
+-- con = GAnd . map (GLit . sign . uncurry fluentPredicate)
 
 conGrounded :: [(PredicateSpec, [Name])] -> Formula Name
 conGrounded = Con . map (Pred . uncurry groundedPredicate)
 
 negCon :: [(PredicateSpec, [Name])] -> Formula Argument
-negCon = Con . map (Neg . Pred . uncurry fluentPredicate)
+negCon = GAnd . map (Neg . Pred . uncurry fluentPredicate)
 
 negConGrounded :: [(PredicateSpec, [Name])] -> Formula Name
 negConGrounded = Con . map (Neg . Pred . uncurry groundedPredicate)
@@ -92,7 +93,7 @@ moveCond adjPred [from, to] =
         ]
 moveCond _ args = error $ wrongArityError "moveCond" args 2
 
-pushCondNotGoal :: PredicateSpec  -> [Name] -> Formula Argument
+pushCondNotGoal :: PredicateSpec  -> [Name] -> GoalDesc
 pushCondNotGoal adjPred [c, soko, from, to] = poss `conjunction` mapNegate negs where
     poss = con  [ (sokobanAt, [soko])
                 , (at, [c, from])

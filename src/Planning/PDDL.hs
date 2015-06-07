@@ -74,10 +74,6 @@ data Term = TName Name
           | TVar  Variable
           deriving (Eq, Ord, Show)
 
-data LitPred a = Pos (Predicate a)
-               | Neg (Predicate a)  
-               deriving (Eq, Ord, Show)
-
 data GoalDesc = GAnd [GoalDesc]
               | GLit (LitPred Term)
               | GOr  [GoalDesc]
