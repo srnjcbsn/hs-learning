@@ -5,6 +5,8 @@ import           Environment.Sokoban hiding (Object)
 import           Logic.Formula
 import           Planning
 import           Planning.PDDL
+import           Learning
+import qualified Learning.PDDL       as PDDL
 
 import           Data.Char           (isDigit)
 import           Data.List           (partition)
@@ -14,12 +16,14 @@ import qualified Data.Map            as Map
 import           Data.Maybe          (mapMaybe)
 import           Data.Set            (Set)
 import qualified Data.Set            as Set
-
 data SokobanPDDL = SokobanPDDL
     { world           :: World
     , locMap          :: Map Location Coord
     , persistentState :: Set GroundedPredicate
     } deriving (Show)
+
+instance Inquirable SokobanPDDL PDDLProblem (PDDL.PDDLInfo SokobanPDDL) where
+    inquire _ _ = return Nothing
 
 instance Env.Environment SokobanPDDL where
     toState     = toState

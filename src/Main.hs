@@ -32,8 +32,7 @@ import           System.Directory                         (removeFile)
 import           System.IO.Error
 import           Text.Show.Pretty
 
-instance Inquirable SokobanPDDL PDDLProblem (PDDL.PDDLInfo SokobanPDDL) where
-    inquire _ _ = return Nothing
+
 
 deltaKnl :: (NCT.PreKnowledge, NCT.EffKnowledge)
          -> (NCT.PreKnowledge, NCT.EffKnowledge)
