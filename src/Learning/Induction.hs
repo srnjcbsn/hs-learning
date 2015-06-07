@@ -67,26 +67,26 @@ variants (args:rest) = allmapped
     restMapped = variants rest
     allmapped = List.concatMap (appendToAll restMapped) (Set.toList args)
 
-allFluents :: [Argument] -> PredicateSpec -> Set FluentPredicate
+allFluents :: [Term] -> PredicateSpec -> Set FluentPredicate
 allFluents paras (Predicate name args) =
         Set.fromList $ map (Predicate name) $ replicateM (length args) paras
 
 -- | Turns the output produce from Deducts into PDDL format
 --   it will assume objects are Constants
-asPDDL :: [Set (Either Object Name)] -> [Set Argument]
+asPDDL :: [Set (Either Object Name)] -> [Set Term]
 asPDDL res = pddl
   where
     toPDDL v =
       case v of
-       Left arg -> Const arg
-       Right p -> Ref p
+       Left arg -> TName arg
+       Right p -> TVar p
     pddl = List.map (Set.map toPDDL) res
 
 -- | Takes a grounded predicate and produces all ungrounded possibilities
 unground ::  [Name] -- ^ the paramters of the action spec
           -> [Object] -- ^ the arguments the action was executed with
           -> [Object]  -- ^ the predicate it produced
-          -> [Set Argument] -- ^ a list of possibilities [Arg1, Arg2,..., ArgN ] where the Args are sets of options
+          -> [Set Term] -- ^ a list of possibilities [Arg1, Arg2,..., ArgN ] where the Args are sets of options
 unground paras args objs = induction
   where
     induction = asPDDL $ induct paras args objs
@@ -98,7 +98,7 @@ ungroundNExpand paras args gp = Set.fromList
 
 -- | Expands the output of unground and provides all the ungrounded predicates that could be produced
 --   given [{x,y}, {x}] and "p" produces p(x,x) p(y,x)
-expandFluents :: Name -> [Set Argument] -> [FluentPredicate]
+expandFluents :: Name -> [Set Term] -> [FluentPredicate]
 expandFluents name argOptions = preds
   where
     args = variants argOptions

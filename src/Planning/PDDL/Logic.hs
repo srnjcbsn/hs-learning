@@ -5,7 +5,6 @@ module Planning.PDDL.Logic
     , instantiateAction
     , ground
     , applyAction
-    , groundPreconditions
     , isSatisfied
     ) where
 
@@ -45,13 +44,13 @@ findActionSpec domain (n, _) = case actionSpec domain n of
 --     List.foldl (\changes f -> TSet.union changes $ insForm m f ) TSet.empty fs
 
 -- | Checks if the preconditions of a grounded action are satisfied
-isActionValid :: State -> GroundedAction -> Bool
-isActionValid s (as, _, _) =  isSatisfied (asPrecond as) s
+isActionValid :: GroundedAction -> Bool
+isActionValid =  fst
 
 -- | Applies the grounded actions to a state, if the action is not valid nothing is returned
 applyAction :: State -> GroundedAction -> Maybe State
-applyAction s act@(_,_,(posEff,negEff))
-    | isActionValid s act = Just $ Set.union (Set.difference s negEff) posEff
+applyAction s act@(_,(posEff,negEff))
+    | isActionValid act = Just $ Set.union (Set.difference s negEff) posEff
     | otherwise           = Nothing
 
 constMap :: [Name] -> Map Term Object
@@ -104,8 +103,8 @@ isSatisfied = undefined
 -- groundPreconditions :: ActionSpec -> [Name] -> GoalDesc
 -- groundPreconditions as args = fmap (substitute (asParas as) args) (asPrecond as)
 
--- applicable :: ActionSpec -> State -> [Name] -> Bool
--- applicable as s args = isSatisfied (groundPreconditions as args) s
+applicable :: ActionSpec -> State -> [Name] -> Bool
+applicable as s args = undefined
 
 numberOfSatisfied :: GoalDesc -> State -> Int
 numberOfSatisfied _ _ = 1
