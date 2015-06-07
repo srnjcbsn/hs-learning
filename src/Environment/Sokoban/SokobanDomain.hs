@@ -5,7 +5,7 @@ import qualified Data.Map            as Map
 import           Logic.Formula
 import           Planning
 import           Planning.PDDL
-import           Planning.PDDL.Logic ()
+-- import           Planning.PDDL.Logic ()
 
 fluentPredicate :: PredicateSpec -> [Name] -> FluentPredicate
 fluentPredicate (Predicate pname _) ns = Predicate pname $ map Ref ns
@@ -13,11 +13,26 @@ fluentPredicate (Predicate pname _) ns = Predicate pname $ map Ref ns
 groundedPredicate :: PredicateSpec -> [Name] -> GroundedPredicate
 groundedPredicate (Predicate pname _) = Predicate pname
 
+-- mkActionSpec :: Name
+--              -> [Name]
+--              -> Map Name Type
+--              -> ([Name] -> Formula Argument)
+--              -> ([Name] -> Formula Argument)
+--              -> ActionSpec
+-- mkActionSpec aname paras t conds effs =
+--     ActionSpec { asConstants  = []
+--                , asName    = aname
+--                , asParas   = paras
+--                , asPrecond = conds paras
+--                , asEffect  = effs paras
+--                , asTypes   = t
+--                }
+
 mkActionSpec :: Name
-             -> [Name]
+             -> [Variable]
              -> Map Name Type
-             -> ([Name] -> Formula Argument)
-             -> ([Name] -> Formula Argument)
+             -> ([Variable] -> GoalDesc)
+             -> ([Variable] -> Effect)
              -> ActionSpec
 mkActionSpec aname paras t conds effs =
     ActionSpec { asConstants  = []
@@ -27,8 +42,9 @@ mkActionSpec aname paras t conds effs =
                , asEffect  = effs paras
                , asTypes   = t
                }
-con :: [(PredicateSpec, [Name])] -> Formula Argument
-con = Con . map (Pred . uncurry fluentPredicate)
+
+con :: [(PredicateSpec, [Name])] -> GoalDesc
+con = GAnd . map (G . Pos . uncurry fluentPredicate)
 
 conGrounded :: [(PredicateSpec, [Name])] -> Formula Name
 conGrounded = Con . map (Pred . uncurry groundedPredicate)
@@ -61,14 +77,14 @@ moveTypes, pushTypes :: Map Name Type
 moveTypes = Map.fromList $ zip moveParas [locType, locType]
 pushTypes = Map.fromList $ zip pushParas [crateType, locType, locType, locType]
 
-predicate :: PredicateSpec -> [Name] -> Formula Argument
-predicate ps paras = Pred $ fluentPredicate ps paras
+-- predicate :: PredicateSpec -> [Variable] -> Formula Argument
+-- predicate ps paras = Pred $ fluentPredicate ps paras
 
 wrongArityError :: Show a => String -> [a] -> Int -> String
 wrongArityError n args ar = n ++ " called with wrong arity. Arguments: "
                             ++ show args ++ " but arity is " ++ show ar
 
-moveCond :: PredicateSpec -> [Name] -> Formula Argument
+moveCond :: PredicateSpec -> [Variable] -> GoalDesc
 moveCond adjPred [from, to] =
     con [ (sokobanAt, [from])
         , (adjPred, [from, to])

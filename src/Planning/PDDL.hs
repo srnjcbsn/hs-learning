@@ -6,13 +6,16 @@ module Planning.PDDL
     , baseType
 
     -- * Formulae
-    , Formula (..)
     , FluentPredicate
-    , Argument (Const, Ref)
+    , Variable
+    , Term (..)
+    , LitPred (..)
     , pName
     , pArgs
 
     -- * Composite types
+    , GoalDesc (..)
+    , Effect (..)
     , PDDLDomain (..)
     , PDDLProblem (..)
     , PredicateSpec
@@ -28,7 +31,7 @@ module Planning.PDDL
     -- * Grounded data
     , GroundedPredicate
     , GroundedChanges
-    , GroundedAction
+    -- , GroundedAction
     , State
     , Plan
 
@@ -52,29 +55,51 @@ import           Data.Maybe    (fromMaybe)
 import           Data.Set      (Set)
 import qualified Data.Set      as Set
 
-data Argument = Const Name
-              | Ref Name
-              deriving (Show, Eq, Ord)
+-- data Argument = Const Name
+--               | Ref Name
+--               deriving (Show, Eq, Ord)
 
-type FluentPredicate = Predicate Argument
+type FluentPredicate = Predicate Term
 type PredicateSpec = Predicate (Name, Type)
 
-type GrFormula = Formula Name
-
-type UngrFormula = Formula Argument
-
-data ActionSpec = ActionSpec
-    { asName      :: String
-    , asParas     :: [Name]
-    , asPrecond   :: Formula Argument
-    , asEffect    :: Formula Argument
-    , asConstants :: [Name]
-    , asTypes     :: Map Name Type
-    } deriving (Show, Eq, Ord)
+-- type GrFormula = Formula Name
+-- type UngrFormula = Formula Argument
 
 type GroundedChanges = (Set GroundedPredicate, Set GroundedPredicate)
+-- type GroundedAction = (GrFormula, GroundedChanges)
 
-type GroundedAction = (GrFormula, GroundedChanges)
+type Variable = String
+
+data Term = TName Name
+          | TVar  Variable
+          deriving (Eq, Ord, Show)
+
+data LitPred a = Pos (Predicate a)
+               | Neg (Predicate a)  
+               deriving (Eq, Ord, Show)
+
+data GoalDesc = GAnd [GoalDesc]
+              | GLit (LitPred Term)
+              | GOr  [GoalDesc]
+              | GNOt [GoalDesc]
+              deriving (Eq, Ord, Show)
+
+data Effect = EAnd [Effect]
+            | ELit (LitPred Term)
+            | EForall [Variable] Effect
+            | EWhen GoalDesc Effect
+            deriving (Eq, Ord, Show)
+
+data ActionSpec = ActionSpec
+    { asName       :: String
+    , asParas      :: [Name]
+    -- , asPrecond    :: Formula Argument
+    , asPrecond    :: GoalDesc
+    -- , asEffect     :: Formula Argument
+    , asEffect     :: Effect
+    , asConstants  :: [Name]
+    , asTypes      :: Map Name Type
+    } deriving (Show, Eq, Ord)
 
 data PDDLDomain = PDDLDomain
     { dmName         :: Name
@@ -89,7 +114,7 @@ data PDDLProblem = PDDLProblem
     , probObjs   :: [Object]
     , probDomain :: String
     , probState  :: State
-    , probGoal   :: Formula Name
+    , probGoal   :: GoalDesc
     , probTypes  :: Map Name Type
     } deriving (Show, Eq)
 
@@ -122,7 +147,7 @@ typeList aSpec = zip (asParas aSpec)
 pName :: FluentPredicate -> Name
 pName = predName
 
-pArgs :: FluentPredicate -> [Argument]
+pArgs :: FluentPredicate -> [Term]
 pArgs = predArgs
 
 paramNames :: PredicateSpec -> [Name]
@@ -145,15 +170,15 @@ writeState :: State -> String
 writeState state =
     unwords $ map writeGroundedPredicate $ Set.toList state
 
-writeArgument :: Argument -> String
-writeArgument (Ref r)   = "?" ++ r
-writeArgument (Const c) = c
+writeArgument :: Term -> String
+writeArgument (TVar r)   = "?" ++ r
+writeArgument (TName c) = c
 
-writeArgumentList :: [Argument] -> String
+writeArgumentList :: [Term] -> String
 writeArgumentList as = unwords (map writeArgument as)
 
--- writeParameterList :: [String] -> String
--- writeParameterList ps = writeArgumentList $ map Ref ps
+writeParameterList :: [String] -> String
+writeParameterList ps = writeArgumentList $ map TVar ps
 
 writeTypedList :: (Name -> String) -> [(Name, Type)] -> String
 writeTypedList w ts@((_, t) : _) = sameList ++ " - " ++ t ++ " " ++ rest
@@ -163,7 +188,7 @@ writeTypedList w ts@((_, t) : _) = sameList ++ " - " ++ t ++ " " ++ rest
 writeTypedList _ [] = ""
 
 writeTypedParameterList :: [(Name, Type)] -> String
-writeTypedParameterList = writeTypedList (writeArgument . Ref)
+writeTypedParameterList = writeTypedList (writeArgument . TVar)
 
 writeFluentPredicate :: FluentPredicate -> String
 writeFluentPredicate (Predicate pname as) =
@@ -185,18 +210,14 @@ writeActionSpec as =
     ++ "\t:effect " ++ eff ++ "\n"
     ++ ")"
         where params  = writeTypedParameterList (Map.toList (asTypes as))
-              precond = writeUngrFormula (asPrecond as)
-              eff     = writeUngrFormula (asEffect as)
+              precond = writeGoalDescription (asPrecond as)
+              eff     = writeEffect (asEffect as)
 
-writeUngrFormula :: UngrFormula -> String
-writeUngrFormula (Pred p) = writeFluentPredicate p
-writeUngrFormula (Neg f) = "(not " ++ writeUngrFormula f ++ ")"
-writeUngrFormula (Con fs) = "(and " ++ unwords (map writeUngrFormula fs) ++ ")"
+writeGoalDescription :: GoalDesc -> String 
+writeGoalDescription = undefined
 
-writeGrFormula :: GrFormula -> String
-writeGrFormula (Pred p) = writeGroundedPredicate p
-writeGrFormula (Neg f) = "(not " ++ writeGrFormula f ++ ")"
-writeGrFormula (Con fs) = "(and " ++ unwords (map writeGrFormula fs) ++ ")"
+writeEffect :: Effect -> String
+writeEffect = undefined
 
 writeProblem :: PDDLProblem -> String
 writeProblem prob =
@@ -205,7 +226,7 @@ writeProblem prob =
         objs      = writeTypedList id $ Map.toList (probTypes prob)
         objsStr   = "(:objects " ++ objs ++ ")"
         initStr   = "(:init " ++ writeState (probState prob) ++ ")"
-        goalStr   = "(:goal " ++ writeGrFormula (probGoal prob) ++ ")"
+        goalStr   = "(:goal " ++ writeGoalDescription (probGoal prob) ++ ")"
     in intercalate "\n\t" [defineStr, domStr, objsStr, initStr, goalStr] ++ ")"
 
 
