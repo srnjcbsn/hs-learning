@@ -28,12 +28,12 @@ predArgs :: Predicate a -> [a]
 predArgs (Predicate _ as) = as
 
 data Literal a = Pos a
-               | Not a
+               | Neg a
                deriving (Eq, Ord, Show)
 
 instance Functor Literal where
     fmap f (Pos a) = Pos (f a)
-    fmap f (Not a) = Not (f a)
+    fmap f (Neg a) = Neg (f a)
 
 -- | Pack 'b' into a literal with same sign as 'a'
 signAs :: b -> Literal a -> Literal b
@@ -42,4 +42,4 @@ signAs b = fmap (const b)
 -- | Extract the atom of a 'Literal', throwing aeay the sign
 atom :: Literal a -> a
 atom (Pos a) = a
-atom (Not a) = a
+atom (Neg a) = a

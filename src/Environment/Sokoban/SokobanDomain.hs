@@ -43,18 +43,20 @@ mkActionSpec aname paras t conds effs =
                , asTypes   = t
                }
 
-con :: [Literal (PredicateSpec, [Name])] -> GoalDesc
-con = GAnd . map (GLit . (fmap uncurry fluentPredicate))
--- con = GAnd . map (GLit . sign . uncurry fluentPredicate)
+gCon :: [Literal (PredicateSpec, [Name])] -> GoalDesc
+gCon = GAnd . map (GLit . (fmap $ uncurry fluentPredicate))
 
-conGrounded :: [(PredicateSpec, [Name])] -> Formula Name
-conGrounded = Con . map (Pred . uncurry groundedPredicate)
+eCon :: [Literal (PredicateSpec, [Variable])] -> Effect
+eCon = EAnd . map (ELit . (fmap $ uncurry fluentPredicate))
 
-negCon :: [(PredicateSpec, [Name])] -> Formula Argument
-negCon = GAnd . map (Neg . Pred . uncurry fluentPredicate)
-
-negConGrounded :: [(PredicateSpec, [Name])] -> Formula Name
-negConGrounded = Con . map (Neg . Pred . uncurry groundedPredicate)
+-- conGrounded :: [(PredicateSpec, [Name])] -> Formula Name
+-- conGrounded = Con . map (Pred . uncurry groundedPredicate)
+--
+-- negCon :: [(PredicateSpec, [Name])] -> Formula Argument
+-- negCon = GAnd . map (Neg . Pred . uncurry fluentPredicate)
+--
+-- negConGrounded :: [(PredicateSpec, [Name])] -> Formula Name
+-- negConGrounded = Con . map (Neg . Pred . uncurry groundedPredicate)
 
 hAdj, vAdj, sokobanAt, at, atGoal, clear, goal, notGoal :: PredicateSpec
 hAdj      = Predicate "hAdj" $ zip ["from", "to"] $ repeat locType
@@ -87,44 +89,42 @@ wrongArityError n args ar = n ++ " called with wrong arity. Arguments: "
 
 moveCond :: PredicateSpec -> [Variable] -> GoalDesc
 moveCond adjPred [from, to] =
-    con [ (sokobanAt, [from])
-        , (adjPred, [from, to])
-        , (clear, [to])
-        ]
+    gCon $ map Pos [ (sokobanAt, [from])
+                  , (adjPred, [from, to])
+                  , (clear, [to])
+                  ]
 moveCond _ args = error $ wrongArityError "moveCond" args 2
 
 pushCondNotGoal :: PredicateSpec  -> [Name] -> GoalDesc
-pushCondNotGoal adjPred [c, soko, from, to] = poss `conjunction` mapNegate negs where
-    poss = con  [ (sokobanAt, [soko])
-                , (at, [c, from])
-                , (adjPred, [soko, from])
-                , (adjPred, [from, to])
-                , (clear, [to])
-                ]
-    negs = con  [ (goal, [to])
-                ]
+pushCondNotGoal adjPred [c, soko, from, to] = gCon $ map Pos 
+    [ (sokobanAt, [soko])
+    , (at, [c, from])
+    , (adjPred, [soko, from])
+    , (adjPred, [from, to])
+    , (clear, [to])
+    ]
+    ++ [ Not (goal, [to]) ]
 pushCondNotGoal _ args = error $ wrongArityError "pushCondNotGoal" args 4
 
-pushCondGoal :: PredicateSpec  -> [Name] -> Formula Argument
-pushCondGoal adjPred  [c, soko, from, to] =
-    con [ (sokobanAt, [soko])
-        , (at, [c, from])
-        , (adjPred, [soko, from])
-        , (adjPred, [from, to])
-        , (clear, [to])
-        , (goal, [to])
-        ]
+pushCondGoal :: PredicateSpec  -> [Name] -> GoalDesc
+pushCondGoal adjPred  [c, soko, from, to] = gCon $ map Pos 
+    [ (sokobanAt, [soko])
+    , (at, [c, from])
+    , (adjPred, [soko, from])
+    , (adjPred, [from, to])
+    , (clear, [to])
+    , (goal, [to])
+    ]
 pushCondGoal _ args = error $ wrongArityError "pushCondGoal" args 4
 
-moveEff :: [Name] -> Formula Argument
-moveEff [from, to] = poss `conjunction` mapNegate negs where
-    poss = con [ (sokobanAt, [to])
-               , (clear, [from])
-               ]
-
-    negs = con [ (sokobanAt, [from])
-               , (clear, [to])
-               ]
+moveEff :: [Name] -> Effect
+moveEff [from, to] =
+    eCon [ Pos (sokobanAt, [to])
+         , Pos (clear, [from])
+         ] ++
+         [ Not (sokobanAt, [from])
+         , Not (clear, [to])
+         ]
 moveEff args = error $ wrongArityError "moveEff" args 2
 
 pushEffShared :: [Name] -> Formula Argument
