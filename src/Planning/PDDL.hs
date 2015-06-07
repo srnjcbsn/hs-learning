@@ -54,18 +54,11 @@ import           Data.Maybe    (fromMaybe)
 import           Data.Set      (Set)
 import qualified Data.Set      as Set
 
--- data Argument = Const Name
---               | Ref Name
---               deriving (Show, Eq, Ord)
-
 type FluentPredicate = Predicate Term
 type PredicateSpec = Predicate (Name, Type)
 type GroundedAction = (Bool, GroundedEffects)
--- type GrFormula = Formula Name
--- type UngrFormula = Formula Argument
 
 type GroundedEffects = (Set GroundedPredicate, Set GroundedPredicate)
--- type GroundedAction = (GrFormula, GroundedChanges)
 
 type Variable = String
 
@@ -77,7 +70,7 @@ data Term = TName Name
 data GoalDesc = GAnd [GoalDesc]
               | GLit (LitPred Term)
               | GOr  [GoalDesc]
-              | GNOt [GoalDesc]
+              | GNot GoalDesc
               deriving (Eq, Ord, Show)
 
 data Effect = EAnd [Effect]
