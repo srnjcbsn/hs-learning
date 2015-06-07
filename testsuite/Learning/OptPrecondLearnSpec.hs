@@ -18,25 +18,30 @@ import           Planning.PDDL
 import Learning.PDDL.NonConditionalTypes
 import        Learning.PDDL.NonConditionalKnowledge
 
+p, q :: (String -> a) -> Variable -> Variable -> Predicate a
 p f x y = Predicate "p" [f x,f y]
 q f x y = Predicate "q" [f x,f y]
-pP x y = Pred $ p Ref x y
 
-initActspec preconds = ActionSpec
-    { asName = "as"
-    , asParas = ["x", "y", "z"]
-    , asPrecond = Con preconds
-    , asEffect = Con []
+pP :: Variable -> Variable -> Predicate Term
+pP x y = p TVar x y
+
+initActSpec :: [GoalDesc] -> ActionSpec
+initActSpec preconds = ActionSpec
+    { asName      = "as"
+    , asParas     = ["x", "y", "z"]
+    , asPrecond   = GAnd preconds
+    , asEffect    = EAnd []
     , asConstants = []
-    , asTypes = Map.empty
+    , asTypes     = Map.empty
     }
 
+initDomain :: PDDLDomain
 initDomain = PDDLDomain
-    { dmName = "TestDomain"
-    , dmPredicates = [p (flip (,) baseType) "x" "y"]
-    , dmActionsSpecs = [initActspec []]
-    , dmConstants = []
-    , dmTypes = []
+    { dmName         = "TestDomain"
+    , dmPredicates   = [p (flip (,) baseType) "x" "y"]
+    , dmActionsSpecs = [initActSpec []]
+    , dmConstants    = []
+    , dmTypes        = []
     }
 
 precondKnl :: PDDLKnowledge env -> Name -> PreKnowledge
@@ -84,13 +89,13 @@ testPrecondLearnSpec = do
                 preknl = knlFromPk kn1
                 actualUnknowns = negUnknown preknl
 
-                expectedUnknowns = Set.delete (p Ref "x" "y") actualUnknowns
+                expectedUnknowns = Set.delete (p TVar "x" "y") actualUnknowns
              in actualUnknowns `shouldBe` expectedUnknowns
 
         it "can prove that a positive predicate is a precondition when an action fails" $
             let as = "as"
                 s0 = Set.empty
-                posUnks = Set.fromList [p Ref "x" "y"]
+                posUnks = Set.fromList [p TVar "x" "y"]
                 kn0 = PreKnowledge
                         Knowledge
                           { knowns = (Set.empty, Set.empty)
@@ -111,7 +116,7 @@ testPrecondLearnSpec = do
         it "can prove that a positive predicate is a precondition when an action succeeds" $
             let as = "as"
                 s = Set.fromList [p id "a" "b"]
-                posCand = Set.fromList [p Ref "x" "y", p Ref "y" "x"]
+                posCand = Set.fromList [p TVar "x" "y", p TVar "y" "x"]
                 cand = Set.singleton (posCand, Set.empty)
                 posUnks = posCand
                 kn0 = PreKnowledge
@@ -126,14 +131,14 @@ testPrecondLearnSpec = do
 
                 actualKnowns = (posKnown . knlFromPk) kn1
 
-                expectedKnowns = Set.singleton $ p Ref "x" "y"
+                expectedKnowns = Set.singleton $ p TVar "x" "y"
 
             in actualKnowns `shouldBe`expectedKnowns
         it "removes candidates containing a known positive precondition" $
             let as = "as"
                 s = Set.fromList [p id "a" "b", p id "a" "c"]
-                posCand = Set.fromList [p Ref "x" "y", p Ref "y" "x"]
-                posRedundantCand = Set.fromList [p Ref "x" "y", p Ref "x" "z"]
+                posCand = Set.fromList [p TVar "x" "y", p TVar "y" "x"]
+                posRedundantCand = Set.fromList [p TVar "x" "y", p TVar "x" "z"]
                 cand = Set.fromList [ (posCand, Set.empty)
                                     , (posRedundantCand, Set.empty)
                                     ]
@@ -151,16 +156,16 @@ testPrecondLearnSpec = do
 
                 expected = PreKnowledge
                             Knowledge
-                              { knowns = ( Set.singleton $ p Ref "x" "y"
+                              { knowns = ( Set.singleton $ p TVar "x" "y"
                                          , Set.empty)
-                              , unknowns = ( Set.singleton $ p Ref "x" "z"
+                              , unknowns = ( Set.singleton $ p TVar "x" "z"
                                            , Set.empty) }
                               Set.empty
 
             in actual `shouldBe` expected
         it "can prove that a negative predicate is a precondition when an action fails" $
             let s = Set.singleton $ p id "a" "b"
-                negUnks = Set.singleton $ p Ref "x" "y"
+                negUnks = Set.singleton $ p TVar "x" "y"
                 kn0 = PreKnowledge
                         Knowledge
                           { knowns = TSet.empty
@@ -178,7 +183,7 @@ testPrecondLearnSpec = do
              in  actual `shouldBe` expected
         it "can prove that a negative predicate is a precondition when an action succeeds" $
             let s = Set.singleton $ p id "b" "a"
-                negCand = Set.fromList [p Ref "x" "y", p Ref "y" "x"]
+                negCand = Set.fromList [p TVar "x" "y", p TVar "y" "x"]
                 cand = Set.singleton (Set.empty, negCand)
                 negUnks = negCand
                 kn0 = PreKnowledge
@@ -192,15 +197,15 @@ testPrecondLearnSpec = do
 
                 expected = PreKnowledge
                         Knowledge
-                          { knowns = (Set.empty, Set.singleton $ p Ref "x" "y")
+                          { knowns = (Set.empty, Set.singleton $ p TVar "x" "y")
                           , unknowns = TSet.empty }
                           Set.empty
 
             in actual `shouldBe` expected
         it "removes candidates containing a known negative precondition" $
             let s = Set.singleton $ p id "b" "a"
-                negCand = Set.fromList [p Ref "x" "y", p Ref "y" "x"]
-                negRedundantCand = Set.fromList [p Ref "x" "y", p Ref "x" "z"]
+                negCand = Set.fromList [p TVar "x" "y", p TVar "y" "x"]
+                negRedundantCand = Set.fromList [p TVar "x" "y", p TVar "x" "z"]
                 cand = Set.fromList [ (Set.empty, negCand)
                                     , (Set.empty, negRedundantCand)
                                     ]
@@ -218,8 +223,8 @@ testPrecondLearnSpec = do
 
                 expected = PreKnowledge
                         Knowledge
-                          { knowns = (Set.empty, Set.singleton $ p Ref "x" "y")
-                          , unknowns = (Set.empty, Set.singleton $ p Ref "x" "z") }
+                          { knowns = (Set.empty, Set.singleton $ p TVar "x" "y")
+                          , unknowns = (Set.empty, Set.singleton $ p TVar "x" "z") }
                           Set.empty
 
             in actual `shouldBe`expected
