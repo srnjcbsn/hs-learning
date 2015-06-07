@@ -17,6 +17,8 @@ module Planning.PDDL
     , PDDLProblem (..)
     , PredicateSpec
     , ActionSpec (..)
+    , PDDLEnvSpec (..)
+    , pddlEnvSpec
     , paramNames
     , actionSpec
     , unsActionSpec
@@ -49,7 +51,6 @@ import qualified Data.Map      as Map
 import           Data.Maybe    (fromMaybe)
 import           Data.Set      (Set)
 import qualified Data.Set      as Set
-import           Control.Monad (replicateM)
 
 data Argument = Const Name
               | Ref Name
@@ -92,7 +93,22 @@ data PDDLProblem = PDDLProblem
     , probTypes  :: Map Name Type
     } deriving (Show, Eq)
 
+data PDDLEnvSpec = PDDLEnvSpec
+    { envsPredSpecs :: [PredicateSpec]
+    , envsConsts    :: [Name]
+    , envsObjs      :: [Object]
+    , envsObjTypes  :: Map Name Type
+    }
+
 data PDDLGraph = PDDLGraph (PDDLDomain, PDDLProblem)
+
+pddlEnvSpec :: PDDLDomain -> PDDLProblem -> PDDLEnvSpec
+pddlEnvSpec dom prob = PDDLEnvSpec 
+    { envsPredSpecs = dmPredicates dom
+    , envsConsts    = dmConstants dom
+    , envsObjs      = probObjs prob
+    , envsObjTypes  = probTypes prob
+    }
 
 baseType :: Type
 baseType = "object"
