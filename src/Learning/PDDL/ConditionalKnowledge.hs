@@ -24,6 +24,8 @@ import qualified Data.TupleSet                       as TSet
 import qualified Data.List as List
 import Control.Arrow ((***))
 
+type HyperGraph a = Set (Edge a)
+
 data Literal a = Pos a
                | Not a
                deriving (Eq, Ord, Show)
@@ -34,7 +36,7 @@ type PredInfo = (PType, Literal Name, Int)
 
 data Ord a => Vertex a = Vertex a PredInfo deriving (Eq, Ord)
 
-data PType = Effect 
+data PType = Effect
            | Precond
            deriving (Eq, Ord)
 
@@ -43,8 +45,80 @@ data EdgeType = BindingEdge
               deriving (Eq, Ord)
 
 data Edge a = Edge EdgeType (EdgeSet a)
+            deriving (Eq, Ord)
 
--- data Ord a => Edge a = BindingEdge         (EdgeSet a) 
+universeState :: [PredicateSpec]
+              -> [Object]
+              -> State
+universeState specs objs = Set.fromList allPreds where
+  args = flip replicateM objs
+  toPreds (Predicate n a) = map (Predicate n) (args $ length a)
+  allPreds = concatMap toPreds specs
+
+
+toPredInfo :: PType
+           -> (Name -> Literal Name)
+           -> GroundedPredicate
+           -> [(Object,PredInfo)]
+toPredInfo ptype litType (Predicate n objs) = map toPInfo infos where
+  infos = zip (map ((,) n) objs) [1..]
+  toPInfo ((na,obj), pos) = (,) obj (ptype, litType na, pos)
+
+
+fromTransition :: [PredicateSpec]
+          -> [Object]
+          -> Transition
+          -> [HyperGraph Int]
+fromTransition specs objs (s,_,s') = map effToHypergraph effData where
+  negPre = Set.toList $ universeState specs objs \\ s
+  posPre = Set.toList s
+
+  posEff = Set.toList $ s' \\ s
+  negEff = Set.toList $ s \\ s'
+
+  split pt lt preds = map (toPredInfo pt lt) preds
+
+  idPred initId p = zip [initId..] p
+
+  idPreds initId (p :rest) = idPred initId p : idPreds (initId + length p) rest
+  idPreds _ [] = []
+
+  toNode (idv, (_, pinfo)) = Vertex idv pinfo
+  toNodeBind (idv, (b, pinfo)) = (b, Vertex idv pinfo)
+
+  groupBindings elems = Map.elems
+                      $ Map.fromListWith (++) [(k, [v]) | (k, v) <- elems]
+
+  posPreInitId = 0
+  posPreNodeData = idPreds posPreInitId $ split Precond Pos posPre
+  posPreNodeBindings = concatMap (map toNodeBind) posPreNodeData
+
+
+  negPreInitId = posPreInitId + length posPreNodeBindings
+  negPreNodeData = idPreds negPreInitId $ split Precond Not negPre
+  negPreNodeBindings = concatMap (map toNodeBind) negPreNodeData
+
+  effInitId = negPreInitId + length negPreNodeBindings
+  effData = split Effect Pos posEff ++ split Effect Not negEff
+
+  predEdges nodeData = map ((Edge PredicateEdge) . Set.fromList)
+                     $ map (map toNode) nodeData
+  bindingEdges binding = map ((Edge BindingEdge) . Set.fromList)
+                       $ groupBindings binding
+
+  prePredEdges =  predEdges posPreNodeData
+               ++ predEdges negPreNodeData
+  preNodeBindings = posPreNodeBindings
+                  ++  negPreNodeBindings
+
+  effToHypergraph pEffData =
+    let vData = idPred effInitId pEffData
+        pEdges = [Edge PredicateEdge $ Set.fromList $ map toNode vData]
+               ++ prePredEdges
+        bEdges = bindingEdges $ map toNodeBind vData ++ preNodeBindings
+     in Set.fromList $ pEdges ++ bEdges
+
+-- data Ord a => Edge a = BindingEdge         (EdgeSet a)
 --                      | PredicateEdge  (EdgeSet a)
 --                      deriving (Eq, Ord)
 
@@ -61,13 +135,12 @@ edgeType (Edge et _) = et
 -- | An edge is an effect edge if it is a predicate edge and contains a vertex
 --   marked as an effect.
 isEffect :: Ord a => Edge a -> Bool
-isEffect (Edge PredicateE e) = not $ null [ () | Vertex _ (Effect, _, _) <- Set.toList e ]
+isEffect (Edge PredicateEdge e) = not $ null [ () | Vertex _ (Effect, _, _) <- Set.toList e ]
 isEffect _ = False
 
-type HyperGraph a = Set (Edge a)
 
 getEffectP :: Ord a => HyperGraph a -> Edge a
-getEffectP hg = fromMaybe (error "could not find effect in hyper graph") 
+getEffectP hg = fromMaybe (error "could not find effect in hyper graph")
               $ List.find isEffect (Set.toList hg)
 
 newId :: Ord a => Vertex a -> Vertex a -> Maybe (Vertex (a, a))
@@ -99,10 +172,12 @@ containingEdges :: Ord a => HyperGraph a -> Vertex a -> [Edge a]
 containingEdges hg v = filter (edgeMember v) $ Set.toList hg
 
 containingPredicateEdge :: Ord a => HyperGraph a -> Vertex a -> Maybe (Edge a)
-containingPredicateEdge hg v = listToMaybe [ PredicateEdge e | PredicateEdge e <- containingEdges hg v ]
+containingPredicateEdge hg v = listToMaybe [ Edge PredicateEdge e | Edge PredicateEdge e <- containingEdges hg v ]
 
 containingBindingEdge :: Ord a => HyperGraph a -> Vertex a -> Maybe (Edge a)
-containingBindingEdge hg v = listToMaybe [ BindingEdge e | BindingEdge e <- containingEdges hg v ]
+containingBindingEdge hg v = listToMaybe [ Edge BindingEdge e | Edge BindingEdge e <- containingEdges hg v ]
+
+
 
 mergeEdges :: Ord a
            => HyperGraph a
@@ -111,24 +186,13 @@ mergeEdges :: Ord a
            -> Edge a
            -> Edge a
            -> HyperGraph (a, a)
-mergeEdges h1 h2 h' e1 e2 = undefined where
-    int    = edgeSet e1 `intersect` edgeSet e2
-
-mergeEdges :: Ord a 
-           => HyperGraph a
-           -> HyperGraph a
-           -> HyperGraph (a, a)
-           -> Edge a 
-           -> Edge a
-           -> HyperGraph (a, a)
-mergeEdges h1 h2 h' (PredicateEdge e1) (PredicateEdge e2) = rest where
-    int    = edgeIntersection e1 e2
-    intSet = PredicateEdge $ Set.fromList int
-    h''    = Set.insert intSet h'
+mergeEdges h1 h2 h' (Edge PredicateEdge e1) (Edge PredicateEdge e2) = rest where
+    int    = intersect e1 e2
+    newEdge = Edge PredicateEdge $ Set.fromList int
+    h''    = Set.insert newEdge h'
     invs   = [ newIdInv v | v <- int, not $ isInBindingEdge h' v ]
     oldes  = map ((containingBindingEdge h1) *** (containingBindingEdge h2)) invs
     valids = [ (e1', e2') | (Just e1', Just e2') <- oldes ]
     rest   = foldl (\hh (e1', e2') -> mergeEdges h1 h2 hh e1' e2') h'' valids
-mergeEdges h1 h2 h' (BindingEdge e1) (BindingEdge e2) =
+mergeEdges h1 h2 h' (Edge BindingEdge e1) (Edge BindingEdge e2) =
     undefined
-
