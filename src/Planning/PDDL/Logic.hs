@@ -45,7 +45,7 @@ findActionSpec domain (n, _) = case actionSpec domain n of
 
 -- | Checks if the preconditions of a grounded action are satisfied
 isActionValid :: GroundedAction -> Bool
-isActionValid =  fst
+isActionValid = fst
 
 -- | Applies the grounded actions to a state, if the action is not valid nothing is returned
 applyAction :: State -> GroundedAction -> Maybe State
