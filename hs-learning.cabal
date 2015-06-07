@@ -23,6 +23,7 @@ library
                  , Planning.PDDL.Logic
                  , Planning.PDDL.Samples.SimpleBox
                  , Planning.PDDL.Samples.BlocksWorld
+                 , Planning.PDDL.Serializer
                  , Learning
                  , Learning.Induction
                  , Learning.PDDL.NonConditionalKnowledge
