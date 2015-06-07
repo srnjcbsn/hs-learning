@@ -12,7 +12,7 @@ import           Logic.Formula
 import           Planning
 import           Planning.PDDL
 
-import           Control.Arrow                       ((***))
+import           Control.Arrow                       ((***), second)
 import           Control.Monad                       (liftM, replicateM,
                                                       sequence)
 import qualified Data.List                           as List
@@ -152,11 +152,11 @@ literalName :: Literal (Predicate a) -> Literal Name
 literalName (Pos (Predicate nm _)) = Pos nm
 literalName (Not (Predicate nm _)) = Pos nm
 
-toPredEdge :: Literal GroundedPredicate -> PType -> Int -> Edge Int
-toPredEdge lgp@(Pos (Predicate nm args)) pt n =  
-    Edge PredicateEdge $ Set.fromList vertList where 
-        vertList = zipWith mkVertex [1 .. length args] [n ..]
-        mkVertex n' m = Vertex m (pt, nm `signAs` lgp, n')
+toPredEdge :: Literal GroundedPredicate -> PType -> Int -> Edge (Object, Int)
+toPredEdge lgp@(Pos (Predicate nm args)) pt n = e where
+    e = Edge PredicateEdge $ Set.fromList vertList
+    vertList = zipWith3 mkVertex [1 .. length args] args [n .. length args]
+    mkVertex n' a m = Vertex (a, m) (pt, nm `signAs` lgp, n')
 
 -- | Construct all possible predicates given predicate specification from a 
 --   domain and objects from a problem.
@@ -176,6 +176,18 @@ totalState :: State -> PDDLDomain -> PDDLProblem -> TotalState
 totalState s dom prob = Set.map Pos s `Set.union` Set.map Not ns where
     ns = notInState s dom prob
 
+-- | Construct the binding edges for a hypergraph based on a list of predicate 
+--   edges that have already been constructed, and are carrying information 
+--   specifying which object they represent.
+mkBindingEdges :: Ord a => [Edge (Object, a)] -> Set (Edge a)
+mkBindingEdges pes = bes where
+    -- vs :: Ord a => [Vertex (Object, a)]
+    vs   = concatMap (Set.toList . edgeSet) pes
+    vMap =  Map.fromListWith Set.union $ map (second Set.singleton . tupleForm) vs
+    -- tupleForm :: Vertex (Object, a) -> (Object, Vertex a)
+    tupleForm (Vertex (o, i) pi) = (o, Vertex i pi)
+    bes  = Set.fromList $ map (Edge BindingEdge) $ Map.elems vMap
+
 -- | Constructs a hyper graph from a state and an effect (a grounded predicate)
 fromState :: TotalState                -- ^ The state the action was executed in
           -> Literal GroundedPredicate -- ^ An effect of the action to 
@@ -184,5 +196,7 @@ fromState :: TotalState                -- ^ The state the action was executed in
           -> PDDLDomain 
           -> HyperGraph Int
 fromState s lgp prob dom = undefined where
-    effEdge = toPredEdge lgp Effect 1
+    -- effEdge = toPredEdge lgp Effect 1
+    -- predPreds = foldl 
+
 
