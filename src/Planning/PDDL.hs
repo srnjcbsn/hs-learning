@@ -60,7 +60,7 @@ import qualified Data.Set      as Set
 
 type FluentPredicate = Predicate Term
 type PredicateSpec = Predicate (Name, Type)
-type GroundedAction = (ActionSpec, Action, GroundedEffects)
+type GroundedAction = (Bool, GroundedEffects)
 -- type GrFormula = Formula Name
 -- type UngrFormula = Formula Argument
 

@@ -53,7 +53,7 @@ allPreds :: [Name]
          -> [Name]
          -> Set FluentPredicate
 allPreds consts pSpecs paras = fPreds where
-    allParas = map Ref paras ++ map Const consts
+    allParas = map TVar paras ++ map TName consts
     fPreds = Set.unions $ map (allFluents allParas) pSpecs
 
 allPredsForAction :: PDDLDomain -> Name -> Set FluentPredicate

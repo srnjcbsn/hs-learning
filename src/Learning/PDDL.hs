@@ -17,5 +17,3 @@ data Environment env => PDDLInfo env = PDDLInfo
     , states      :: [env]
     , stepsDone   :: Int
     } deriving Show
-
-
