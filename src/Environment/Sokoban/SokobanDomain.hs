@@ -103,7 +103,7 @@ pushCondNotGoal adjPred [c, soko, from, to] = gCon $ map Pos
     , (adjPred, [from, to])
     , (clear, [to])
     ]
-    ++ [ Not (goal, [to]) ]
+    ++ [ Neg (goal, [to]) ]
 pushCondNotGoal _ args = error $ wrongArityError "pushCondNotGoal" args 4
 
 pushCondGoal :: PredicateSpec  -> [Name] -> GoalDesc
@@ -121,35 +121,28 @@ moveEff :: [Name] -> Effect
 moveEff [from, to] =
     eCon [ Pos (sokobanAt, [to])
          , Pos (clear, [from])
-         ] ++
-         [ Not (sokobanAt, [from])
-         , Not (clear, [to])
+         , Neg (sokobanAt, [from])
+         , Neg (clear, [to])
          ]
 moveEff args = error $ wrongArityError "moveEff" args 2
 
-pushEffShared :: [Name] -> Formula Argument
-pushEffShared [c, soko, from, to] = poss `conjunction` mapNegate negs where
-    poss = con
-            [ (sokobanAt, [from])
-            , (at, [c, to])
-            , (clear, [soko])
-            ]
-
-    negs = con
-            [ (sokobanAt, [soko])
-            , (at, [c, from])
-            , (clear, [to])
-            ]
+pushEffShared :: [Variable] -> [Literal (PredicateSpec, [Variable])]
+pushEffShared [c, soko, from, to] =
+    [ Pos (sokobanAt, [from])
+    , Pos (at, [c, to])
+    , Pos (clear, [soko])
+    , Neg (sokobanAt, [soko])
+    , Neg (at, [c, from])
+    , Neg (clear, [to])
+    ]
 pushEffShared args = error $ wrongArityError "pushEffShared" args 4
 
-pushEffGoal :: [Name] -> Formula Argument
-pushEffGoal paras@(c : _) = pushEffShared paras `conjunction` gPred
-    where gPred = Pred (fluentPredicate atGoal [c])
+pushEffGoal :: [Variable] -> Effect
+pushEffGoal paras@(c : _) = eCon $ pushEffShared paras ++ [Pos (atGoal, [c])]
 pushEffGoal args = error $ wrongArityError "pushEffGoal" args 4
 
-pushEffNotGoal :: [Name] -> Formula Argument
-pushEffNotGoal paras@(c : _) = pushEffShared paras `conjunction` ngPred
-    where ngPred = Neg $ Pred (fluentPredicate atGoal [c])
+pushEffNotGoal :: [Variable] -> Effect
+pushEffNotGoal paras@(c : _) = eCon $ pushEffShared paras ++ [Neg (atGoal, [c])]
 pushEffNotGoal args = error $ wrongArityError "pushEffNotGoal" args 4
 
 moveH, moveV, pushH, pushV, pushHGoal, pushVGoal :: ActionSpec

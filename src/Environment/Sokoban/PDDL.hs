@@ -311,8 +311,8 @@ toProblem :: World -> PDDLProblem
 toProblem pWorld =
     let crateObjs = [ t | Box t <- Map.elems (coordMap pWorld) ]
         structObjs = map writeLocation $ Map.keys (coordMap pWorld)
-        goalPred c = Pred $ Predicate atGoalName [c]
-        goalsF = Con $ map goalPred crateObjs
+        goalPred c = GLit . Pos $ Predicate atGoalName [TName c]
+        goalsF = GAnd $ map goalPred crateObjs
         boxMap = zip crateObjs (repeat crateType)
         structMap = zip structObjs (repeat locType)
     in PDDLProblem
