@@ -16,13 +16,11 @@ import           Planning.PDDL.Serializer
 p :: (Variable -> Term) -> Variable -> Predicate Term
 p f x = Predicate "p" [f x]
 
-predStrA, predStrB :: String
+predStrA :: String
 predStrA = "(a ?x Y)"
-predStrB = "(b ?z V)"
 
-predResA, predResB :: Predicate Term
+predResA :: Predicate Term
 predResA = Predicate "a" [TVar "x", TName "Y"]
-predResB = Predicate "b" [TVar "z", TName "V"]
 
 actionSpecStr :: String
 actionSpecStr = unlines [ "(:action act"
@@ -76,7 +74,7 @@ problemSpecRes =
                 , probObjs = ["x", "y"]
                 , probDomain = "dom"
                 , probState = Set.singleton $ Predicate "test1" ["x", "y"]
-                , probGoal = GLit $ Pos $ Predicate "test2" [TVar "x", TVar "y"]
+                , probGoal = GLit $ Pos $ Predicate "test2" [TName "x", TName "y"]
                 , probTypes = Map.fromList [("x", baseType), ("y", baseType)]
                 }
 
