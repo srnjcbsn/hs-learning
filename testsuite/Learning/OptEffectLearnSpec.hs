@@ -20,14 +20,14 @@ import        Learning.PDDL.NonConditionalKnowledge
 import qualified Data.TupleSet as TSet
 import           Data.TupleSet (TupleSet)
 
+p :: (Name -> t) -> Name -> Name -> Predicate t
 p f x y = Predicate "p" [f x,f y]
-pP x y = Pred $ p Ref x y
 
 initActspec effects = ActionSpec
     { asName = "as"
     , asParas = ["x", "y", "z"]
-    , asPrecond = Con []
-    , asEffect = Con effects
+    , asPrecond = GAnd []
+    , asEffect = EAnd effects
     , asConstants = []
     , asTypes = Map.empty
     }
@@ -40,7 +40,7 @@ initDomain as = PDDLDomain
     , dmTypes = []
     }
 
-actionPosEffectKnl :: PDDLKnowledge env -> Name -> TupleSet (Predicate Argument)
+actionPosEffectKnl :: PDDLKnowledge env -> Name -> TupleSet FluentPredicate
 actionPosEffectKnl pk name =
   let dk = domainKnowledge pk
       (_, effknl) = knlFromDomKnl dk name
@@ -48,7 +48,7 @@ actionPosEffectKnl pk name =
 
   in (posUnknown knl, posKnown knl)
 
-actionNegEffectKnl :: PDDLKnowledge env -> Name -> TupleSet (Predicate Argument)
+actionNegEffectKnl :: PDDLKnowledge env -> Name -> TupleSet FluentPredicate
 actionNegEffectKnl pk name =
     let dk = domainKnowledge pk
         (_, effknl) = knlFromDomKnl dk name
@@ -62,7 +62,7 @@ testEffectLearnSpec = do
           let x = "x"
               y = "y"
               z = "z"
-              actSpec = initActspec [pP x y, pP y z] -- Effect is P(x,y) P(y,z)
+              actSpec = initActspec [p TVar x y, p TVar y z] -- Effect is P(x,y) P(y,z)
               actName = asName actSpec
               a1 = (actName, ["a", "a", "b"])
               a2 = (actName, ["c", "d", "d"])
@@ -88,7 +88,7 @@ testEffectLearnSpec = do
               dh3 = updateKnowledge dh2 t3
 
               (unknown,known) = actionPosEffectKnl dh3 "as"
-              expectedKnown = Set.fromList [p Ref x y, p Ref y z]
+              expectedKnown = Set.fromList [p TVar x y, p TVar y z]
               expectedUnknown = Set.empty in do
             unknown `shouldBe` expectedUnknown
             known `shouldBe` expectedKnown
@@ -97,7 +97,7 @@ testEffectLearnSpec = do
           let x = "x"
               y = "y"
               z = "z"
-              actSpec = initActspec [Neg $ pP x y, Neg $ pP y z] -- Effect is P(x,y) P(y,z)
+              actSpec = initActspec [eNeg $ p TVar x y, eNeg $ p TVar y z] -- Effect is P(x,y) P(y,z)
               actName = asName actSpec
               a1 = (actName, ["a", "a", "b"])
               a2 = (actName, ["c", "d", "d"])
@@ -127,7 +127,7 @@ testEffectLearnSpec = do
               dh3 = updateKnowledge dh2 t3
 
               (unknown,known) = actionNegEffectKnl dh3 "as"
-              expectedKnown = Set.fromList [p Ref x y, p Ref y z]
+              expectedKnown = Set.fromList [p TVar x y, p TVar y z]
               expectedUnknown = Set.empty in do
             unknown `shouldBe` expectedUnknown
             known `shouldBe` expectedKnown

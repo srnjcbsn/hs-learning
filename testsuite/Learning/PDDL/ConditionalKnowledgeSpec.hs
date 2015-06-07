@@ -106,11 +106,11 @@ conditionalKnowledgeSpec = do
                                 (fromList [ Vertex 2 (Precond,Pos "p",1)
                                           , Vertex 3 (Precond,Pos "p",2)])
                            , Edge PredicateEdge
-                                (fromList [ Vertex 4 (Precond,Not "p",1)
-                                          , Vertex 5 (Precond,Not "p",2)])
+                                (fromList [ Vertex 4 (Precond,Neg "p",1)
+                                          , Vertex 5 (Precond,Neg "p",2)])
                            , Edge PredicateEdge
-                                (fromList [ Vertex 6 (Precond,Not "p",1)
-                                          , Vertex 7 (Precond,Not "p",2)])
+                                (fromList [ Vertex 6 (Precond,Neg "p",1)
+                                          , Vertex 7 (Precond,Neg "p",2)])
                            , Edge PredicateEdge
                                 (fromList [ Vertex 8 (Effect,Pos "p",1)
                                           , Vertex 9 (Effect,Pos "p",2)])
@@ -122,12 +122,12 @@ conditionalKnowledgeSpec = do
                                 (fromList [ Vertex 0 (Precond,Pos "p",1)
                                           , Vertex 1 (Precond,Pos "p",2)
                                           , Vertex 2 (Precond,Pos "p",1)
-                                          , Vertex 5 (Precond,Not "p",2)])
+                                          , Vertex 5 (Precond,Neg "p",2)])
                            , Edge BindingEdge
                                 (fromList [ Vertex 3 (Precond,Pos "p",2)
-                                          , Vertex 4 (Precond,Not "p",1)
-                                          , Vertex 6 (Precond,Not "p",1)
-                                          , Vertex 7 (Precond,Not "p",2)
+                                          , Vertex 4 (Precond,Neg "p",1)
+                                          , Vertex 6 (Precond,Neg "p",1)
+                                          , Vertex 7 (Precond,Neg "p",2)
 
                                           , Vertex 8 (Effect,Pos "p",1)
                                           , Vertex 9 (Effect,Pos "p",2)])
