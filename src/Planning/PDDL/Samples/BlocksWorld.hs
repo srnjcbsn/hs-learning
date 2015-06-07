@@ -10,20 +10,26 @@ armEmpty  = Predicate "arm-empty" []
 holding b = Predicate "holding" [b]
 on b o    = Predicate "on" [b, o]
 
+ob :: String
 ob = "?ob"
-obr = Ref ob
 
+obr :: Term
+obr = TVar ob
+
+uob:: String
 uob = "?uob"
-uobr = Ref uob
+
+uobr :: Term
+uobr = TVar uob
 
 
 pickUp :: ActionSpec
 pickUp = ActionSpec
     { asName    = "move"
     , asParas   = [ob]
-    , asPrecond = Con [ Pred $ clear obr
-                      , Pred $ onTable obr
-                      , Pred armEmpty
+    , asPrecond = GAnd [ gPos $ clear obr
+                      , gPos $ onTable obr
+                      , gPos armEmpty
                       ]
     , asEffect  = Con [ Pred $ holding obr
                       , Neg $ Pred $ clear obr

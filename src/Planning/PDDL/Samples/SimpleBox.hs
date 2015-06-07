@@ -4,42 +4,58 @@ import Planning.PDDL
 import Logic.Formula
 import qualified Data.Set as Set
 import qualified Data.Map as Map
-import Environment
-import Planning
 
+inside :: String
 inside = "inside"
+outside :: String
 outside = "outside"
 
-insideSpec a = Predicate inside [(a, baseType)]
-outsideSpec a = Predicate outside [(a, baseType)]
+insideSpec :: Name -> PredicateSpec
+insideSpec pn = Predicate inside [(pn, baseType)]
 
-pInside a = Predicate "inside" [a]
-fInside = Pred . pInside
+outsideSpec :: Name -> PredicateSpec
+outsideSpec pn = Predicate outside [(pn, baseType)]
 
-pOutside a = Predicate "outside" [a]
-fOutside = Pred . pOutside
+pInside :: a -> Predicate a
+pInside t = Predicate "inside" [t]
 
+pOutside :: a -> Predicate a
+pOutside t = Predicate "outside" [t]
+
+nInside :: Name -> Predicate Term
+nInside = pInside . TName
+
+nOutside:: Name -> Predicate Term
+nOutside = pOutside . TName
+
+
+
+a :: String
 a = "?a"
-ar = Ref a
 
+ar :: Term
+ar = TVar a
+
+putIn :: ActionSpec
 putIn = ActionSpec
     { asName = "put-in"
     , asParas = [a]
-    , asPrecond = fOutside ar
-    , asEffect = Con [Neg $ fOutside ar,  fInside ar]
+    , asPrecond = gPos $ pOutside ar
+    , asEffect = EAnd [eNeg $ pOutside ar, ePos $ pInside ar]
     , asConstants = []
     , asTypes = Map.empty
     }
-
+takeOut :: ActionSpec
 takeOut = ActionSpec
     { asName = "take-out"
     , asParas = [a]
-    , asPrecond = fInside ar
-    , asEffect = Con [Neg $ fInside ar, fOutside ar]
+    , asPrecond = gPos $ pInside ar
+    , asEffect = EAnd [eNeg $ pInside ar, ePos $ pOutside ar]
     , asConstants = []
     , asTypes = Map.empty
     }
 
+sBDomain :: PDDLDomain
 sBDomain = PDDLDomain
     { dmName = "SimpleBox"
     , dmPredicates = [insideSpec a, outsideSpec a]
@@ -48,12 +64,13 @@ sBDomain = PDDLDomain
     , dmTypes = []
     }
 
+sBProblem :: PDDLProblem
 sBProblem = PDDLProblem
     { probName = "put-into-box"
     , probObjs = ["A", "B"]
     , probDomain = "SimpleBox"
     , probState = Set.fromList [pInside "B", pOutside "A"]
-    , probGoal = Con [fInside "A", fOutside "B"]
+    , probGoal = GAnd [ gPos $ nInside "A", gPos $ nOutside "B"]
     , probTypes = Map.empty
     }
 newtype SBEnvironment =  SBEnvironment (State, PDDLDomain)

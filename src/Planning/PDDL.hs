@@ -11,6 +11,10 @@ module Planning.PDDL
     , Term (..)
     , pName
     , pArgs
+    , ePos
+    , eNeg
+    , gPos
+    , gNeg
 
     -- * Composite types
     , GoalDesc (..)
@@ -39,20 +43,17 @@ module Planning.PDDL
     , aName
     , aArgs
 
-    -- * Functions for converting PDDL types to 'String's
-    , writeDomain
-    , writeProblem
     ) where
 
 import           Logic.Formula
 import           Planning      as Plng
 
-import           Data.List     (find, intercalate)
+import           Data.List     (find)
 import           Data.Map      (Map)
 import qualified Data.Map      as Map
 import           Data.Maybe    (fromMaybe)
 import           Data.Set      (Set)
-import qualified Data.Set      as Set
+-- import qualified Data.Set      as Set
 
 type FluentPredicate = Predicate Term
 type PredicateSpec = Predicate (Name, Type)
@@ -78,6 +79,7 @@ data Effect = EAnd [Effect]
             | EForall [Variable] Effect
             | EWhen GoalDesc Effect
             deriving (Eq, Ord, Show)
+
 
 data ActionSpec = ActionSpec
     { asName       :: String
@@ -115,6 +117,19 @@ data PDDLEnvSpec = PDDLEnvSpec
     }
 
 data PDDLGraph = PDDLGraph (PDDLDomain, PDDLProblem)
+
+
+ePos :: Predicate Term -> Effect
+ePos = ELit . Pos
+
+eNeg :: Predicate Term  -> Effect
+eNeg = ELit . Neg
+
+gPos :: Predicate Term  -> GoalDesc
+gPos = GLit . Pos
+
+gNeg :: Predicate Term  -> GoalDesc
+gNeg = GLit . Neg
 
 pddlEnvSpec :: PDDLDomain -> PDDLProblem -> PDDLEnvSpec
 pddlEnvSpec dom prob = PDDLEnvSpec
@@ -154,85 +169,3 @@ unsActionSpec domain n = case actionSpec domain n of
     Just as -> as
     Nothing -> error $  "ansActionSpec: could not find action spec with name "
                      ++ n ++ " in domain."
-
-writeState :: State -> String
-writeState state =
-    unwords $ map writeGroundedPredicate $ Set.toList state
-
-writeArgument :: Term -> String
-writeArgument (TVar r)   = "?" ++ r
-writeArgument (TName c) = c
-
-writeArgumentList :: [Term] -> String
-writeArgumentList as = unwords (map writeArgument as)
-
-writeParameterList :: [String] -> String
-writeParameterList ps = writeArgumentList $ map TVar ps
-
-writeTypedList :: (Name -> String) -> [(Name, Type)] -> String
-writeTypedList w ts@((_, t) : _) = sameList ++ " - " ++ t ++ " " ++ rest
-    where sameList = unwords $ map (w . fst) same
-          (same, different) = span ((t ==) . snd) ts
-          rest = writeTypedList w different
-writeTypedList _ [] = ""
-
-writeTypedParameterList :: [(Name, Type)] -> String
-writeTypedParameterList = writeTypedList (writeArgument . TVar)
-
-writeFluentPredicate :: FluentPredicate -> String
-writeFluentPredicate (Predicate pname as) =
-    "(" ++ pname ++ " " ++ writeArgumentList as ++ ")"
-
-writeGroundedPredicate :: GroundedPredicate -> String
-writeGroundedPredicate (Predicate pname objs) =
-    "(" ++ pname ++ " " ++ unwords objs  ++ ")"
-
-writePredicateSpec :: PredicateSpec -> String
-writePredicateSpec (Predicate pname ps) =
-    "(" ++ pname ++ " " ++ writeTypedParameterList ps ++ ")"
-
-writeActionSpec :: ActionSpec -> String
-writeActionSpec as =
-    "(:action " ++ asName as
-    ++ "\t:parameters (" ++ params ++ ")\n"
-    ++ "\t:precondition " ++ precond ++ "\n"
-    ++ "\t:effect " ++ eff ++ "\n"
-    ++ ")"
-        where params  = writeTypedParameterList (Map.toList (asTypes as))
-              precond = writeGoalDescription (asPrecond as)
-              eff     = writeEffect (asEffect as)
-
-writeGoalDescription :: GoalDesc -> String
-writeGoalDescription = undefined
-
-writeEffect :: Effect -> String
-writeEffect = undefined
-
-writeProblem :: PDDLProblem -> String
-writeProblem prob =
-    let defineStr = "(define (problem " ++ probName prob ++ ")"
-        domStr    = "(:domain " ++ probDomain prob ++ ")"
-        objs      = writeTypedList id $ Map.toList (probTypes prob)
-        objsStr   = "(:objects " ++ objs ++ ")"
-        initStr   = "(:init " ++ writeState (probState prob) ++ ")"
-        goalStr   = "(:goal " ++ writeGoalDescription (probGoal prob) ++ ")"
-    in intercalate "\n\t" [defineStr, domStr, objsStr, initStr, goalStr] ++ ")"
-
-
-writeDomain :: PDDLDomain -> String
-writeDomain domain =
-    let defineStr = "(define (domain " ++ dmName domain ++ ")"
-        reqsStr   = "(:requirements :strips :typing)"
-        typesStr  = "(:types " ++ unwords (dmTypes domain) ++ ")"
-        consts    = dmConstants domain
-        constsStr = "(:constants " ++ unwords consts ++ ")"
-        preds     = dmPredicates domain
-        predsStr  = "(:predicates " ++ unwords (map writePredicateSpec preds) ++ ")"
-        aSpecs    = unwords $ map writeActionSpec $ dmActionsSpecs domain
-    in intercalate "\n\t" [ defineStr
-                          , reqsStr
-                          , typesStr
-                          , constsStr
-                          , predsStr
-                          , aSpecs
-                          ] ++ ")"
