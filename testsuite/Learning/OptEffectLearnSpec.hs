@@ -1,29 +1,22 @@
 module Learning.OptEffectLearnSpec where
 
-import           Data.List                       (sort)
-import           Data.Map                        (Map)
 import qualified Data.Map                        as Map
 import           Data.Maybe                      (fromJust)
-import           Data.Set                        (Set)
 import qualified Data.Set                        as Set
 import           Test.Hspec
-import           Test.Hspec.QuickCheck
-import           Test.QuickCheck
 
 import Learning.PDDL.NonConditionalTypes
-import           Learning.PDDL.EffectKnowledge
 import           Logic.Formula
 import           Planning.PDDL
 import           Planning.PDDL.Logic
-import           Planning.PDDL.Samples.SimpleBox
 import        Learning.PDDL.NonConditionalKnowledge
-import qualified Data.TupleSet as TSet
 import           Data.TupleSet (TupleSet)
 
 p :: (Name -> t) -> Name -> Name -> Predicate t
 p f x y = Predicate "p" [f x,f y]
 
-initActspec effects = ActionSpec
+initActSpec :: [Effect] -> ActionSpec
+initActSpec effects = ActionSpec
     { asName = "as"
     , asParas = ["x", "y", "z"]
     , asPrecond = GAnd []
@@ -32,6 +25,7 @@ initActspec effects = ActionSpec
     , asTypes = Map.empty
     }
 
+initDomain :: ActionSpec -> PDDLDomain
 initDomain as = PDDLDomain
     { dmName = "TestDomain"
     , dmPredicates = [p (flip (,) baseType) "x" "y"]
@@ -57,12 +51,14 @@ actionNegEffectKnl pk name =
     in (negUnknown knl, negKnown knl)
 
 
+testEffectLearnSpec :: Spec
 testEffectLearnSpec = do
         it "can correctly handle ambiguos positive predicates" $ do
           let x = "x"
               y = "y"
               z = "z"
-              actSpec = initActspec [p TVar x y, p TVar y z] -- Effect is P(x,y) P(y,z)
+              -- Effect is P(x,y) P(y,z):
+              actSpec = initActSpec [ePos $ p TVar x y, ePos $ p TVar y z] 
               actName = asName actSpec
               a1 = (actName, ["a", "a", "b"])
               a2 = (actName, ["c", "d", "d"])
@@ -97,7 +93,7 @@ testEffectLearnSpec = do
           let x = "x"
               y = "y"
               z = "z"
-              actSpec = initActspec [eNeg $ p TVar x y, eNeg $ p TVar y z] -- Effect is P(x,y) P(y,z)
+              actSpec = initActSpec [eNeg $ p TVar x y, eNeg $ p TVar y z] -- Effect is P(x,y) P(y,z)
               actName = asName actSpec
               a1 = (actName, ["a", "a", "b"])
               a2 = (actName, ["c", "d", "d"])
