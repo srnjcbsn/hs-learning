@@ -91,6 +91,8 @@ data PDDLProblem = PDDLProblem
     , probTypes  :: Map Name Type
     } deriving (Show, Eq)
 
+data PDDLGraph = PDDLGraph (PDDLDomain, PDDLProblem)
+
 baseType :: Type
 baseType = "object"
 
@@ -99,7 +101,6 @@ typeList aSpec = zip (asParas aSpec)
                $ map (fromMaybe baseType . flip Map.lookup (asTypes aSpec))
                $ asParas aSpec
 
-data PDDLGraph = PDDLGraph (PDDLDomain, PDDLProblem)
 
 pName :: FluentPredicate -> Name
 pName = predName

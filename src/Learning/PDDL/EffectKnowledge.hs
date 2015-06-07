@@ -1,7 +1,8 @@
 module Learning.PDDL.EffectKnowledge  where
 
 import           Learning.Induction
-import qualified Learning.PDDL as Lrn
+import qualified Learning.PDDL.NonConditionalTypes as NCT
+
 import           Planning
 import           Planning.PDDL
 import           Planning.PDDL.Logic
@@ -9,17 +10,16 @@ import           Planning.PDDL.Logic
 import           Data.Set                (Set, (\\))
 import qualified Data.Set                as Set
 
-type EffectKnowledge = Lrn.EffKnowledge Argument
 
 -- | Updates the effect hypothesis based on the transition
-updateEffectHyp :: PDDLDomain
-                -> EffectKnowledge
+updateEffectKnl :: PDDLDomain
+                -> NCT.EffKnowledge
                 -> Transition
-                -> EffectKnowledge
+                -> NCT.EffKnowledge
 -- if the action application was unsuccessful, we cannot learn anything
-updateEffectHyp domain (Lrn.EffKnowledge hyp) (s, action, s')
-    | s == s' = Lrn.EffKnowledge hyp
-    | otherwise = Lrn.EffKnowledge hyp' where
+updateEffectKnl domain (NCT.EffKnowledge knl) (s, action, s')
+    | s == s' = NCT.EffKnowledge knl
+    | otherwise = NCT.EffKnowledge knl' where
         aSpec = findActionSpec domain action
         aSpecParas = asParas aSpec
 
@@ -42,10 +42,10 @@ updateEffectHyp domain (Lrn.EffKnowledge hyp) (s, action, s')
         kDelUg = Set.map unground' kDel
 
         alphaAdd = unions kAddUg `Set.intersection`
-                    (Lrn.posKnown hyp `Set.union` Lrn.posUnknown hyp)
-        betaAdd  = unions uAddUg `Set.intersection` Lrn.posUnknown hyp
+                    (NCT.posKnown knl `Set.union` NCT.posUnknown knl)
+        betaAdd  = unions uAddUg `Set.intersection` NCT.posUnknown knl
 
-        alphaDel = unions kDelUg `Set.intersection` Lrn.negUnknown hyp
+        alphaDel = unions kDelUg `Set.intersection` NCT.negUnknown knl
 
         tmpUnkAdd = alphaAdd `Set.union` betaAdd
 
@@ -55,12 +55,12 @@ updateEffectHyp domain (Lrn.EffKnowledge hyp) (s, action, s')
             Set.foldl (extractUnambiguous alphaDel) (Set.empty, Set.empty) kDelUg
 
         posUnkEff' = betaAdd `Set.union` posAmb
-        posKnEff' = Lrn.posKnown hyp `Set.union` posUamb
+        posKnEff' = NCT.posKnown knl `Set.union` posUamb
 
         negUnkEff' = negAmb
-        negKnEff' = Lrn.negKnown hyp `Set.union` negUamb
+        negKnEff' = NCT.negKnown knl `Set.union` negUamb
 
-        hyp' = Lrn.Hyp (posKnEff', negKnEff') (posUnkEff', negUnkEff')
+        knl' = NCT.Knowledge (posKnEff', negKnEff') (posUnkEff', negUnkEff')
 
 
 -- | Takes a set of uknowns, a pair of unambiguous/ambiguous to add to,

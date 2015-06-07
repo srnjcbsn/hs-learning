@@ -25,10 +25,18 @@ library
                  , Planning.PDDL.Samples.BlocksWorld
                  , Learning
                  , Learning.Induction
+                 , Learning.PDDL.NonConditionalKnowledge
+                 , Learning.PDDL.ConditionalKnowledge
+                 , Learning.PDDL.NonConditionalTypes
+                 , Learning.PDDL.EffectKnowledge
+                 , Learning.PDDL.PreconditionKnowledge
+                 , Learning.PDDL.OptimisticStrategy
+                 , Learning.PDDL.Experiment
                  , Planning.Planner.FastDownward
                  , Data.TupleSet
                  , Data.Queue
                  , Data.PriorityQueue
+                 , Data.UnsafeMap
                  , Graph
                  , Graph.Search
                  , Graph.Search.Astar

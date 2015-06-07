@@ -4,7 +4,7 @@ import           Data.TupleSet
 import           Data.Typeable
 import           Environment
 import qualified Learning                            as Lrn
-import           Learning.Induction
+import qualified Learning.Induction                  as Ind
 import qualified Learning.PDDL                       as PDDL
 import qualified Learning.PDDL.EffectKnowledge       as Eff
 import qualified Learning.PDDL.PreconditionKnowledge as Pre
@@ -12,138 +12,206 @@ import           Logic.Formula
 import           Planning
 import           Planning.PDDL
 
-import           Control.Monad
-import           Data.Map                            (Map, (!))
+import           Control.Monad                       (sequence, replicateM, liftM)
+import           Data.Map                            (Map)
 import qualified Data.Map                            as Map
-import           Data.Maybe
+import           Data.Maybe                          (isJust, fromMaybe, catMaybes, listToMaybe)
 import           Data.Set                            (Set, (\\))
 import qualified Data.Set                            as Set
 import           Data.Tree
+import           Data.TupleSet                       (TupleSet)
 import qualified Data.TupleSet                       as TSet
+import qualified Data.List as List
+import Control.Arrow ((***))
 
-type DomainKnowledge = Map Name Pattern
+type HyperGraph a = Set (Edge a)
 
-data Binding = Bound Int
-             | Free  Int
+data Literal a = Pos a
+               | Not a
+               deriving (Eq, Ord, Show)
 
-type Knowledge = TupleSet (Predicate Binding)
+type EdgeSet a = Set (Vertex a)
 
-data Theory = Theory
-    { known   :: Knowledge
-    , unknown :: Knowledge
-    }
+type PredInfo = (PType, Literal Name, Int)
 
-data Cond = Cond
-    { precs     :: Theory
-    , precCands :: Set Knowledge
-    }
+data Ord a => Vertex a = Vertex a PredInfo deriving (Eq, Ord, Show)
 
-type ActionTheory = Map (Predicate Int) Cond
+data PType = Effect
+           | Precond
+           deriving (Eq, Ord, Show)
 
-type Subst = Map Object Int
+data EdgeType = BindingEdge
+              | PredicateEdge
+              deriving (Eq, Ord, Show)
 
-type CArg = Int
+data Edge a = Edge EdgeType (EdgeSet a)
+            deriving (Eq, Ord, Show)
 
-data Pattern = Pattern
-    { ctEffects  :: PDDL.EffKnowledge CArg
-    , ctPreconds :: PDDL.PreKnowledge CArg
-    } deriving (Eq, Ord)
+universeState :: [PredicateSpec]
+              -> [Object]
+              -> State
+universeState specs objs = Set.fromList allPreds where
+  args = flip replicateM objs
+  toPreds (Predicate n a) = map (Predicate n) (args $ length a)
+  allPreds = concatMap toPreds specs
 
-merge :: Pattern -> Pattern -> Pattern
-merge = undefined
 
-merges :: [Pattern] -> Maybe Pattern
-merges [] = Nothing
-merges ps = Just $ foldl1 merge ps
+toPredInfo :: PType
+           -> (Name -> Literal Name)
+           -> GroundedPredicate
+           -> [(Object,PredInfo)]
+toPredInfo ptype litType (Predicate n objs) = map toPInfo infos where
+  infos = zip (map ((,) n) objs) [1..]
+  toPInfo ((na,obj), pos) = (,) obj (ptype, litType na, pos)
 
-type Shape = Predicate Int
 
-shapeOf :: Ord a => Predicate a -> Shape
-shapeOf (Predicate pn args) = Predicate pn (shapeOf' args 0 Map.empty)  where
-    shapeOf' :: Ord a => [a] -> Int -> Map a Int -> [Int]
-    shapeOf' (a : as) maxVal m =
-        case Map.lookup a m of
-             Just s  -> s : shapeOf' as maxVal m
-             Nothing -> maxVal : shapeOf' as (maxVal + 1) m' where
-                        m' = (Map.insert a (maxVal + 1) m)
-    shapeOf' [] _ _ = []
-
-emptyHyp :: Ord a => PDDL.Hyp a
-emptyHyp = PDDL.Hyp TSet.empty TSet.empty
-
-emptyPreKnl :: Ord a => PDDL.PreKnowledge a
-emptyPreKnl = PDDL.PreKnowledge emptyHyp Set.empty
-
-fromTransition :: Pattern
-               -> Transition
-               -> [PredicateSpec]
+fromTransition :: [PredicateSpec]
                -> [Object]
-               -> Pattern
+               -> Transition
+               -> [(Literal Name, HyperGraph Int)]
+fromTransition = fromTransitionWithId 0
 
-fromTransition patt (s, _, s') pSpecs objs = fromMaybe patt mergedPattern where
-    -- The predicates that have been added to s'
-    deltaAdd = cArgForm $ s' \\ s
-    -- The predicates that have been removed from s
-    deltaRem = cArgForm $ s \\ s'
+fromTransitionWithId :: (Num idType, Enum idType, Ord idType)
+          => idType
+          -> [PredicateSpec]
+          -> [Object]
+          -> Transition
+          -> [(Literal Name, HyperGraph idType)]
+fromTransitionWithId initId specs objs  (s,_,s') = map effToHypergraph effData where
+  negPre = Set.toList $ universeState specs objs \\ s
+  posPre = Set.toList s
 
-    -- The predicates that were in both s and s'
-    omegaS = cArgForm $ s' `Set.intersection` s
+  posEff = Set.toList $ s' \\ s
+  negEff = Set.toList $ s \\ s'
 
-    -- The predicates that were not present in s, and could have been positive
-    -- preconditions for failed actions
-    notS   = cArgForm $ allPreds \\ s
+  split pt lt preds = map (toPredInfo pt lt) preds
 
-    allShapes = shapes (Set.fromList pSpecs)
-    allPreds = Set.unions $ Set.toList
-             $ Set.map (Set.fromList . predsFromShape) allShapes
+  idPred idStart p = zip [idStart..] p
 
-    cArgForm :: State -> Set (Predicate CArg)
-    cArgForm = Set.map (fmap (objMap !))
+  lengthAsId l = fromInteger (toInteger (length l))
 
-    shapes :: Set (Predicate a) -> Set (String, Int)
-    shapes set = Set.map (\p -> (predName p, predArity p)) set
+  idPreds idStart (p : rest) = idPred idStart p : idPreds (idStart + lengthAsId p) rest
+  idPreds _ [] = []
 
-    predsFromShape (n, a) = [Predicate n os | os <- (replicateM a objs)]
+  toNode (idv, (_, pinfo)) = Vertex idv pinfo
+  toNodeBind (idv, (b, pinfo)) = (b, Vertex idv pinfo)
 
-    -- The predicates whose shape was in deltaS, but were not themselves in s'
-    posFailed = cArgForm $ Set.unions $ Set.toList
-              $ Set.map ((\\ s') . Set.fromList . predsFromShape) (shapes deltaAdd)
+  groupBindings elems = Map.elems
+                      $ Map.fromListWith (++) [(k, [v]) | (k, v) <- elems]
 
-    negFailed = undefined
+  posPreInitId = initId
+  posPreNodeData = idPreds posPreInitId $ split Precond Pos posPre
+  posPreNodeBindings = concatMap (map toNodeBind) posPreNodeData
 
-    objMap = Map.fromList $ zip objs [1 ..]
 
-    posSuccPatterns = Set.toList $ Set.map posSuccPatternFor deltaAdd
-    negSuccPatterns = Set.toList $ Set.map negSuccPatternFor deltaRem
-    posFailPatterns = Set.toList $ Set.map posFailPatternFor posFailed
-    negFailPatterns = Set.toList $ Set.map negFailPatternFor negFailed
 
-    posEffKnl p = PDDL.EffKnowledge $ PDDL.Hyp
-                        (Set.singleton p, Set.empty)
-                        (omegaS,          Set.empty)
+  negPreInitId = posPreInitId + lengthAsId posPreNodeBindings
+  negPreNodeData = idPreds negPreInitId $ split Precond Not negPre
+  negPreNodeBindings = concatMap (map toNodeBind) negPreNodeData
 
-    negEffKnl p = PDDL.EffKnowledge $ PDDL.Hyp
-                        (Set.empty, Set.singleton p)
-                        (Set.empty, notS)
+  effInitId = negPreInitId + lengthAsId negPreNodeBindings
+  effData = (zip (map (Pos . predName) posEff) $ split Effect Pos posEff)
+          ++ (zip (map (Not . predName) negEff) $ split Effect Not negEff)
 
-    posCands p = Set.singleton (notS \\ Set.singleton p, cArgForm s)
-    negCands p = Set.singleton (cArgForm s, notS \\ Set.singleton p)
+  predEdges nodeData = map ((Edge PredicateEdge) . Set.fromList)
+                     $ map (map toNode) nodeData
+  bindingEdges binding = map ((Edge BindingEdge) . Set.fromList)
+                       $ groupBindings binding
 
-    posPreKnl p = PDDL.PreKnowledge (PDDL.Hyp TSet.empty TSet.empty)
-                                    (posCands p)
+  prePredEdges =  predEdges posPreNodeData
+               ++ predEdges negPreNodeData
+  preNodeBindings = posPreNodeBindings
+                  ++  negPreNodeBindings
 
-    negPreKnl p = PDDL.PreKnowledge (PDDL.Hyp TSet.empty TSet.empty)
-                                    (negCands p)
+  effToHypergraph (litname, pEffData) =
+    let vData = idPred effInitId pEffData
+        pEdges = [Edge PredicateEdge $ Set.fromList $ map toNode vData]
+               ++ prePredEdges
+        bEdges = bindingEdges $ map toNodeBind vData ++ preNodeBindings
+     in (litname, Set.fromList $ pEdges ++ bEdges)
 
-    posSuccPatternFor p = Pattern (posEffKnl p) emptyPreKnl
-    negSuccPatternFor p = Pattern (negEffKnl p) emptyPreKnl
+-- data Ord a => Edge a = BindingEdge         (EdgeSet a)
+--                      | PredicateEdge  (EdgeSet a)
+--                      deriving (Eq, Ord)
 
-    posFailPatternFor p = Pattern (posEffKnl p) (posPreKnl p)
-    negFailPatternFor p = Pattern (negEffKnl p) (negPreKnl p)
+edgeSet :: Ord a => Edge a -> EdgeSet a
+edgeSet (Edge _ e) = e
 
-    mergedPattern = merges (  posSuccPatterns ++ negSuccPatterns
-                           ++ posFailPatterns ++ negFailPatterns
-                           )
+edgeType :: Ord a => Edge a -> EdgeType
+edgeType (Edge et _) = et
 
-update :: DomainKnowledge -> Transition -> Pattern
-update dk (s, a, s') = undefined
+isEdgeOfType :: Ord a => EdgeType ->  Edge a -> Bool
+isEdgeOfType et = (== et) . edgeType
+
+
+otherEdgeType :: EdgeType -> EdgeType
+otherEdgeType PredicateEdge = BindingEdge
+otherEdgeType BindingEdge   = PredicateEdge
+
+-- | An edge is an effect edge if it is a predicate edge and contains a vertex
+--   marked as an effect.
+isEffect :: Ord a => Edge a -> Bool
+isEffect (Edge PredicateEdge e) = not $ null [ () | Vertex _ (Effect, _, _) <- Set.toList e ]
+isEffect _ = False
+
+
+getEffectP :: Ord a => HyperGraph a -> Edge a
+getEffectP hg = fromMaybe (error "could not find effect in hyper graph")
+              $ List.find isEffect (Set.toList hg)
+
+newId :: Ord a => Vertex a -> Vertex a -> Maybe (Vertex (a, a))
+newId (Vertex i n) (Vertex j m) | n == m    = Just (Vertex (i, j) n)
+                                | otherwise = Nothing
+
+newIdInv :: Ord a => Vertex (a, a) -> (Vertex a, Vertex a)
+newIdInv (Vertex (i, j) n) = (Vertex i n, Vertex j n)
+
+similarTo :: Ord a => Vertex a -> Vertex a -> Bool
+similarTo v1 v2 = isJust $ newId v1 v2
+
+intersect :: Ord a => EdgeSet a -> EdgeSet a -> EdgeSet (a, a)
+intersect e1 e2 = Set.fromList
+                $ catMaybes [ newId v1 v2
+                            | v1 <- Set.toList e1
+                            , v2 <- Set.toList e2
+                            , v1 `similarTo` v2
+                            ]
+
+edgeMember :: Ord a => Vertex a -> Edge a -> Bool
+edgeMember v e = Set.member v (edgeSet e)
+
+isInEdge :: Ord a => EdgeType -> HyperGraph a -> Vertex a -> Bool
+isInEdge et hg v = isJust (containingEdge et hg v)
+
+containingEdges :: Ord a => HyperGraph a -> Vertex a -> [Edge a]
+containingEdges hg v = filter (edgeMember v) $ Set.toList hg
+
+containingEdge :: Ord a
+               => EdgeType
+               -> HyperGraph a
+               -> Vertex a
+               -> Maybe (Edge a)
+containingEdge et hg v = listToMaybe
+                       $ filter (\e -> edgeMember v e && edgeType e == et)
+                       $ Set.toList hg
+
+merge :: Ord a => HyperGraph a -> HyperGraph a -> HyperGraph (a, a)
+merge h1 h2 = mergeEdges h1 h2 Set.empty (getEffectP h1) (getEffectP h2)
+
+mergeEdges :: Ord a
+           => HyperGraph a
+           -> HyperGraph a
+           -> HyperGraph (a, a)
+           -> Edge a
+           -> Edge a
+           -> HyperGraph (a, a)
+mergeEdges h1 h2 h' e1 e2 = rest where
+    et     | edgeType e1 == edgeType e2 = edgeType e1
+           | otherwise =  error "can not merge predicate and binding edges"
+    et'    = otherEdgeType et
+    e'     = edgeSet e1 `intersect` edgeSet e2
+    h''    = Set.insert (Edge et e') h'
+    invs   = [ newIdInv v | v <- Set.toList e', not $ isInEdge et h' v ]
+    oldes  = map (containingEdge et' h1 *** containingEdge et' h2) invs
+    valids = [ (e1', e2') | (Just e1', Just e2') <- oldes ]
+    rest   = foldl (\ hh (e1', e2') -> mergeEdges h1 h2 hh e1' e2') h'' valids

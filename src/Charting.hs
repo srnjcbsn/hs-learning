@@ -2,6 +2,7 @@
 
 module Charting where
 
+import qualified Learning.PDDL.NonConditionalTypes as NCT
 import           Data.TupleSet                            (TupleSet)
 import qualified Data.TupleSet                            as TSet
 import           Environment                              as Env
@@ -14,7 +15,7 @@ import           Environment.Sokoban.SokobanDomain
 import           Environment.Sokoban.SokobanView
 import           Graph.Search.Astar                       as Astar
 import           Learning
-import           Learning.PDDL
+import qualified Learning.PDDL							  as PDDL
 import qualified Learning.PDDL.EffectKnowledge            as Eff
 import           Learning.PDDL.Experiment
 import           Learning.PDDL.NonConditionalKnowledge
@@ -33,8 +34,8 @@ import           System.Directory                         (removeFile)
 import           System.IO.Error
 import           Text.Show.Pretty
 
-import           Diagrams.Backend.SVG
-import           Diagrams.Prelude
+-- import           Diagrams.Backend.SVG
+-- import           Diagrams.Prelude
 
 data Astar = Astar (Maybe Int) deriving Show
 
@@ -50,46 +51,46 @@ instance ExternalPlanner Astar PDDLDomain PDDLProblem ActionSpec where
 type SokoSimStep = SimStep (OptimisticStrategy Astar SokobanPDDL)
                            SokobanPDDL
                            PDDLProblem
-                           (PDDLKnowledge SokobanPDDL)
+                           (NCT.PDDLKnowledge SokobanPDDL)
                            (PDDLExperiment SokobanPDDL)
-                           (PDDLInfo SokobanPDDL)
+                           (PDDL.PDDLInfo SokobanPDDL)
 
 lastAction :: SokoSimStep -> Action
 lastAction step =
-    case transitions (ssInfo step) of
+    case PDDL.transitions (ssInfo step) of
         ((_, act, _) : _) -> act
         [] -> error "lastAction: Empty transition list in PDDLInfo."
 
-extractKnowledge :: SokoSimStep -> (Hyp Argument, Hyp Argument)
-extractKnowledge step = (pkHyp (fst actKnl), ekHyp (snd actKnl))  where
+extractKnowledge :: SokoSimStep -> (NCT.Knowledge, NCT.Knowledge)
+extractKnowledge step = (NCT.knlFromPk (fst actKnl), NCT.knlFromEk (snd actKnl))  where
     domKnl = (domainKnowledge . ssKnl)
     act = lastAction step
     actKnl = case Map.lookup (aName act) (domKnl step) of
                Just k -> k
                Nothing -> error "ERROR message"
 
-chartSingleKnowledge :: SokoSimStep -> Diagram SVG R2
-chartSingleKnowledge step = rect 0.3 knsRatio # fc green where
-    knsRatio = fromIntegral ((Set.size . posKnown) (fst $ extractKnowledge step))
-             / fromIntegral (Set.size preds)
-    preds = allPredsForAction (pddlDomain (ssKnl step)) act
-    act = aName (lastAction step)
+-- chartSingleKnowledge :: SokoSimStep -> Diagram SVG R2
+-- chartSingleKnowledge step = rect 0.3 knsRatio # fc green where
+--     knsRatio = fromIntegral ((Set.size . posKnown) (fst $ extractKnowledge step))
+--              / fromIntegral (Set.size preds)
+--     preds = allPredsForAction (pddlDomain (ssKnl step)) act
+--     act = aName (lastAction step)
 
-hypRatio :: Int -> Hyp Argument -> ChartKnl
-hypRatio universe h = ( (ratio (posKnown h), ratio (posUnknown h))
-                      , (ratio (negKnown h), ratio (negUnknown h))
+hypRatio :: Int -> NCT.Knowledge -> ChartKnl
+hypRatio universe h = ( (ratio (NCT.posKnown h), ratio (NCT.posUnknown h))
+                      , (ratio (NCT.negKnown h), ratio (NCT.negUnknown h))
                       )
     where ratio set = fromIntegral (Set.size set) / fromIntegral universe
 
 toRatio :: PDDLDomain
         -> String
-        -> (Pre.PreKnowledge, Eff.EffectKnowledge)
+        -> (NCT.PreKnowledge, NCT.EffKnowledge)
         -> (ChartKnl, ChartKnl)
 toRatio dom name (pk, ek) =
     let n = Set.size $ allPredsForAction dom name
-    in (hypRatio n (pkHyp pk), hypRatio n (ekHyp ek))
+    in (hypRatio n (NCT.knlFromPk pk), hypRatio n (NCT.knlFromEk ek))
 
-toRatios :: PDDLKnowledge e -> Map String (ChartKnl, ChartKnl)
+toRatios :: NCT.PDDLKnowledge e -> Map String (ChartKnl, ChartKnl)
 toRatios knl = Map.mapWithKey (toRatio dom) dk where
     dk = domainKnowledge knl
     dom = pddlDomain knl
@@ -109,24 +110,24 @@ knowledgeRatios (step : rest) = Map.unionWith (++) ratioMap nextMap where
     nextMap = knowledgeRatios rest
 knowledgeRatios [] = Map.empty
 
-chartKnowledge :: [SokoSimStep] -> IO ()
-chartKnowledge steps =
-    let ratios = Map.toList $ knowledgeRatios steps
-        size = mkSizeSpec (Just 100) (Just 100)
-        chartPrecs, chartEffs :: (String, [(ChartKnl, ChartKnl)]) -> IO ()
-        chartPrecs (name, ls) = renderSVG (name ++ "Precs.svg")
-                                          size
-                                          (chartRatios $ map (fst . fst) ls)
-
-        chartEffs (name, ls) = renderSVG (name ++ "Effects.svg")
-                                         size
-                                         (chartRatios $ map (fst . snd) ls)
-
-        chartRatios :: [RatioKnl] -> Diagram SVG R2
-        chartRatios rs = hcat $ map chartRatio rs
-        chartRatio (r1, r2) = if r2 > 0 then Debug.traceShow r1 $ rect 0.1 (r1 * 100) # fc green -- rect 0.1 r2 # fc green
-                              else rect 0.1 (r1 * 100) # fc green
-    in mapM_ (chartPrecs >> chartEffs) ratios
+-- chartKnowledge :: [SokoSimStep] -> IO ()
+-- chartKnowledge steps =
+--     let ratios = Map.toList $ knowledgeRatios steps
+--         size = mkSizeSpec (Just 100) (Just 100)
+--         chartPrecs, chartEffs :: (String, [(ChartKnl, ChartKnl)]) -> IO ()
+--         chartPrecs (name, ls) = renderSVG (name ++ "Precs.svg")
+--                                           size
+--                                           (chartRatios $ map (fst . fst) ls)
+--
+--         chartEffs (name, ls) = renderSVG (name ++ "Effects.svg")
+--                                          size
+--                                          (chartRatios $ map (fst . snd) ls)
+--
+--         chartRatios :: [RatioKnl] -> Diagram SVG R2
+--         chartRatios rs = hcat $ map chartRatio rs
+--         chartRatio (r1, r2) = if r2 > 0 then Debug.traceShow r1 $ rect 0.1 (r1 * 100) # fc green -- rect 0.1 r2 # fc green
+--                               else rect 0.1 (r1 * 100) # fc green
+--     in mapM_ (chartPrecs >> chartEffs) ratios
     -- renderSVG "chart.svg" sizeSpec c where
     -- sizeSpec = mkSizeSpec (Just 100) (Just 100)
     -- c = chartSingleKnowledge step

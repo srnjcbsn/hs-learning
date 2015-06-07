@@ -10,11 +10,15 @@ import           Test.Hspec
 import           Test.Hspec.QuickCheck
 import           Test.QuickCheck
 
-import           Learning.OptEffectLearn
+import Learning.PDDL.NonConditionalTypes
+import           Learning.PDDL.EffectKnowledge
 import           Logic.Formula
 import           Planning.PDDL
 import           Planning.PDDL.Logic
 import           Planning.PDDL.Samples.SimpleBox
+import        Learning.PDDL.NonConditionalKnowledge
+import qualified Data.TupleSet as TSet
+import           Data.TupleSet (TupleSet)
 
 p f x y = Predicate "p" [f x,f y]
 pP x y = Pred $ p Ref x y
@@ -36,59 +40,24 @@ initDomain as = PDDLDomain
     , dmTypes = []
     }
 
-actionPosEffects :: DomainHypothesis -> Name -> EffectKnowledge
-actionPosEffects domainHyp name = fst $ domainHyp Map.! name
+actionPosEffectKnl :: PDDLKnowledge env -> Name -> TupleSet (Predicate Argument)
+actionPosEffectKnl pk name =
+  let dk = domainKnowledge pk
+      (_, effknl) = knlFromDomKnl dk name
+      knl = knlFromEk effknl
 
-actionNegEffects :: DomainHypothesis -> Name -> EffectKnowledge
-actionNegEffects domainHyp name = snd $ domainHyp Map.! name
+  in (posUnknown knl, posKnown knl)
 
-putIn' = putIn
-    { asEffect = Con [fInside ar, fOutside ar] }
+actionNegEffectKnl :: PDDLKnowledge env -> Name -> TupleSet (Predicate Argument)
+actionNegEffectKnl pk name =
+    let dk = domainKnowledge pk
+        (_, effknl) = knlFromDomKnl dk name
+        knl = knlFromEk effknl
 
-takeOut' = takeOut
-    { asEffect = Con [fInside ar, fOutside ar] }
+    in (negUnknown knl, negKnown knl)
 
-sBDomain' = sBDomain { dmActionsSpecs = [putIn', takeOut'] }
-
-sBEffKnowledge :: EffectKnowledge
-sBEffKnowledge = ( Set.fromList [ pInside ar, pOutside ar ]
-                 , Set.empty
-                 )
-
-sBActKnowledge :: EffectHypothesis
-sBActKnowledge = (sBEffKnowledge, sBEffKnowledge)
-
-sBDomKnowledge :: DomainHypothesis
-sBDomKnowledge = Map.fromList [ (asName putIn, sBActKnowledge)
-                              , (asName takeOut, sBActKnowledge)
-                              ]
-
-
-sortDomainAcSpecs dom = dom { dmActionsSpecs = sort $ dmActionsSpecs dom }
 
 testEffectLearnSpec = do
-    describe "initiate knowledge" $
-        it "can form an initial hypothesis for the SimpleBox domain" $ do
-          let dHyp = initialHypothesis sBDomain in do
-            dHyp `shouldBe` sBDomKnowledge
-
-    describe "update domain hypothesis" $ do
-        it "can correctly update a the domain hypothesis for the SimpleBox domain, given a state transition" $
-            let oldState = Set.singleton $ pInside a
-                newState = Set.singleton $ pOutside a
-                action = (asName takeOut, [a])
-                transition = (oldState, action, Just newState)
-                initH = initialHypothesis sBDomain
-                expectedPosKn = ( (Set.empty, Set.singleton $ pOutside ar)
-                                , (Set.empty, Set.singleton $ pInside ar)
-                                )
-                expectedHyp = Map.insert (asName takeOut) expectedPosKn sBDomKnowledge
-                expectedDomain = domainFromKnowledge sBDomain expectedHyp
-                actualHyp = updateDomainHyp sBDomain expectedHyp transition -- ??? why does it use the expected what is it testing?
-                actualDom = domainFromKnowledge sBDomain actualHyp
-            in do actualHyp `shouldBe` expectedHyp
-                  sortDomainAcSpecs actualDom `shouldBe` sortDomainAcSpecs expectedDomain
-
         it "can correctly handle ambiguos positive predicates" $ do
           let x = "x"
               y = "y"
@@ -100,23 +69,25 @@ testEffectLearnSpec = do
               a3 = (actName, ["e", "f", "e"])
 
               ambiDomain = initDomain actSpec
-              updateActHyp = updateEffectHypHelper ambiDomain
+              -- updateActHyp = updateEffectHypHelper ambiDomain
 
               s0 = Set.empty
               s1 = fromJust $ apply ambiDomain s0 a1
               s2 = fromJust $ apply ambiDomain s1 a2
               s3 = fromJust $ apply ambiDomain s2 a3
 
-              t1 = (s0, a1, Just s1)
-              t2 = (s1, a2, Just s2)
-              t3 = (s2, a3, Just s3)
+              t1 = (s0, a1, s1)
+              t2 = (s1, a2, s2)
+              t3 = (s2, a3, s3)
 
-              dh0 = initialHypothesis ambiDomain
-              dh1 = updateActHyp dh0 t1
-              dh2 = updateActHyp dh1 t2
-              dh3 = updateActHyp dh2 t3
 
-              (unknown,known) = actionPosEffects dh3 "as"
+
+              dh0 = initialKnowledge ambiDomain s0
+              dh1 = updateKnowledge dh0 t1
+              dh2 = updateKnowledge dh1 t2
+              dh3 = updateKnowledge dh2 t3
+
+              (unknown,known) = actionPosEffectKnl dh3 "as"
               expectedKnown = Set.fromList [p Ref x y, p Ref y z]
               expectedUnknown = Set.empty in do
             unknown `shouldBe` expectedUnknown
@@ -133,7 +104,6 @@ testEffectLearnSpec = do
               a3 = (actName, ["e", "f", "e"])
 
               ambiDomain = initDomain actSpec
-              updateActHyp = updateEffectHypHelper ambiDomain
 
               s0 = Set.fromList [ p id "a" "a"
                                 , p id "a" "b"
@@ -147,16 +117,16 @@ testEffectLearnSpec = do
               s2 = fromJust $ apply ambiDomain s1 a2
               s3 = fromJust $ apply ambiDomain s2 a3
 
-              t1 = (s0, a1, Just s1)
-              t2 = (s1, a2, Just s2)
-              t3 = (s2, a3, Just s3)
+              t1 = (s0, a1, s1)
+              t2 = (s1, a2, s2)
+              t3 = (s2, a3, s3)
 
-              dh0 = initialHypothesis ambiDomain
-              dh1 = updateActHyp dh0 t1
-              dh2 = updateActHyp dh1 t2
-              dh3 = updateActHyp dh2 t3
+              dh0 = initialKnowledge ambiDomain s0
+              dh1 = updateKnowledge dh0 t1
+              dh2 = updateKnowledge dh1 t2
+              dh3 = updateKnowledge dh2 t3
 
-              (unknown,known) = actionNegEffects dh3 "as"
+              (unknown,known) = actionNegEffectKnl dh3 "as"
               expectedKnown = Set.fromList [p Ref x y, p Ref y z]
               expectedUnknown = Set.empty in do
             unknown `shouldBe` expectedUnknown
