@@ -69,6 +69,65 @@ import           Data.Tree
 import           Data.TupleSet                       (TupleSet)
 import qualified Data.TupleSet                       as TSet
 
+type Cand = Set (PredInfo, PredInfo)
+
+data CondEffKnowledge = CondEffKnowledge
+    { cekHyperGraph :: HyperGraph Int
+    , cekProven     :: Set PredInfo
+    , cekDisproven  :: Set PredInfo
+    , cekCands      :: Set Cand
+    }
+
+type CondActionKnowledge = Map (Literal FluentPredicate) CondEffKnowledge
+
+type CondDomainKnowledge = Map Name CondActionKnowledge
+
+mkCands :: HyperGraph Int -- ^ The existing hypergraph for the failed effect.
+        -> HyperGraph Int -- ^ The hyper graph constructed for the failed effect.
+        -> Cand
+mkCands unknHg failHg = undefined
+
+mergeCandEdges :: Ord a
+           => HyperGraph a
+           -> HyperGraph a
+           -> HyperGraph (a, a)
+           -> Edge a
+           -> Edge a
+           -> (HyperGraph (a, a), [(PredInfo, PredInfo)])
+mergeCandEdges h1 h2 h' e1 e2 = second ((++ misses) . concat) rest where
+    et     | edgeType e1 == edgeType e2 = edgeType e1
+           | otherwise = error "can not merge predicate and binding edges"
+    et'    = otherEdgeType et
+    e'     = vertexSet e1 `intersect` vertexSet e2
+    misses = vertexSet e1 `difference` vertexSet e2
+    h''    = Set.insert (Edge et e') h'
+    invs   = [ newIdInv v | v <- Set.toList e', not $ isInEdge et h' v ]
+    oldes  = map (containingEdge et' h1 *** containingEdge et' h2) invs
+    valids = [ (e1', e2') | (Just e1', Just e2') <- oldes ]
+    rest   = mapAccumL (\hh (e1', e2') -> mergeCandEdges h1 h2 hh e1' e2') h'' valids
+
+updateEffectKnowledge :: CondEffKnowledge
+                      -> Literal GroundedPredicate
+                      -> TotalState
+                      -> CondEffKnowledge
+updateEffectKnowledge effMap lgp s = undefined
+
+updateActionKnowledge :: CondActionKnowledge
+                      -> Transition
+                      -> CondActionKnowledge
+updateActionKnowledge actMap (s, _, s') = undefined
+
+updateDomainKnowledge :: CondDomainKnowledge
+                      -> PDDLDomain
+                      -> PDDLProblem
+                      -> Transition
+                      -> CondDomainKnowledge
+updateDomainKnowledge knl dom prob t@(s, a, s') =
+    case Map.lookup (aName a) knl of
+      Just actKnl -> Map.insert (aName a) (updateActionKnowledge actKnl t) knl
+      Nothing     -> error $  "updateDomainKnowledge: failed to find action "
+                           ++ aName a ++ " in knowledge map."
+
 type HyperGraph a = Set (Edge a)
 
 type VertexSet a = Set (Vertex a)
@@ -108,6 +167,15 @@ binding (Edge BindingEdge bvs) =
       []        -> error "binding: Empty binding set encountered"
 binding _ = error "binding: A predicate edge does not have a common binding"
 
+edgesOfType :: Ord a => EdgeType -> HyperGraph a -> Set (Edge a)
+edgesOfType t = Set.filter (isEdgeOfType t)
+
+bindingEdges, predicateEdges :: Ord a => HyperGraph a -> Set (Edge a)
+bindingEdges   = edgesOfType BindingEdge
+predicateEdges = edgesOfType PredicateEdge
+
+-- | Update the binding edges in the given 'HyperGraph' to contain the vertices
+--   in the given 'VertexSet' (if appropriate).
 updateBindings :: HyperGraph (Object, Int)
                -> VertexSet (Object, Int)
                -> HyperGraph (Object, Int)
@@ -189,6 +257,9 @@ newIdInv (Vertex (i, j) n) = (Vertex i n, Vertex j n)
 similarTo :: Ord a => Vertex a -> Vertex a -> Bool
 similarTo v1 v2 = isJust $ newId v1 v2
 
+difference :: Ord a => VertexSet a -> VertexSet a -> [(PredInfo, PredInfo)]
+difference e1 e2 = undefined -- Set.fromList
+
 intersect :: Ord a => VertexSet a -> VertexSet a -> Set (Vertex (a, a))
 intersect e1 e2 = Set.fromList
                 $ catMaybes [ newId v1 v2
@@ -261,3 +332,5 @@ mkBindingEdges pes = bes where
     -- tupleForm :: Vertex (Object, a) -> (Object, Vertex a)
     tupleForm (Vertex (o, i) pinfo) = (o, Vertex (o, i) pinfo)
     bes  = Set.fromList $ map (Edge BindingEdge) $ Map.elems vMap
+
+
