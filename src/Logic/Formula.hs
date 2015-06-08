@@ -15,9 +15,6 @@ data Predicate a = Predicate Name [a] deriving (Eq, Ord, Show)
 
 type LitPred a = Literal (Predicate a)
 
-predArity :: Predicate a -> Int
-predArity = length . predArgs
-
 instance Functor Predicate where
     fmap f (Predicate n as) = Predicate n (fmap f as)
 
@@ -26,6 +23,9 @@ predName (Predicate n _) = n
 
 predArgs :: Predicate a -> [a]
 predArgs (Predicate _ as) = as
+
+predArity :: Predicate a -> Int
+predArity = length . predArgs
 
 data Literal a = Pos a
                | Neg a

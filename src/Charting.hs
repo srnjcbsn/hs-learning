@@ -15,7 +15,7 @@ import           Environment.Sokoban.SokobanDomain
 import           Environment.Sokoban.SokobanView
 import           Graph.Search.Astar                       as Astar
 import           Learning
-import qualified Learning.PDDL							  as PDDL
+import qualified Learning.PDDL                            as PDDL
 import qualified Learning.PDDL.EffectKnowledge            as Eff
 import           Learning.PDDL.Experiment
 import           Learning.PDDL.NonConditionalKnowledge

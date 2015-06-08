@@ -36,7 +36,11 @@ module Planning.PDDL
     , GroundedEffects
     , GroundedAction
     , State
+    , TotalState
     , Plan
+    , allGroundedPredicates
+    , notInState
+    , totalState
 
     -- ** Actions
     , Action
@@ -48,12 +52,13 @@ module Planning.PDDL
 import           Logic.Formula
 import           Planning      as Plng
 
+import           Control.Monad (replicateM)
 import           Data.List     (find)
 import           Data.Map      (Map)
 import qualified Data.Map      as Map
 import           Data.Maybe    (fromMaybe)
-import           Data.Set      (Set)
--- import qualified Data.Set      as Set
+import           Data.Set      (Set, (\\))
+import qualified Data.Set      as Set
 
 type FluentPredicate = Predicate Term
 type PredicateSpec = Predicate (Name, Type)
@@ -82,14 +87,14 @@ data Effect = EAnd [Effect]
 
 
 data ActionSpec = ActionSpec
-    { asName       :: String
-    , asParas      :: [Name]
+    { asName      :: String
+    , asParas     :: [Name]
     -- , asPrecond    :: Formula Argument
-    , asPrecond    :: GoalDesc
+    , asPrecond   :: GoalDesc
     -- , asEffect     :: Formula Argument
-    , asEffect     :: Effect
-    , asConstants  :: [Name]
-    , asTypes      :: Map Name Type
+    , asEffect    :: Effect
+    , asConstants :: [Name]
+    , asTypes     :: Map Name Type
     } deriving (Show, Eq, Ord)
 
 data PDDLDomain = PDDLDomain
@@ -117,6 +122,24 @@ data PDDLEnvSpec = PDDLEnvSpec
     }
 
 data PDDLGraph = PDDLGraph (PDDLDomain, PDDLProblem)
+
+-- | Construct all possible predicates given predicate specification from a
+--   domain and objects from a problem.
+allGroundedPredicates :: PDDLEnvSpec -> Set GroundedPredicate
+allGroundedPredicates eSpec =
+    Set.fromList $ concatMap fromSpec $ envsPredSpecs eSpec where
+        fromSpec :: PredicateSpec -> [GroundedPredicate]
+        fromSpec (Predicate pn pa) = [ Predicate pn p
+                                     | p <- replicateM (length pa) (envsObjs eSpec)
+                                     ]
+
+-- | Constructs a set of grounded predicates not occuring in the given state
+notInState :: State -> PDDLEnvSpec -> State
+notInState s eSpec = allGroundedPredicates eSpec \\ s
+
+totalState :: State -> PDDLEnvSpec -> TotalState
+totalState s eSpec = Set.map Pos s `Set.union` Set.map Neg ns where
+    ns = notInState s eSpec
 
 
 ePos :: Predicate Term -> Effect

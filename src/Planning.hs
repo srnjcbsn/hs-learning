@@ -12,6 +12,7 @@ type Type   = String
 
 type GroundedPredicate = Predicate Object
 type State = Set GroundedPredicate
+type TotalState = Set (Literal GroundedPredicate)
 
 type Action = (Name, [Object])
 type Plan = [Action]
