@@ -1,4 +1,4 @@
-module Learning.OptPrecondLearnSpec where
+module Learning.PDDL.PreconditionKnowledgeSpec where
 
 import           Data.List                             (sort)
 import           Data.Map                              (Map, (!))

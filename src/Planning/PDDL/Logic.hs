@@ -11,10 +11,9 @@ module Planning.PDDL.Logic
     , groundMany
     ) where
 
-import           Data.List     (intercalate)
--- import qualified Data.List     as List
 import           Control.Arrow ((***))
 import           Control.Monad (replicateM)
+import           Data.List     (intercalate)
 import           Data.Map      (Map)
 import qualified Data.Map      as Map
 import           Data.Maybe    (fromMaybe)
@@ -22,14 +21,12 @@ import           Data.Set      (Set, (\\))
 import qualified Data.Set      as Set
 import           Data.Tuple
 import qualified Data.TupleSet as TSet
--- import           Data.Tuple    (swap)
--- import qualified Data.TupleSet as TSet
+
 import           Graph
 import           Graph.Search
 import           Logic.Formula
 import           Planning
 import           Planning.PDDL
--- import           Data.Maybe
 
 -- | Finds the action spec of an action in a domain
 findActionSpec :: PDDLDomain -> Action -> ActionSpec
@@ -41,19 +38,6 @@ findActionSpec domain (n, _) = case actionSpec domain n of
               ++ names ++ ")"
         where names = intercalate ", "
                     $ map asName (dmActionsSpecs domain)
-
-
--- -- | Instantiates a formula into the actual positive and negative changes
--- insForm :: Map Argument Object -> Formula Argument -> GroundedChanges
--- insForm m (Pred p) =
---     (Set.singleton (Predicate (pName p) (mapMaybe (`Map.lookup` m) $ pArgs p)), Set.empty)
--- insForm m (Neg f) = swap $ insForm m f
--- insForm m (Con fs) =
---     List.foldl (\changes f -> TSet.union changes $ insForm m f ) TSet.empty fs
-
--- | Checks if the preconditions of a grounded action are satisfied
--- isActionValid :: GroundedAction -> Bool
--- isActionValid = fst
 
 -- | Applies the grounded actions to a state, if the action is not valid nothing is returned
 applyAction :: State -> GroundedEffects -> State
@@ -127,63 +111,6 @@ intersecCombi = Map.unionsWith Set.intersection
 initVarCombi :: Context -> [Variable] -> Map Variable (Set Object)
 initVarCombi (_,objs) vars = Map.fromList $ zip vars (repeat $ Set.fromList objs)
 
-    -- p(x,y) and p(x,z)
-    -- objs = [1,2,3,4]
-
-    --        n(1,2) n(1,3) n(1,4)
-    --        n(2,2)        n(2,4)
-    -- n(3,1) n(3,2)        n(3,4)
-    -- n(4,1) n(4,2) n(4,3) n(4,4)
-
-    -- p(1,1)
-    -- p(2,1)        p(2,3)
-    --               p(3,3)
-
-    -- p(x,y) - x = (1,2,3) y = (1,3)   z = (1..4)
-
-    -- p(z,x) - x = (1,3)   y = (1..4)  z = (1,2,3)
-
-    -- and    - x = (1,3)   y = (1,3)   z = (1,2,3)
-
-
-
-
-    -- p(x,y) = x=1 y=1  p(1,1)
-    --        = x=2 y=1  p(2,1)
-    --        = x=3 y=1  p(3,1) X
-    --        = x=1 y=3  p(1,3) X
-    --        = x=2 y=3  p(2,3)
-    --        = x=3 y=3  p(3,3)
-    --        = x=4 y=_  p(4,_) X
-    -- p(z,x) = x=2 z=_  p(_,2)
-    --np(z,x)
-
-    -- m = constMap (asConstants as)
-    -- pairs = List.zip (List.map Ref $ asParas as) (aArgs a)
-    -- paraMap = Map.fromList pairs
-    -- fullMap = Map.union paraMap m
-    -- ga = (groundPreconditions as (aArgs a), insForm fullMap (asEffect as))
-
-
--- substMap :: [Name] -> [Name] -> Map Name Name
--- substMap paras args = Map.fromList $ zip paras args
---
--- subst :: Map Name Name -> Term -> Name
--- subst m (TVar r)   = m ! r
--- subst _ (TName c) = c
---
--- substitute :: [Name] -> [Name] -> Term -> Name
--- substitute paras args = subst $ substMap paras args
-
--- ground' :: [Name] -> [Name] -> Set FluentPredicate -> Set GroundedPredicate
--- ground' paras args = Set.map (fmap $ substitute paras args)
-
--- ground :: PDDLDomain
---        -> Action
---        -> Set FluentPredicate
---        -> Set GroundedPredicate
--- ground domain (n, args) = groundPred (asParas as) args where
---     as = findActionSpec domain (n, args)
 
 -- | Takes an action, grounds it and then if the precondions are satisfied applies it to a state
 apply' :: PDDLDomain -> PDDLProblem -> State -> Action -> Maybe State

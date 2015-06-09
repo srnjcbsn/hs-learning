@@ -1,4 +1,4 @@
-module Learning.OptEffectLearnSpec where
+module Learning.PDDL.EffectKnowledgeSpec where
 
 import qualified Data.Map                              as Map
 import           Data.Maybe                            (fromJust)
@@ -14,7 +14,8 @@ import           Planning.PDDL.Logic
 
 
 testEffectLearnSpec :: Spec
-testEffectLearnSpec = do
+testEffectLearnSpec =
+  describe "Learning non-conditional effects" $
         let p :: (Name -> t) -> Name -> Name -> Predicate t
             p f x y = Predicate "p" [f x,f y]
 
@@ -44,8 +45,7 @@ testEffectLearnSpec = do
               let dk = domainKnowledge pk
                   (_, effknl) = knlFromDomKnl dk name
                   knl = knlFromEk effknl
-
-              in (posUnknown knl, posKnown knl)
+               in (posUnknown knl, posKnown knl)
 
             actionNegEffectKnl :: PDDLKnowledge env -> Name -> TupleSet FluentPredicate
             actionNegEffectKnl pk name =
@@ -55,7 +55,7 @@ testEffectLearnSpec = do
 
                 in (negUnknown knl, negKnown knl)
          in do
-            it "can correctly handle ambiguos positive predicates" $ do
+            it "can correctly handle ambiguos positive predicates" $
               let x = "x"
                   y = "y"
                   z = "z"
