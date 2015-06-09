@@ -54,13 +54,13 @@ import           Logic.Formula
 import           Planning
 import           Planning.PDDL
 
-import           Control.Arrow                       (second, (***))
+import           Control.Arrow                       (second, (&&&), (***))
 import           Control.Monad                       (liftM, liftM2, replicateM,
                                                       sequence)
 import           Data.Foldable                       (all, any)
 import           Data.List                           (mapAccumL)
 import qualified Data.List                           as List
-import           Data.Map                            (Map)
+import           Data.Map                            (Map, (!))
 import qualified Data.Map                            as Map
 import           Data.Maybe                          (catMaybes, fromMaybe,
                                                       isJust, listToMaybe)
@@ -71,7 +71,6 @@ import           Data.TupleSet                       (TupleSet)
 import qualified Data.TupleSet                       as TSet
 import           Prelude                             hiding (all, any)
 
-type UID = Int
 type Cand a = [(a, a)]
 
 data CondEffKnowledge = CondEffKnowledge
@@ -96,7 +95,11 @@ patch vs1 vs2 = map (identifier *** identifier) pt where
 
 rename :: CondEffKnowledge -> (Int -> [Int]) -> CondEffKnowledge
 rename effKnl rn =
-    let proven = Set.filter ((== 1) . length . rn) (cekProven effKnl)
+    let -- only keep vertices in proven set if they have not been expanded
+        -- during hyper graph merging
+        proven = Set.filter ((== 1) . length . rn) (cekProven effKnl)
+        -- construct a list of pairs of missing bindings (some of the
+        -- candidates may have expanded during hypergraph merging
         cand' :: Cand Int -> Cand Int
         cand' = concatMap $ uncurry (liftM2 (,)) . (rn *** rn)
     in  effKnl { cekProven = proven
@@ -137,19 +140,58 @@ fromFailed :: CondEffKnowledge
            -> CondEffKnowledge
 fromFailed effKnl lgp hg s = undefined
 
-
-
 updateEffectKnowledge :: CondEffKnowledge
+                      -> HyperGraph (Object, Int)
                       -> Literal GroundedPredicate
-                      -> TotalState
                       -> CondEffKnowledge
-updateEffectKnowledge effMap lgp s = undefined
+updateEffectKnowledge lgp mCek s = undefined
+
+simplifyTuples :: HyperGraph (Int, Int) -> (Map (Int, Int) Int, HyperGraph Int)
+simplifyTuples hg = undefined
+
+mergeSucceeded :: [Literal GroundedPredicate]
+               -> Maybe CondEffKnowledge
+               -> HyperGraph (Object, Int)
+               -> CondEffKnowledge
+mergeSucceeded (lgp : rest) (Just cek) baseHg =
+    let cek' = rename (cek { cekHyperGraph = unproven' }) rn
+        unproven = merge (cekHyperGraph cek) (fromEffect baseHg lgp)
+        (tupleMap, unproven') = simplifyTuples unproven
+        substMap :: Map Int [Int]
+        substMap = Map.fromListWith (++)
+                 $ map ((fst . identifier) &&& ((:[]) . (tupleMap !) . identifier))
+                 $ concatMap Set.toList
+                 $ Set.toList $ Set.map vertexSet $ bindingEdges unproven
+
+        rn n = fromMaybe [] $ Map.lookup n substMap
+    in  mergeSucceeded rest (Just cek') baseHg
+
+mergeSucceeded [] (Just cek) _ = cek
+
+mergeSucceeded (lgp : rest) Nothing baseHg =
+    let cek = CondEffKnowledge (fromEffect baseHg lgp) Set.empty Set.empty
+    in  mergeSucceeded rest (Just cek) baseHg
+
+mergeSucceeded _ _ _ = error "mergeSucceeded called with empty predicate list"
 
 updateActionKnowledge :: CondActionKnowledge
                       -> PDDLEnvSpec
                       -> Transition
                       -> CondActionKnowledge
-updateActionKnowledge actMap eSpec (s, _, s') = undefined
+updateActionKnowledge actMap eSpec (s, _, s') = undefined where
+    ts = totalState s eSpec
+    ts' = totalState s' eSpec
+    baseHg = fromTotalState eSpec
+    succs = ts \\ ts' -- effects that were successfully applied
+    fails = undefined
+    -- group successful effects by name
+    grps :: [[Literal GroundedPredicate]]
+    grps = map snd
+         $ Map.toList $ Map.fromListWith (++)
+         $ map (fmap predName &&& (:[]))
+         $ Set.toList succs
+
+
 
 updateDomainKnowledge :: CondDomainKnowledge
                       -> PDDLEnvSpec
@@ -255,11 +297,11 @@ fromTotalState peSpec ts = bes `Set.union` pes where
 fromTransition :: PDDLEnvSpec
                -> Transition
                -> [(Literal GroundedPredicate, HyperGraph Int)]
-fromTransition peSpec (s, _, s') = Set.toList hgs where
-    ts = totalState s peSpec
-    ts' = totalState s' peSpec \\ ts -- For now, only consider delta state
-    hgBase = fromTotalState peSpec ts
-    hgs = Set.map (\lgp -> (lgp, fromEffect hgBase lgp)) ts'
+fromTransition peSpec (s, _, s') = undefined -- map (second simplifyHyperGraph) $ Set.toList hgs where
+    -- ts = totalState s peSpec
+    -- ts' = totalState s' peSpec \\ ts -- For now, only consider delta state
+    -- hgBase = fromTotalState peSpec ts
+    -- hgs = Set.map (\lgp -> (lgp, fromEffect hgBase lgp)) ts'
 
 vertexSet :: Ord a => Edge a -> VertexSet a
 vertexSet (Edge _ e) = e
