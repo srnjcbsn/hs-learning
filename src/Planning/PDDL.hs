@@ -41,7 +41,11 @@ module Planning.PDDL
     , GroundedPredicate
     , GroundedEffects
     , State
+    , TotalState
     , Plan
+    , allGroundedPredicates
+    , notInState
+    , totalState
 
     -- ** Actions
     , Action
@@ -53,12 +57,13 @@ module Planning.PDDL
 import           Logic.Formula
 import           Planning      as Plng
 
+import           Control.Monad (replicateM)
 import           Data.List     (find)
 import           Data.Map      (Map)
 import qualified Data.Map      as Map
 import           Data.Maybe    (fromMaybe)
-import           Data.Set      (Set)
--- import qualified Data.Set      as Set
+import           Data.Set      (Set, (\\))
+import qualified Data.Set      as Set
 
 
 type FluentPredicate = Predicate Term
@@ -129,6 +134,24 @@ instantiateTerm (tc,_) (TVar t) =
   fromMaybe (error "variable " ++ show t ++ " don't exist")
             $ Map.lookup t tc
 instantiateTerm _ (TName t) = t
+-- | Construct all possible predicates given predicate specification from a
+--   domain and objects from a problem.
+allGroundedPredicates :: PDDLEnvSpec -> Set GroundedPredicate
+allGroundedPredicates eSpec =
+    Set.fromList $ concatMap fromSpec $ envsPredSpecs eSpec where
+        fromSpec :: PredicateSpec -> [GroundedPredicate]
+        fromSpec (Predicate pn pa) = [ Predicate pn p
+                                     | p <- replicateM (length pa) (envsObjs eSpec)
+                                     ]
+
+-- | Constructs a set of grounded predicates not occuring in the given state
+notInState :: State -> PDDLEnvSpec -> State
+notInState s eSpec = allGroundedPredicates eSpec \\ s
+
+totalState :: State -> PDDLEnvSpec -> TotalState
+totalState s eSpec = Set.map Pos s `Set.union` Set.map Neg ns where
+    ns = notInState s eSpec
+
 
 ePos :: Predicate Term -> Effect
 ePos = ELit . Pos
