@@ -1,9 +1,9 @@
 module Planning.PDDL.ParserSpec (main, spec) where
 
 import           Data.Char
-import qualified Data.Map             as Map
-import           Data.Maybe           (isNothing)
-import qualified Data.Set             as Set
+import qualified Data.Map                 as Map
+import           Data.Maybe               (isNothing)
+import qualified Data.Set                 as Set
 
 import           Test.Hspec
 import           Test.QuickCheck
@@ -13,73 +13,74 @@ import           Planning.PDDL
 import           Planning.PDDL.Parser
 import           Planning.PDDL.Serializer
 
-p :: (Variable -> Term) -> Variable -> Predicate Term
-p f x = Predicate "p" [f x]
-
-predStrA :: String
-predStrA = "(a ?x Y)"
-
-predResA :: Predicate Term
-predResA = Predicate "a" [TVar "x", TName "Y"]
-
-actionSpecStr :: String
-actionSpecStr = unlines [ "(:action act"
-                        , ":parameters (?a)"
-                        , ":precondition (p ?a)"
-                        , ":effect (not (p ?a)) )"
-                        ]
-
-actionSpecRes :: ActionSpec
-actionSpecRes = ActionSpec { asName      = "act"
-                           , asParas     = ["a"]
-                           , asPrecond   = gPos $ p TVar "a"
-                           , asEffect    = eNeg $ p TVar "a"
-                           , asConstants = []
-                           , asTypes     = Map.singleton "a" baseType
-                           }
-domainSpecStr :: String
-domainSpecStr =
-    unlines [ "(define (domain test)"
-            , "(:requirements :strips)"
-            , "(:types )"
-            , "(:constants A B)"
-            , "(:predicates (a ?x ?y))"
-            , actionSpecStr
-            , ")"
-            ]
-
-domainSpecRes :: PDDLDomain
-domainSpecRes =
-    PDDLDomain { dmName         = "test"
-               , dmPredicates   = [Predicate "a" [ ("x", baseType)
-                                                 , ("y", baseType)]
-                                  ]
-               , dmActionsSpecs = [actionSpecRes]
-               , dmConstants    = ["A", "B"]
-               , dmTypes        = []
-               }
-
-problemSpecStr :: String
-problemSpecStr =
-    unlines [ "(define (problem prob)"
-            , "(:domain dom)"
-            , "(:objects x y)"
-            , "(:init (test1 x y))"
-            , "(:goal (test2 x y)) )"
-            ]
-
-problemSpecRes :: PDDLProblem
-problemSpecRes =
-    PDDLProblem { probName = "prob"
-                , probObjs = ["x", "y"]
-                , probDomain = "dom"
-                , probState = Set.singleton $ Predicate "test1" ["x", "y"]
-                , probGoal = GLit $ Pos $ Predicate "test2" [TName "x", TName "y"]
-                , probTypes = Map.fromList [("x", baseType), ("y", baseType)]
-                }
 
 testParsePredicateSpec :: Spec
-testParsePredicateSpec = do
+testParsePredicateSpec =
+    let p :: (Variable -> Term) -> Variable -> Predicate Term
+        p f x = Predicate "p" [f x]
+
+        predStrA :: String
+        predStrA = "(a ?x Y)"
+
+        predResA :: Predicate Term
+        predResA = Predicate "a" [TVar "x", TName "Y"]
+
+        actionSpecStr :: String
+        actionSpecStr = unlines [ "(:action act"
+                                , ":parameters (?a)"
+                                , ":precondition (p ?a)"
+                                , ":effect (not (p ?a)) )"
+                                ]
+
+        actionSpecRes :: ActionSpec
+        actionSpecRes = ActionSpec { asName      = "act"
+                                   , asParas     = ["a"]
+                                   , asPrecond   = gPos $ p TVar "a"
+                                   , asEffect    = eNeg $ p TVar "a"
+                                   , asConstants = []
+                                   , asTypes     = Map.singleton "a" baseType
+                                   }
+        domainSpecStr :: String
+        domainSpecStr =
+            unlines [ "(define (domain test)"
+                    , "(:requirements :strips)"
+                    , "(:types )"
+                    , "(:constants A B)"
+                    , "(:predicates (a ?x ?y))"
+                    , actionSpecStr
+                    , ")"
+                    ]
+
+        domainSpecRes :: PDDLDomain
+        domainSpecRes =
+            PDDLDomain { dmName         = "test"
+                       , dmPredicates   = [Predicate "a" [ ("x", baseType)
+                                                         , ("y", baseType)]
+                                          ]
+                       , dmActionsSpecs = [actionSpecRes]
+                       , dmConstants    = ["A", "B"]
+                       , dmTypes        = []
+                       }
+
+        problemSpecStr :: String
+        problemSpecStr =
+            unlines [ "(define (problem prob)"
+                    , "(:domain dom)"
+                    , "(:objects x y)"
+                    , "(:init (test1 x y))"
+                    , "(:goal (test2 x y)) )"
+                    ]
+
+        problemSpecRes :: PDDLProblem
+        problemSpecRes =
+            PDDLProblem { probName = "prob"
+                        , probObjs = ["x", "y"]
+                        , probDomain = "dom"
+                        , probState = Set.singleton $ Predicate "test1" ["x", "y"]
+                        , probGoal = GLit $ Pos $ Predicate "test2" [TName "x", TName "y"]
+                        , probTypes = Map.fromList [("x", baseType), ("y", baseType)]
+                        }
+      in do
     describe "Identifier parser" $ do
         it "can contain '-', '_', and numbers" $ do
             tryParse parseName "a-" `shouldBe` Just "a-"

@@ -55,7 +55,7 @@ signAs b = fmap (const b)
 signs :: Literal a -> b -> Literal b
 signs = flip signAs
 
--- | Extract the atom of a 'Literal', throwing aeay the sign
+-- | Extract the atom of a 'Literal', throwing away the sign
 atom :: Literal a -> a
 atom (Pos a) = a
 atom (Neg a) = a

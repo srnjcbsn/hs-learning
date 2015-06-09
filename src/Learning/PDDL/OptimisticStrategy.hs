@@ -30,16 +30,16 @@ instance ( Environment env
              (PDDLExperiment env)
              (Lrn.PDDLInfo env)
     where
-      design strat@(OptimisticStrategy (planner, bound)) prob knl@(NCT.PDDLKnowledge (_,_,s)) =
+      design strat@(OptimisticStrategy (planner, bound)) prob knl@(NCT.PDDLKnowledge (_,_,s,_)) =
         do let optDom = makeOptimisticDomain knl
            let prob' = prob { probState = s}
            let planner' = setBound planner bound
            plan <- makePlan planner' optDom prob'
            let expr = do plan' <- plan
-                         return (PDDLExperiment plan' optDom, strat)
+                         return (PDDLExperiment plan' optDom (pddlEnvSpec optDom prob'), strat)
            return expr
 
-      update (OptimisticStrategy (planner, bound)) (PDDLExperiment p _) (Lrn.PDDLInfo _ _ n)
+      update (OptimisticStrategy (planner, bound)) (PDDLExperiment p _ _) (Lrn.PDDLInfo _ _ n)
         | n == length p =
           case bound of
               Just b -> (OptimisticStrategy (planner, Just (b * 2)))
@@ -75,5 +75,5 @@ mkSchema kn as = case Map.lookup (asName as) kn of
                      ++ (asName as) ++ " failed."
 
 makeOptimisticDomain :: NCT.PDDLKnowledge env -> PDDLDomain
-makeOptimisticDomain (NCT.PDDLKnowledge (dom, kn, _)) = dom { dmActionsSpecs = as }
+makeOptimisticDomain (NCT.PDDLKnowledge (dom, kn, _, _)) = dom { dmActionsSpecs = as }
     where as = map (mkSchema kn) (dmActionsSpecs dom)

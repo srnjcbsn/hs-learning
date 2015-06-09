@@ -1,9 +1,9 @@
 -- | Adapted from http://reason.cs.uiuc.edu/filter/filter/blocks-world-exper/blocks-domain.pddl
 module Planning.PDDL.Samples.BlocksWorld where
 
-import Planning.PDDL
-import Logic.Formula
-import qualified Data.Map as Map
+import qualified Data.Map      as Map
+import           Logic.Formula
+import           Planning.PDDL
 
 clear :: a -> Predicate a
 clear o   = Predicate "clear" [o]

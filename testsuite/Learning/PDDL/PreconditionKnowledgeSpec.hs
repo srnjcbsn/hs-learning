@@ -1,59 +1,61 @@
-module Learning.OptPrecondLearnSpec where
+module Learning.PDDL.PreconditionKnowledgeSpec where
 
-import           Data.List                       (sort)
-import           Data.Map                        (Map, (!))
-import qualified Data.Map                        as Map
-import           Data.Maybe                      (fromJust)
-import           Data.Set                        (Set)
-import qualified Data.Set                        as Set
+import           Data.List                             (sort)
+import           Data.Map                              (Map, (!))
+import qualified Data.Map                              as Map
+import           Data.Maybe                            (fromJust)
+import           Data.Set                              (Set)
+import qualified Data.Set                              as Set
 import           Test.Hspec
 import           Test.Hspec.QuickCheck
 import           Test.QuickCheck
 
-import Learning.PDDL.PreconditionKnowledge
-import qualified Data.TupleSet                   as TSet
+import qualified Data.TupleSet                         as TSet
+import           Learning.PDDL.PreconditionKnowledge
 -- import           Learning.OptPrecondLearn
+import           Learning.PDDL.NonConditionalKnowledge
+import           Learning.PDDL.NonConditionalTypes
 import           Logic.Formula
 import           Planning.PDDL
-import Learning.PDDL.NonConditionalTypes
-import        Learning.PDDL.NonConditionalKnowledge
-
-p, q :: (String -> a) -> Variable -> Variable -> Predicate a
-p f x y = Predicate "p" [f x,f y]
-q f x y = Predicate "q" [f x,f y]
-
-pP :: Variable -> Variable -> Predicate Term
-pP x y = p TVar x y
-
-initActSpec :: [GoalDesc] -> ActionSpec
-initActSpec preconds = ActionSpec
-    { asName      = "as"
-    , asParas     = ["x", "y", "z"]
-    , asPrecond   = GAnd preconds
-    , asEffect    = EAnd []
-    , asConstants = []
-    , asTypes     = Map.empty
-    }
-
-initDomain :: PDDLDomain
-initDomain = PDDLDomain
-    { dmName         = "TestDomain"
-    , dmPredicates   = [p (flip (,) baseType) "x" "y"]
-    , dmActionsSpecs = [initActSpec []]
-    , dmConstants    = []
-    , dmTypes        = []
-    }
-
-precondKnl :: PDDLKnowledge env -> Name -> PreKnowledge
-precondKnl pddlknl actname = preKnl
-  where dk = domainKnowledge pddlknl
-        (preKnl, _) = knlFromDomKnl dk actname
 
 
 
 testPrecondLearnSpec :: Spec
 testPrecondLearnSpec = do
-    describe "update predicate hypothesis" $ do
+    describe "update procondition knowledge" $ do
+      let p, q :: (String -> a) -> Variable -> Variable -> Predicate a
+          p f x y = Predicate "p" [f x,f y]
+          q f x y = Predicate "q" [f x,f y]
+
+          pP :: Variable -> Variable -> Predicate Term
+          pP x y = p TVar x y
+
+          initActSpec :: [GoalDesc] -> ActionSpec
+          initActSpec preconds = ActionSpec
+              { asName      = "as"
+              , asParas     = ["x", "y", "z"]
+              , asPrecond   = GAnd preconds
+              , asEffect    = EAnd []
+              , asConstants = []
+              , asTypes     = Map.empty
+              }
+
+          initDomain :: PDDLDomain
+          initDomain = PDDLDomain
+              { dmName         = "TestDomain"
+              , dmPredicates   = [p (flip (,) baseType) "x" "y"]
+              , dmActionsSpecs = [initActSpec []]
+              , dmConstants    = []
+              , dmTypes        = []
+              }
+          allobjs = ["a", "b", "c", "d", "e", "f"]
+          prob = allObjsToProblem allobjs
+
+          precondKnl :: PDDLKnowledge env -> Name -> PreKnowledge
+          precondKnl pddlknl actname = preKnl
+            where dk = domainKnowledge pddlknl
+                  (preKnl, _) = knlFromDomKnl dk actname
+       in do
         it "can prove that a positive predicate can not be a precondition" $
             let as = "as"
                 s0 = Set.empty
@@ -66,7 +68,7 @@ testPrecondLearnSpec = do
                          Set.empty
 
                 transition = (s0, (as, ["a", "b", "c"]), s1)
-                kn1 = update initDomain kn0 transition
+                kn1 = update initDomain allobjs kn0 transition
 
                 actualUnknowns = (posUnknown . knlFromPk) kn1
                 expectedUnknowns = Set.empty
@@ -84,7 +86,7 @@ testPrecondLearnSpec = do
                          Set.empty
 
                 transition = (s0, (as, ["a", "b", "c"]), s1)
-                kn1 = update initDomain kn0 transition
+                kn1 = update initDomain allobjs kn0 transition
 
                 preknl = knlFromPk kn1
                 actualUnknowns = negUnknown preknl
@@ -105,7 +107,7 @@ testPrecondLearnSpec = do
 
                 action = (as, ["a", "b", "c"])
                 transition = (s0, action, s0)
-                kn1 = update initDomain kn0 transition
+                kn1 = update initDomain allobjs kn0 transition
 
                 preknl = knlFromPk kn1
 
@@ -127,7 +129,7 @@ testPrecondLearnSpec = do
 
                 action = (as, ["a", "b", "c"])
                 transition = (s, action, Set.empty)
-                kn1 = update initDomain kn0 transition
+                kn1 = update initDomain allobjs kn0 transition
 
                 actualKnowns = (posKnown . knlFromPk) kn1
 
@@ -151,7 +153,7 @@ testPrecondLearnSpec = do
 
                 action = ("as", ["a", "b", "c"])
                 transition = (s, action, Set.empty)
-                actual = update initDomain kn0 transition
+                actual = update initDomain allobjs kn0 transition
 
 
                 expected = PreKnowledge
@@ -174,7 +176,7 @@ testPrecondLearnSpec = do
 
                 action = ("as", ["a", "b", "c"])
                 transition = (s, action, s)
-                actual = update initDomain kn0 transition
+                actual = update initDomain allobjs kn0 transition
                 expected = PreKnowledge
                         Knowledge
                           { knowns = (Set.empty, negUnks)
@@ -193,7 +195,7 @@ testPrecondLearnSpec = do
                           cand
                 action = ("as", ["a", "b", "c"])
                 transition = (s, action, Set.empty)
-                actual = update initDomain kn0 transition
+                actual = update initDomain allobjs kn0 transition
 
                 expected = PreKnowledge
                         Knowledge
@@ -219,7 +221,7 @@ testPrecondLearnSpec = do
 
                 action = ("as", ["a", "b", "c"])
                 transition = (s, action, Set.empty)
-                actual = update initDomain kn0 transition
+                actual = update initDomain allobjs kn0 transition
 
                 expected = PreKnowledge
                         Knowledge

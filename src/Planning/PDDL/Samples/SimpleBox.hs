@@ -1,9 +1,8 @@
 module Planning.PDDL.Samples.SimpleBox where
-import Planning.PDDL.Logic()
-import Planning.PDDL
-import Logic.Formula
-import qualified Data.Set as Set
-import qualified Data.Map as Map
+import qualified Data.Map      as Map
+import qualified Data.Set      as Set
+import           Logic.Formula
+import           Planning.PDDL
 
 inside :: String
 inside = "inside"
