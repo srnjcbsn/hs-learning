@@ -57,6 +57,7 @@ import           Planning.PDDL
 import           Control.Arrow                       (second, (***))
 import           Control.Monad                       (liftM, replicateM,
                                                       sequence)
+import           Data.Foldable                       (all, any)
 import           Data.List                           (mapAccumL)
 import qualified Data.List                           as List
 import           Data.Map                            (Map)
@@ -68,43 +69,66 @@ import qualified Data.Set                            as Set
 import           Data.Tree
 import           Data.TupleSet                       (TupleSet)
 import qualified Data.TupleSet                       as TSet
+import           Prelude                             hiding (all, any)
 
-type Cand = Set (PredInfo, PredInfo)
+type UID = Int
+type Cand a = [(a, a)]
 
 data CondEffKnowledge = CondEffKnowledge
     { cekHyperGraph :: HyperGraph Int
     , cekProven     :: Set PredInfo
-    , cekDisproven  :: Set PredInfo
-    , cekCands      :: Set Cand
+    , cekCands      :: Set (Cand Int)
     }
 
 type CondActionKnowledge = Map (Literal FluentPredicate) CondEffKnowledge
 
 type CondDomainKnowledge = Map Name CondActionKnowledge
 
-mkCands :: HyperGraph Int -- ^ The existing hypergraph for the failed effect.
-        -> HyperGraph Int -- ^ The hyper graph constructed for the failed effect.
-        -> Cand
-mkCands unknHg failHg = undefined
+-- | Partition the vertices in the first argument into two subsets; those
+--   present in the second argument and those that are not. Return this
+--   partitioning as a collection of pairs, each consisting of one identifier
+--   from the first part of the partition, and one identifier from the other.
+patch :: Ord a => VertexSet a -> VertexSet a -> [(a, a)]
+patch vs1 vs2 = map (identifier *** identifier) pt where
+    diff = vs1 `difference` vs2
+    inter = vs1 \\ diff
+    pt = concatMap (zip (Set.toList diff) . repeat) (Set.toList inter)
 
 mergeCandEdges :: Ord a
-           => HyperGraph a
-           -> HyperGraph a
-           -> HyperGraph (a, a)
-           -> Edge a
-           -> Edge a
-           -> (HyperGraph (a, a), [(PredInfo, PredInfo)])
-mergeCandEdges h1 h2 h' e1 e2 = second ((++ misses) . concat) rest where
+               => HyperGraph a
+               -> HyperGraph a
+               -> HyperGraph (a, a)
+               -> Edge a
+               -> Edge a
+               -> (HyperGraph (a, a), Cand a)
+mergeCandEdges h1 h2 h' e1 e2 = second ((++) pat . concat) rest where
     et     | edgeType e1 == edgeType e2 = edgeType e1
            | otherwise = error "can not merge predicate and binding edges"
     et'    = otherEdgeType et
     e'     = vertexSet e1 `intersect` vertexSet e2
-    misses = vertexSet e1 `difference` vertexSet e2
     h''    = Set.insert (Edge et e') h'
     invs   = [ newIdInv v | v <- Set.toList e', not $ isInEdge et h' v ]
     oldes  = map (containingEdge et' h1 *** containingEdge et' h2) invs
     valids = [ (e1', e2') | (Just e1', Just e2') <- oldes ]
     rest   = mapAccumL (\hh (e1', e2') -> mergeCandEdges h1 h2 hh e1' e2') h'' valids
+    pat    = patch (vertexSet e1) (vertexSet e2)
+
+fromSuccessful :: CondEffKnowledge
+               -> Literal GroundedPredicate
+               -> HyperGraph Int
+               -> TotalState
+               -> CondEffKnowledge
+fromSuccessful effKnl lgp hg s = undefined
+    -- effKnl { cekHyperGraph = simplifyHyperGraph $ merge (cekHyperGraph effKnl) hg }
+
+fromFailed :: CondEffKnowledge
+           -> Literal GroundedPredicate
+           -> HyperGraph Int
+           -> TotalState
+           -> CondEffKnowledge
+fromFailed effKnl lgp hg s = undefined
+
+
 
 updateEffectKnowledge :: CondEffKnowledge
                       -> Literal GroundedPredicate
@@ -113,20 +137,22 @@ updateEffectKnowledge :: CondEffKnowledge
 updateEffectKnowledge effMap lgp s = undefined
 
 updateActionKnowledge :: CondActionKnowledge
+                      -> PDDLEnvSpec
                       -> Transition
                       -> CondActionKnowledge
-updateActionKnowledge actMap (s, _, s') = undefined
+updateActionKnowledge actMap eSpec (s, _, s') = undefined
 
 updateDomainKnowledge :: CondDomainKnowledge
-                      -> PDDLDomain
-                      -> PDDLProblem
+                      -> PDDLEnvSpec
                       -> Transition
                       -> CondDomainKnowledge
-updateDomainKnowledge knl dom prob t@(s, a, s') =
+updateDomainKnowledge knl eSpec t@(s, a, s') =
     case Map.lookup (aName a) knl of
-      Just actKnl -> Map.insert (aName a) (updateActionKnowledge actKnl t) knl
-      Nothing     -> error $  "updateDomainKnowledge: failed to find action "
-                           ++ aName a ++ " in knowledge map."
+      Just actKnl ->
+        Map.insert (aName a) (updateActionKnowledge actKnl eSpec t) knl
+      Nothing ->
+        error $  "updateDomainKnowledge: failed to find action "
+              ++ aName a ++ " in knowledge map."
 
 type HyperGraph a = Set (Edge a)
 
@@ -157,6 +183,9 @@ data Edge a = Edge EdgeType (VertexSet a) deriving (Eq, Ord, Show)
 
 identifier :: Ord a => Vertex a -> a
 identifier (Vertex a _) = a
+
+predInfo :: Ord a => Vertex a -> PredInfo
+predInfo (Vertex _ i) = i
 
 -- | Given a binding edge, returns the object that the edge represents.
 --   The vertices in the edge must contain this information in ther identifiers.
@@ -257,8 +286,8 @@ newIdInv (Vertex (i, j) n) = (Vertex i n, Vertex j n)
 similarTo :: Ord a => Vertex a -> Vertex a -> Bool
 similarTo v1 v2 = isJust $ newId v1 v2
 
-difference :: Ord a => VertexSet a -> VertexSet a -> [(PredInfo, PredInfo)]
-difference e1 e2 = undefined -- Set.fromList
+difference :: Ord a => VertexSet a -> VertexSet a -> VertexSet a
+difference e1 e2 = Set.filter (\v -> all (not . similarTo v) e2) e1
 
 intersect :: Ord a => VertexSet a -> VertexSet a -> Set (Vertex (a, a))
 intersect e1 e2 = Set.fromList
