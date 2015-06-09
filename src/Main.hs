@@ -1,6 +1,6 @@
 module Main where
 
-import qualified Learning.PDDL.NonConditionalTypes as NCT
+import qualified Learning.PDDL.NonConditionalTypes        as NCT
 -- import           Data.TupleSet                            (TupleSet)
 -- import qualified Data.TupleSet                            as TSet
 import           Environment                              as Env
@@ -13,15 +13,15 @@ import           Environment.Sokoban.SokobanDomain
 import           Environment.Sokoban.SokobanView
 -- import           Graph.Search.Astar                       as Astar
 import           Learning
-import qualified Learning.PDDL							  as PDDL
+import qualified Learning.PDDL                            as PDDL
 -- import qualified Learning.PDDL.EffectKnowledge            as Eff
 -- import           Learning.PDDL.Experiment
 import           Learning.PDDL.NonConditionalKnowledge
 import           Learning.PDDL.OptimisticStrategy
 -- import qualified Learning.PDDL.PreconditionKnowledge      as Pre
+import           Charting
 import           Planning
 import           Planning.PDDL
-import Charting
 
 import           Control.Monad                            (unless)
 -- import           Data.Map                                 (Map)
@@ -144,6 +144,6 @@ main = do
         -- wsEnv = fromWorld wsWorld
         -- wsProb = toProblem wsWorld
 
-        initKnl  = initialKnowledge dom (Env.toState ssEnv)
+        initKnl  = initialKnowledge dom (probObjs ssProb) (Env.toState ssEnv)
         dom = sokobanDomain
         -- astar = Astar Nothing

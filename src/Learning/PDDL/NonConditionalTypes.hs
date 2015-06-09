@@ -1,14 +1,14 @@
 module Learning.PDDL.NonConditionalTypes where
 
-import Data.TupleSet (TupleSet)
+import           Data.TupleSet (TupleSet)
 import qualified Data.TupleSet as TSet
+import           Environment
+import           Logic.Formula
 import           Planning
 import           Planning.PDDL
-import Environment
-import Logic.Formula
 
-import           Data.Map                            (Map)
-import           Data.Set                            (Set)
+import           Data.Map      (Map)
+import           Data.Set      (Set)
 
 type Cands = Set (LiteralSet Term)
 data PreKnowledge = PreKnowledge Knowledge Cands deriving (Eq, Ord, Show)
@@ -17,7 +17,7 @@ data EffKnowledge = EffKnowledge Knowledge deriving (Eq, Ord, Show)
 type DomainKnowledge = Map Name (PreKnowledge, EffKnowledge)
 
 newtype Environment env => PDDLKnowledge env =
-  PDDLKnowledge (PDDLDomain, DomainKnowledge, State)
+  PDDLKnowledge (PDDLDomain, DomainKnowledge, State, AllPossibleObjects)
     deriving (Show, Eq)
 
 -- | (Positive, Negative)

@@ -36,11 +36,11 @@ class (Domain d p as, Problem p) => ExternalPlanner ep d p as where
 class (ActionSpecification as p, Eq d) => Domain d p as | d -> as where
     actionSpecification  :: d -> Name -> Maybe as
     actions              :: d -> [as]
-    apply                :: d -> State -> Action -> Maybe State
-    allApplicableActions :: Problem p => d -> p -> State -> [Action]
-    isActionApplicable   :: d -> State -> Action -> Bool
-    isActionApplicable dom s (aname,args) =
-      fromMaybe False $ liftM (\as -> isApplicable as s args)
+    apply                :: d -> p -> State -> Action -> Maybe State
+    allApplicableActions :: d -> p -> State -> [Action]
+    isActionApplicable   :: d -> p -> State -> Action -> Bool
+    isActionApplicable dom p s (aname,args) =
+      fromMaybe False $ liftM (\as -> isApplicable p as s args)
                               (actionSpecification dom aname)
 
 class Problem p where
@@ -50,9 +50,9 @@ class Problem p where
     setInitialState :: p -> State -> p
 
 
-class Problem p => ActionSpecification a p | a -> p where
-    name              :: a -> String
-    arity             :: a -> Int
-    isApplicable      :: a -> State -> [Name] -> Bool
-    effect            :: a -> [Name] -> TupleSet GroundedPredicate
-    applicableActions :: Problem p => p -> State -> a -> [Action]
+class Problem p => ActionSpecification as p | as -> p where
+    name              :: as -> String
+    arity             :: as -> Int
+    isApplicable      :: p -> as -> State -> [Object] -> Bool
+    effect            :: p -> as -> State -> [Name] -> TupleSet GroundedPredicate
+    applicableActions :: p -> as -> State -> [Action]

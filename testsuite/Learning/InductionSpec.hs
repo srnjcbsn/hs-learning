@@ -1,6 +1,6 @@
 module Learning.InductionSpec (main, spec) where
 
-import qualified Data.Set              as Set
+import qualified Data.Set           as Set
 import           Learning.Induction
 import           Logic.Formula
 import           Planning.PDDL
@@ -37,7 +37,7 @@ testLogicSpec = do
             expected = [ Set.fromList [Left "1"] ] in
             induct paras actArgs objs `shouldBe` expected
 
-    describe "asPDDL" $ 
+    describe "asPDDL" $
       it "can turn deduct output into pddl format" $
         let deduction = [ Set.fromList [Right "x"], Set.fromList [Left "A"] ] in
             asPDDL deduction `shouldBe` [Set.fromList [TVar "x"], Set.fromList [TName "A"]]

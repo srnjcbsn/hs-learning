@@ -39,7 +39,7 @@ instance Functor Literal where
 signAs :: b -> Literal a -> Literal b
 signAs b = fmap (const b)
 
--- | Extract the atom of a 'Literal', throwing aeay the sign
+-- | Extract the atom of a 'Literal', throwing away the sign
 atom :: Literal a -> a
 atom (Pos a) = a
 atom (Neg a) = a
