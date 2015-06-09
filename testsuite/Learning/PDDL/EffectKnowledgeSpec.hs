@@ -10,7 +10,6 @@ import           Learning.PDDL.NonConditionalKnowledge
 import           Learning.PDDL.NonConditionalTypes
 import           Logic.Formula
 import           Planning.PDDL
-import           Planning.PDDL.Logic
 
 
 testEffectLearnSpec :: Spec

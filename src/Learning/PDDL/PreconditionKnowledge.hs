@@ -3,7 +3,6 @@ module Learning.PDDL.PreconditionKnowledge where
 import           Learning.Induction
 import           Planning
 import           Planning.PDDL
-import           Planning.PDDL.Logic
 
 import           Data.Set                          (Set, (\\))
 import qualified Data.Set                          as Set

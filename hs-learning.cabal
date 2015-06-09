@@ -20,7 +20,6 @@ library
                  , Planning.Viewing
                  , Planning.PDDL
                  , Planning.PDDL.Parser
-                 , Planning.PDDL.Logic
                  , Planning.PDDL.Samples.SimpleBox
                  , Planning.PDDL.Samples.BlocksWorld
                  , Planning.PDDL.Serializer

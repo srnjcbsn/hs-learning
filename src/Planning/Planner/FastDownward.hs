@@ -1,17 +1,16 @@
 module Planning.Planner.FastDownward where
 
 -- import           Control.Concurrent    (threadDelay)
-import           Control.Monad         (liftM)
+import           Control.Monad            (liftM)
 import           System.Directory
 import           System.FilePath.Posix
-import           System.IO             (IOMode (..), openFile)
+import           System.IO                (IOMode (..), openFile)
 import           System.IO.Error
 import           System.IO.Temp
 import           System.Process
 
 import           Planning
 import           Planning.PDDL
-import           Planning.PDDL.Logic   ()
 import           Planning.PDDL.Parser
 import           Planning.PDDL.Serializer
 

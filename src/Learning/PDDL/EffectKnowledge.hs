@@ -5,7 +5,6 @@ import qualified Learning.PDDL.NonConditionalTypes as NCT
 
 import           Planning
 import           Planning.PDDL
-import           Planning.PDDL.Logic
 
 import           Data.Set                          (Set, (\\))
 import qualified Data.Set                          as Set
