@@ -55,7 +55,7 @@ import           Planning
 import           Planning.PDDL
 
 import           Control.Arrow                       (second, (***))
-import           Control.Monad                       (liftM, replicateM,
+import           Control.Monad                       (liftM, liftM2, replicateM,
                                                       sequence)
 import           Data.Foldable                       (all, any)
 import           Data.List                           (mapAccumL)
@@ -76,7 +76,7 @@ type Cand a = [(a, a)]
 
 data CondEffKnowledge = CondEffKnowledge
     { cekHyperGraph :: HyperGraph Int
-    , cekProven     :: Set PredInfo
+    , cekProven     :: Set Int
     , cekCands      :: Set (Cand Int)
     }
 
@@ -93,6 +93,15 @@ patch vs1 vs2 = map (identifier *** identifier) pt where
     diff = vs1 `difference` vs2
     inter = vs1 \\ diff
     pt = concatMap (zip (Set.toList diff) . repeat) (Set.toList inter)
+
+rename :: CondEffKnowledge -> (Int -> [Int]) -> CondEffKnowledge
+rename effKnl rn =
+    let proven = Set.filter ((== 1) . length . rn) (cekProven effKnl)
+        cand' :: Cand Int -> Cand Int
+        cand' = concatMap $ uncurry (liftM2 (,)) . (rn *** rn)
+    in  effKnl { cekProven = proven
+               , cekCands  = Set.map cand' (cekCands effKnl)
+               }
 
 mergeCandEdges :: Ord a
                => HyperGraph a
