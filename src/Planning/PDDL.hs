@@ -64,6 +64,7 @@ module Planning.PDDL
     , context
     , groundMany
     , isActionSatisfied
+    , instantiateEffects
 
     ) where
 
@@ -83,7 +84,7 @@ import qualified Data.Set       as Set
 import           Data.Tuple
 import qualified Data.TupleSet  as TSet
 import           Data.UnsafeMap
-
+import           Debug.Trace
 
 type FluentPredicate = Predicate Term
 type PredicateSpec = Predicate (Name, Type)
@@ -150,7 +151,7 @@ data PDDLGraph = PDDLGraph (PDDLDomain, PDDLProblem)
 
 instantiateTerm :: Context -> Term -> Object
 instantiateTerm (tc,_) (TVar t) =
-  fromMaybe (error "variable " ++ show t ++ " don't exist")
+  fromMaybe (error ("variable " ++ show t ++ " don't exist in " ++ show tc))
             $ Map.lookup t tc
 instantiateTerm _ (TName t) = t
 -- | Construct all possible predicates given predicate specification from a
@@ -282,6 +283,7 @@ instantiateEffects c s (EWhen gd e)
 instantiateEffects c _ (ELit (Neg p)) = (Set.empty, Set.singleton $ ground c p)
 instantiateEffects c _ (ELit (Pos p)) = (Set.singleton $ ground c p, Set.empty)
 
+
 contextsSequences :: Context
                   -> [Variable]
                   -> [[Object]]
@@ -297,28 +299,39 @@ satisfyingContexts :: Context
                    -> State
                    -> GoalDesc
                    -> [Context]
-satisfyingContexts c vars s gd = contextsSequences c vars combis where
+satisfyingContexts c vars s gd = validContexts where
   mapCombi = satisfyingCombi c vars s gd
   errorMsg = "logic:satisfyingContexts can't find variable, "
            ++"rember planning with action variables in condition effects not supported"
   combis   = map (Set.toList . flip (unsLookup errorMsg) mapCombi) vars
-
+  unchecked = contextsSequences c vars combis
+  validContexts = [vc | vc <-  unchecked, isSatisfied vc s gd ]
 
 -- | finds all variable combinations that satisfies a goaldesc
 --    For instance if:
 --      GD    = p(x,y) GAnd p(z,x)
 --      State = p(1,2), p(3,1)
 --    Gives: x = {1}, y = {2}, z = {1,3}
+--    NOTE: This function only limits the number of objects per variable
+--          And because of the nature of the data structure, some combinations
+--          Might be invalid.
 satisfyingCombi :: Context
                 -> [Variable]
                 -> State
                 -> GoalDesc
                 -> Map Variable (Set Object)
+satisfyingCombi c vars _ (GAnd []) = initVarCombi c vars
+
 satisfyingCombi c vars s (GAnd gds) =
   intersecCombi $ map (satisfyingCombi c vars s) gds
+
+satisfyingCombi c vars _ (GOr []) = initVarCombi c vars
+
 satisfyingCombi c vars s (GOr gds) =
   unionCombi $ map (satisfyingCombi c vars s) gds
+
 satisfyingCombi c vars _ (GNot _) = initVarCombi c vars -- Too hard (resets)
+
 satisfyingCombi (_,allobjs) _ s (GLit lit) = varsMap where
   Predicate n args = atom lit
   relS = Set.filter ((== n) . predName) s
