@@ -1,7 +1,16 @@
 module Learning.PDDL.ConditionalKnowledge
     (
+    -- * Knowledge
+    Cand
+    , CondEffKnowledge (..)
+    , CondActionKnowledge
+    , CondDomainKnowledge
+    , updateEffectKnowledge
+    , mergeFailed
+    , mergeSucceeded
+
     -- * Vertices
-      Vertex (..)
+    , Vertex (..)
     , PredInfo
     , PType (..)
     , identifier
@@ -106,6 +115,12 @@ rename effKnl rn =
                , cekCands  = Set.map cand' (cekCands effKnl)
                }
 
+mergeCands :: Ord a
+           => HyperGraph a
+           -> HyperGraph a
+           -> (HyperGraph (a, a), Cand a)
+mergeCands h1 h2 = mergeCandEdges h1 h2 Set.empty (getEffectP h1) (getEffectP h2)
+
 mergeCandEdges :: Ord a
                => HyperGraph a
                -> HyperGraph a
@@ -125,26 +140,51 @@ mergeCandEdges h1 h2 h' e1 e2 = second ((++) pat . concat) rest where
     rest   = mapAccumL (\hh (e1', e2') -> mergeCandEdges h1 h2 hh e1' e2') h'' valids
     pat    = patch (vertexSet e1) (vertexSet e2)
 
-fromSuccessful :: CondEffKnowledge
-               -> Literal GroundedPredicate
-               -> HyperGraph Int
-               -> TotalState
-               -> CondEffKnowledge
-fromSuccessful effKnl lgp hg s = undefined
-    -- effKnl { cekHyperGraph = simplifyHyperGraph $ merge (cekHyperGraph effKnl) hg }
+containsIdentifier :: Ord a => HyperGraph a -> a -> Bool
+containsIdentifier hg i =
+    any (Set.member i . (Set.map identifier) . vertexSet) hg
 
-fromFailed :: CondEffKnowledge
-           -> Literal GroundedPredicate
-           -> HyperGraph Int
-           -> TotalState
-           -> CondEffKnowledge
-fromFailed effKnl lgp hg s = undefined
+reduceCands :: CondEffKnowledge -> CondEffKnowledge
+reduceCands cek = undefined where
+    hg = cekHyperGraph cek
+    cands = cekCands cek
+    -- cands' = Set.map (
+    -- redCand :: Cand Int ->
 
-updateEffectKnowledge :: CondEffKnowledge
-                      -> HyperGraph (Object, Int)
-                      -> Literal GroundedPredicate
+-- | Do the following:
+--
+--     (1) Merge the successful effects into the effect knowledge (see
+--         'mergeSucceeded')
+--     (2) Determine the candidate sets for the failed (unobserved) effects
+--         and merge them into the effect knowledge (see 'mergeFailed')
+--     (3) Reduce the set of candidates and set singletons as proven
+--         (see 'reduceCands')
+updateEffectKnowledge :: Maybe CondEffKnowledge      -- ^ The record describing
+                                                     --   this effect (if it
+                                                     --   has been observed
+                                                     --   to occur previously)
+                      -> HyperGraph (Object, Int)    -- ^ The base hypergraph
+                                                     --   describing the state
+                                                     --   before action
+                                                     --   application
+                      -> [Literal GroundedPredicate] -- ^ A list of observed,
+                                                     --   grounded effects
+                      -> [Literal GroundedPredicate] -- ^ A list of unobserved,
+                                                     --   grounded effects
                       -> CondEffKnowledge
-updateEffectKnowledge lgp mCek s = undefined
+updateEffectKnowledge mCek baseHg suc fai = cek''' where
+    cek'  = mergeSucceeded suc mCek baseHg
+    cek'' = foldl (mergeFailed baseHg) cek' fai
+    cek''' = reduceCands cek''
+
+mergeFailed :: HyperGraph (Object, Int)
+            -> CondEffKnowledge
+            -> Literal GroundedPredicate
+            -> CondEffKnowledge
+mergeFailed baseHg cek lgp = undefined where
+    (_, cands) = mergeCands (cekHyperGraph cek) (fromEffect baseHg lgp)
+    cek' = cek { cekCands = Set.insert cands (cekCands cek) }
+
 
 simplifyTuples :: HyperGraph (Int, Int) -> (Map (Int, Int) Int, HyperGraph Int)
 simplifyTuples hg = undefined
@@ -162,7 +202,6 @@ mergeSucceeded (lgp : rest) (Just cek) baseHg =
                  $ map ((fst . identifier) &&& ((:[]) . (tupleMap !) . identifier))
                  $ concatMap Set.toList
                  $ Set.toList $ Set.map vertexSet $ bindingEdges unproven
-
         rn n = fromMaybe [] $ Map.lookup n substMap
     in  mergeSucceeded rest (Just cek') baseHg
 
@@ -190,8 +229,6 @@ updateActionKnowledge actMap eSpec (s, _, s') = undefined where
          $ Map.toList $ Map.fromListWith (++)
          $ map (fmap predName &&& (:[]))
          $ Set.toList succs
-
-
 
 updateDomainKnowledge :: CondDomainKnowledge
                       -> PDDLEnvSpec
