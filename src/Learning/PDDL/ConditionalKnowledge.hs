@@ -33,6 +33,7 @@ module Learning.PDDL.ConditionalKnowledge
 
     -- * HyperGraphs
     , HyperGraph
+    , size
     , merge
     , mergeEdges
     , simplifyHyperGraph
@@ -52,7 +53,7 @@ module Learning.PDDL.ConditionalKnowledge
 
     ) where
 
-import           Data.Typeable
+import           Debug.Trace
 import           Environment
 import qualified Learning                            as Lrn
 import qualified Learning.Induction                  as Ind
@@ -96,7 +97,7 @@ type CondDomainKnowledge = Map Name CondActionKnowledge
 --   present in the second argument and those that are not. Return this
 --   partitioning as a collection of pairs, each consisting of one identifier
 --   from the first part of the partition, and one identifier from the other.
-patch :: Ord a => VertexSet a -> VertexSet a -> [(a, a)]
+patch :: (Ord a, Show a) => VertexSet a -> VertexSet a -> [(a, a)]
 patch vs1 vs2 = map (identifier *** identifier) pt where
     diff = vs1 `difference` vs2
     inter = vs1 \\ diff
@@ -115,13 +116,13 @@ rename effKnl rn =
                , cekCands  = Set.map cand' (cekCands effKnl)
                }
 
-mergeCands :: Ord a
+mergeCands :: (Ord a, Show a)
            => HyperGraph a
            -> HyperGraph a
            -> (HyperGraph (a, a), Cand a)
 mergeCands h1 h2 = mergeCandEdges h1 h2 Set.empty (getEffectP h1) (getEffectP h2)
 
-mergeCandEdges :: Ord a
+mergeCandEdges :: (Ord a, Show a)
                => HyperGraph a
                -> HyperGraph a
                -> HyperGraph (a, a)
@@ -140,7 +141,7 @@ mergeCandEdges h1 h2 h' e1 e2 = second ((++) pat . concat) rest where
     rest   = mapAccumL (\hh (e1', e2') -> mergeCandEdges h1 h2 hh e1' e2') h'' valids
     pat    = patch (vertexSet e1) (vertexSet e2)
 
-containsIdentifier :: Ord a => HyperGraph a -> a -> Bool
+containsIdentifier :: (Ord a, Show a) => HyperGraph a -> a -> Bool
 containsIdentifier hg i =
     any (Set.member i . (Set.map identifier) . vertexSet) hg
 
@@ -220,8 +221,8 @@ updateActionKnowledge :: CondActionKnowledge
 updateActionKnowledge actMap eSpec (s, _, s') = undefined where
     ts = totalState s eSpec
     ts' = totalState s' eSpec
-    baseHg = fromTotalState eSpec
-    succs = ts \\ ts' -- effects that were successfully applied
+    baseHg = fromTotalState eSpec ts
+    succs = ts' \\ ts -- effects that were successfully applied
     fails = undefined
     -- group successful effects by name
     grps :: [[Literal GroundedPredicate]]
@@ -244,6 +245,9 @@ updateDomainKnowledge knl eSpec t@(s, a, s') =
 
 type HyperGraph a = Set (Edge a)
 
+size :: (Ord a, Show a) => HyperGraph a -> Int
+size hg = sum $ map (Set.size . vertexSet) (Set.toList $ bindingEdges hg)
+
 type VertexSet a = Set (Vertex a)
 
 -- | Information about which index of which predicate a vertex represents,
@@ -252,7 +256,7 @@ type PredInfo = (PType, Literal Name, Int)
 
 -- | A 'Vertex' consists of a unique identifier and a description of which
 --   predicate argument it represents
-data Ord a => Vertex a = Vertex a PredInfo deriving (Eq, Ord, Show)
+data (Ord a, Show a) => Vertex a = Vertex a PredInfo deriving (Eq, Ord, Show)
 
 -- | The type of a predicate, denoting whether it describes an effect or a
 --   precondition.
@@ -269,25 +273,25 @@ data EdgeType = BindingEdge
 -- | An edge is an 'EdgeType' and a collection of vertices.
 data Edge a = Edge EdgeType (VertexSet a) deriving (Eq, Ord, Show)
 
-identifier :: Ord a => Vertex a -> a
+identifier :: (Ord a, Show a) => Vertex a -> a
 identifier (Vertex a _) = a
 
-predInfo :: Ord a => Vertex a -> PredInfo
+predInfo :: (Ord a, Show a) => Vertex a -> PredInfo
 predInfo (Vertex _ i) = i
 
 -- | Given a binding edge, returns the object that the edge represents.
 --   The vertices in the edge must contain this information in ther identifiers.
-binding :: Ord a => Edge (Object, a) -> Object
+binding :: (Ord a, Show a) => Edge (Object, a) -> Object
 binding (Edge BindingEdge bvs) =
     case Set.toList bvs of
       ( v : _ ) -> fst $ identifier v
       []        -> error "binding: Empty binding set encountered"
 binding _ = error "binding: A predicate edge does not have a common binding"
 
-edgesOfType :: Ord a => EdgeType -> HyperGraph a -> Set (Edge a)
+edgesOfType :: (Ord a, Show a) => EdgeType -> HyperGraph a -> Set (Edge a)
 edgesOfType t = Set.filter (isEdgeOfType t)
 
-bindingEdges, predicateEdges :: Ord a => HyperGraph a -> Set (Edge a)
+bindingEdges, predicateEdges :: (Ord a, Show a) => HyperGraph a -> Set (Edge a)
 bindingEdges   = edgesOfType BindingEdge
 predicateEdges = edgesOfType PredicateEdge
 
@@ -334,19 +338,19 @@ fromTotalState peSpec ts = bes `Set.union` pes where
 fromTransition :: PDDLEnvSpec
                -> Transition
                -> [(Literal GroundedPredicate, HyperGraph Int)]
-fromTransition peSpec (s, _, s') = undefined -- map (second simplifyHyperGraph) $ Set.toList hgs where
-    -- ts = totalState s peSpec
-    -- ts' = totalState s' peSpec \\ ts -- For now, only consider delta state
-    -- hgBase = fromTotalState peSpec ts
-    -- hgs = Set.map (\lgp -> (lgp, fromEffect hgBase lgp)) ts'
+fromTransition peSpec (s, _, s') = Set.toList hgs where
+    ts = totalState s peSpec
+    ts' = totalState s' peSpec \\ ts -- For now, only consider delta state
+    hgBase = fromTotalState peSpec ts
+    hgs = Set.map (\lgp -> (lgp, fromEffect hgBase lgp)) ts'
 
-vertexSet :: Ord a => Edge a -> VertexSet a
+vertexSet :: (Ord a, Show a) => Edge a -> VertexSet a
 vertexSet (Edge _ e) = e
 
-edgeType :: Ord a => Edge a -> EdgeType
+edgeType :: (Ord a, Show a) => Edge a -> EdgeType
 edgeType (Edge et _) = et
 
-isEdgeOfType :: Ord a => EdgeType ->  Edge a -> Bool
+isEdgeOfType :: (Ord a, Show a) => EdgeType ->  Edge a -> Bool
 isEdgeOfType et = (== et) . edgeType
 
 otherEdgeType :: EdgeType -> EdgeType
@@ -355,29 +359,29 @@ otherEdgeType BindingEdge   = PredicateEdge
 
 -- | An edge is an effect edge if it is a predicate edge and contains a vertex
 --   marked as an effect.
-isEffect :: Ord a => Edge a -> Bool
+isEffect :: (Ord a, Show a) => Edge a -> Bool
 isEffect (Edge PredicateEdge e) = not $ null [ () | Vertex _ (Effect, _, _) <- Set.toList e ]
 isEffect _ = False
 
 
-getEffectP :: Ord a => HyperGraph a -> Edge a
+getEffectP :: (Ord a, Show a) => HyperGraph a -> Edge a
 getEffectP hg = fromMaybe (error "could not find effect in hyper graph")
               $ List.find isEffect (Set.toList hg)
 
-newId :: Ord a => Vertex a -> Vertex a -> Maybe (Vertex (a, a))
+newId :: (Ord a, Show a) => Vertex a -> Vertex a -> Maybe (Vertex (a, a))
 newId (Vertex i n) (Vertex j m) | n == m    = Just (Vertex (i, j) n)
                                 | otherwise = Nothing
 
-newIdInv :: Ord a => Vertex (a, a) -> (Vertex a, Vertex a)
+newIdInv :: (Ord a, Show a) => Vertex (a, a) -> (Vertex a, Vertex a)
 newIdInv (Vertex (i, j) n) = (Vertex i n, Vertex j n)
 
-similarTo :: Ord a => Vertex a -> Vertex a -> Bool
+similarTo :: (Ord a, Show a) => Vertex a -> Vertex a -> Bool
 similarTo v1 v2 = isJust $ newId v1 v2
 
-difference :: Ord a => VertexSet a -> VertexSet a -> VertexSet a
+difference :: (Ord a, Show a) => VertexSet a -> VertexSet a -> VertexSet a
 difference e1 e2 = Set.filter (\v -> all (not . similarTo v) e2) e1
 
-intersect :: Ord a => VertexSet a -> VertexSet a -> Set (Vertex (a, a))
+intersect :: (Ord a, Show a) => VertexSet a -> VertexSet a -> Set (Vertex (a, a))
 intersect e1 e2 = Set.fromList
                 $ catMaybes [ newId v1 v2
                             | v1 <- Set.toList e1
@@ -385,16 +389,16 @@ intersect e1 e2 = Set.fromList
                             , v1 `similarTo` v2
                             ]
 
-edgeMember :: Ord a => Vertex a -> Edge a -> Bool
+edgeMember :: (Ord a, Show a) => Vertex a -> Edge a -> Bool
 edgeMember v e = Set.member v (vertexSet e)
 
-isInEdge :: Ord a => EdgeType -> HyperGraph a -> Vertex a -> Bool
+isInEdge :: (Ord a, Show a) => EdgeType -> HyperGraph a -> Vertex a -> Bool
 isInEdge et hg v = isJust (containingEdge et hg v)
 
-containingEdges :: Ord a => HyperGraph a -> Vertex a -> [Edge a]
+containingEdges :: (Ord a, Show a)=> HyperGraph a -> Vertex a -> [Edge a]
 containingEdges hg v = filter (edgeMember v) $ Set.toList hg
 
-containingEdge :: Ord a
+containingEdge :: (Ord a, Show a)
                => EdgeType
                -> HyperGraph a
                -> Vertex a
@@ -403,10 +407,10 @@ containingEdge et hg v = listToMaybe
                        $ filter (\e -> edgeMember v e && edgeType e == et)
                        $ Set.toList hg
 
-merge :: Ord a => HyperGraph a -> HyperGraph a -> HyperGraph (a, a)
+merge :: (Ord a, Show a) => HyperGraph a -> HyperGraph a -> HyperGraph (a, a)
 merge h1 h2 = mergeEdges h1 h2 Set.empty (getEffectP h1) (getEffectP h2)
 
-mergeEdges :: Ord a
+mergeEdges :: (Ord a, Show a)
            => HyperGraph a
            -> HyperGraph a
            -> HyperGraph (a, a)
@@ -419,7 +423,7 @@ mergeEdges h1 h2 h' e1 e2 = rest where
     et'    = otherEdgeType et
     e'     = vertexSet e1 `intersect` vertexSet e2
     h''    = Set.insert (Edge et e') h'
-    invs   = [ newIdInv v | v <- Set.toList e', not $ isInEdge et h' v ]
+    invs   = [ traceShowId $ newIdInv v | v <- Set.toList e', not $ isInEdge et h' v ]
     oldes  = map (containingEdge et' h1 *** containingEdge et' h2) invs
     valids = [ (e1', e2') | (Just e1', Just e2') <- oldes ]
     rest   = foldl (\ hh (e1', e2') -> mergeEdges h1 h2 hh e1' e2') h'' valids
@@ -441,9 +445,9 @@ toPredEdge lgp pt n = e where
 -- | Construct the binding edges for a hypergraph based on a list of predicate
 --   edges that have already been constructed, and are carrying information
 --   specifying which object they represent.
-mkBindingEdges :: Ord a => [Edge (Object, a)] -> Set (Edge (Object, a))
+mkBindingEdges :: (Ord a, Show a) => [Edge (Object, a)] -> Set (Edge (Object, a))
 mkBindingEdges pes = bes where
-    -- vs :: Ord a => [Vertex (Object, a)]
+    -- vs :: (Ord a, Show a) => [Vertex (Object, a)]
     vs   = concatMap (Set.toList . vertexSet) pes
     vMap =  Map.fromListWith Set.union $ map (second Set.singleton . tupleForm) vs
     -- tupleForm :: Vertex (Object, a) -> (Object, Vertex a)

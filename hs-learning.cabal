@@ -77,7 +77,7 @@ library
 
 executable hs-learning
   main-is:             Main.hs
-  ghc-options: -O2 -threaded
+  ghc-options: -threaded -O2
   default-extensions: MultiParamTypeClasses
                     , FlexibleContexts
                     , FlexibleInstances

@@ -169,8 +169,8 @@ notInState :: State -> PDDLEnvSpec -> State
 notInState s eSpec = allGroundedPredicates eSpec \\ s
 
 totalState :: State -> PDDLEnvSpec -> TotalState
-totalState s eSpec = Set.map Pos s `Set.union` Set.map Neg ns where
-    ns = notInState s eSpec
+totalState s eSpec = Set.map Pos s -- `Set.union` Set.map Neg ns where
+    -- ns = notInState s eSpec
 
 
 ePos :: Predicate Term -> Effect

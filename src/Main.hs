@@ -4,6 +4,7 @@ import qualified Learning.PDDL.NonConditionalTypes        as NCT
 -- import           Data.TupleSet                            (TupleSet)
 -- import qualified Data.TupleSet                            as TSet
 import           Environment                              as Env
+import           Environment.Sokoban
 import           Environment.Sokoban.PDDL
 import qualified Environment.Sokoban.Samples.BigSample    as BS
 import qualified Environment.Sokoban.Samples.LargeSample  as LS
@@ -11,6 +12,7 @@ import qualified Environment.Sokoban.Samples.SimpleSample as SS
 import qualified Environment.Sokoban.Samples.WikiSample   as WS
 import           Environment.Sokoban.SokobanDomain
 import           Environment.Sokoban.SokobanView
+import qualified Learning.PDDL.ConditionalKnowledge       as CK
 -- import           Graph.Search.Astar                       as Astar
 import           Learning
 import qualified Learning.PDDL                            as PDDL
@@ -26,12 +28,12 @@ import           Planning.PDDL
 import           Control.Monad                            (unless)
 -- import           Data.Map                                 (Map)
 import qualified Data.Map                                 as Map
+import           Data.Set                                 ((\\))
 import qualified Data.Set                                 as Set
 import           System.Console.ANSI
 import           System.Directory                         (removeFile)
 import           System.IO.Error
 import           Text.Show.Pretty
-
 
 
 deltaKnl :: (NCT.PreKnowledge, NCT.EffKnowledge)
@@ -106,44 +108,60 @@ writeSim steps =  showAct steps
 
 main :: IO ()
 main = do
-    catchIOError (removeFile logPath) (\_ -> return ())
-    clearScreen
-    setTitle "SOKOBAN!"
+    let bigWorld = BS.world
+        s = Env.toState (fromWorld bigWorld)
+        eSpec = pddlEnvSpec sokobanDomain (toProblem bigWorld)
+        s' = Env.toState $ fromWorld $ move bigWorld DownDir
+        t = (s, ("a", []), s')
+        -- hg = head $ CK.fromTransition eSpec t
+        baseHg = CK.fromTotalState eSpec (totalState s eSpec)
+        ts = totalState s eSpec
+        ts' = totalState s' eSpec
+        succs = ts' \\ ts -- effects that were successfully applied
+        hg = CK.fromEffect baseHg $ (head . Set.toList) succs
+        hg' = CK.merge hg hg
+    putStrLn $ ppShow (CK.size hg') ++ " : " ++ ppShow (CK.size hg)
 
-    -- putStrLn (ppShow $ initialState prob)
-    _ <- runAll writeSim optStrat initKnl [ (ssEnv, ssProb)
-                                            --  , (lsEnv, lsProb)
-                                            --  , (bsEnv, bsProb)
-                                             ]
-    -- chartKnowledge hist
-    -- hist <- scientificMethod writeSim optStrat initKnl ssEnv ssProb
-    -- (knl'', world'') <- scientificMethod emptyIO optStrat knl' lsEnv lsProb
-    -- (knl''', world''') <- scientificMethod emptyIO optStrat knl'' bsEnv bsProb
-    -- putStrLn (ppShow fenv)
-    -- putStrLn (ppShow dom''')
-    -- writeFile "sokoDom.pddl" $ writeDomain dom
-    -- writeFile "sokoProb.pddl" $ writeProblem wsProb
-    return ()
-    where
-        logPath = "./log.log"
-
-        optStrat = OptimisticStrategy (Astar Nothing, Nothing)
-        -- bsWorld = BS.world
-        -- bsEnv = fromWorld bsWorld
-        -- bsProb = toProblem bsWorld
-        --
-        -- lsWorld = LS.world
-        -- lsEnv = fromWorld lsWorld
-        -- lsProb = toProblem lsWorld
-        --
-        simpWorld = SS.world
-        ssEnv = fromWorld simpWorld
-        ssProb = toProblem simpWorld
-
-        -- wsWorld = WS.world
-        -- wsEnv = fromWorld wsWorld
-        -- wsProb = toProblem wsWorld
-
-        initKnl  = initialKnowledge dom (probObjs ssProb) (Env.toState ssEnv)
-        dom = sokobanDomain
-        -- astar = Astar Nothing
+-- main :: IO ()
+-- main = do
+--     catchIOError (removeFile logPath) (\_ -> return ())
+--     clearScreen
+--     setTitle "SOKOBAN!"
+--
+--     -- putStrLn (ppShow $ initialState prob)
+--     _ <- runAll writeSim optStrat initKnl [ (ssEnv, ssProb)
+--                                             --  , (lsEnv, lsProb)
+--                                             --  , (bsEnv, bsProb)
+--                                              ]
+--     -- chartKnowledge hist
+--     -- hist <- scientificMethod writeSim optStrat initKnl ssEnv ssProb
+--     -- (knl'', world'') <- scientificMethod emptyIO optStrat knl' lsEnv lsProb
+--     -- (knl''', world''') <- scientificMethod emptyIO optStrat knl'' bsEnv bsProb
+--     -- putStrLn (ppShow fenv)
+--     -- putStrLn (ppShow dom''')
+--     -- writeFile "sokoDom.pddl" $ writeDomain dom
+--     -- writeFile "sokoProb.pddl" $ writeProblem wsProb
+--     return ()
+--     where
+--         logPath = "./log.log"
+--
+--         optStrat = OptimisticStrategy (Astar Nothing, Nothing)
+--         -- bsWorld = BS.world
+--         -- bsEnv = fromWorld bsWorld
+--         -- bsProb = toProblem bsWorld
+--         --
+--         -- lsWorld = LS.world
+--         -- lsEnv = fromWorld lsWorld
+--         -- lsProb = toProblem lsWorld
+--         --
+--         simpWorld = SS.world
+--         ssEnv = fromWorld simpWorld
+--         ssProb = toProblem simpWorld
+--
+--         -- wsWorld = WS.world
+--         -- wsEnv = fromWorld wsWorld
+--         -- wsProb = toProblem wsWorld
+--
+--         initKnl  = initialKnowledge dom (probObjs ssProb) (Env.toState ssEnv)
+--         dom = sokobanDomain
+--         -- astar = Astar Nothing
