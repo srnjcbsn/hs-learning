@@ -2,6 +2,8 @@ module Logic.Formula
     ( Predicate (..)
     , Literal (..)
     , signAs
+    , signs
+    , flipSign
     , atom
     , predName
     , predArgs
@@ -35,9 +37,23 @@ instance Functor Literal where
     fmap f (Pos a) = Pos (f a)
     fmap f (Neg a) = Neg (f a)
 
+flipSign :: Literal a -> Literal a
+flipSign (Pos a) = Neg a
+flipSign (Neg a) = Pos a
+
 -- | Pack 'b' into a literal with same sign as 'a'
+--
+-- >>> "p" `signAs` (Neg "q")
+-- Neg "p"
 signAs :: b -> Literal a -> Literal b
 signAs b = fmap (const b)
+
+-- | A flipped version of 'signAs'
+--
+-- >>> (Pos "p") `signs` "q"
+-- Pos "q"
+signs :: Literal a -> b -> Literal b
+signs = flip signAs
 
 -- | Extract the atom of a 'Literal', throwing away the sign
 atom :: Literal a -> a
