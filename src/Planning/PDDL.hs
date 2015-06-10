@@ -84,7 +84,7 @@ import qualified Data.Set       as Set
 import           Data.Tuple
 import qualified Data.TupleSet  as TSet
 import           Data.UnsafeMap
-import           Debug.Trace
+-- import           Debug.Trace
 
 type FluentPredicate = Predicate Term
 type PredicateSpec = Predicate (Name, Type)
@@ -321,17 +321,12 @@ satisfyingCombi :: Context
                 -> GoalDesc
                 -> Map Variable (Set Object)
 satisfyingCombi c vars _ (GAnd []) = initVarCombi c vars
-
 satisfyingCombi c vars s (GAnd gds) =
   intersecCombi $ map (satisfyingCombi c vars s) gds
-
 satisfyingCombi c vars _ (GOr []) = initVarCombi c vars
-
 satisfyingCombi c vars s (GOr gds) =
   unionCombi $ map (satisfyingCombi c vars s) gds
-
 satisfyingCombi c vars _ (GNot _) = initVarCombi c vars -- Too hard (resets)
-
 satisfyingCombi (_,allobjs) _ s (GLit lit) = varsMap where
   Predicate n args = atom lit
   relS = Set.filter ((== n) . predName) s
