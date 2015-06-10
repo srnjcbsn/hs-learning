@@ -137,7 +137,7 @@ testPrecondLearnSpec = do
 
             in actualKnowns `shouldBe`expectedKnowns
         it "removes candidates containing a known positive precondition" $
-            let as = "as"
+            let an = "as"
                 s = Set.fromList [p id "a" "b", p id "a" "c"]
                 posCand = Set.fromList [p TVar "x" "y", p TVar "y" "x"]
                 posRedundantCand = Set.fromList [p TVar "x" "y", p TVar "x" "z"]
@@ -151,7 +151,7 @@ testPrecondLearnSpec = do
                           , unknowns = (posUnks, Set.empty) }
                          cand
 
-                action = ("as", ["a", "b", "c"])
+                action = (an, ["a", "b", "c"])
                 transition = (s, action, Set.empty)
                 actual = update initDomain allobjs kn0 transition
 
