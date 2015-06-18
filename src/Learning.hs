@@ -46,7 +46,7 @@ runAll :: ( Strategy strat world question knl exp info
        -> strat
        -> knl
        -> [(world, question)]
-       -> IO ([SimStep strat world question knl exp info])
+       -> IO [SimStep strat world question knl exp info]
 runAll logger strat knl quests = foldM runner [] quests where
     runner steps (w, q) = scientificMethod' steps logger strat (knl' steps) w q
     knl' [] = knl
@@ -62,12 +62,12 @@ scientificMethod :: ( Strategy strat world question knl exp info
                  -> knl
                  -> world
                  -> question
-                 -> IO ([SimStep strat world question knl exp info])
+                 -> IO [SimStep strat world question knl exp info]
 scientificMethod = scientificMethod' []
 
 getStep :: (Knowledge k i q, Experiment e w i, Strategy s w q k e i)
         => [SimStep s w q k e i] -> Int
-getStep (step : _) = ssStep step
+getStep (step : _) = ssStep step + 1
 getStep [] = 0
 
 scientificMethod' :: ( Strategy strat world question knl exp info
@@ -81,7 +81,7 @@ scientificMethod' :: ( Strategy strat world question knl exp info
         -> knl
         -> world
         -> question
-        -> IO ([SimStep strat world question knl exp info])
+        -> IO [SimStep strat world question knl exp info]
 scientificMethod' sss logger strat knl world quest = do
     ms <- updateKnowledge strat knl world quest
     case ms of
