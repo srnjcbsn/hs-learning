@@ -1,35 +1,36 @@
 module Main where
 
-import           Environment                              as Env
+import           Environment                               as Env
 import           Environment.Sokoban
 import           Environment.Sokoban.PDDL
-import qualified Environment.Sokoban.Samples.BigSample    as BS
-import qualified Environment.Sokoban.Samples.LargeSample  as LS
-import qualified Environment.Sokoban.Samples.SimpleSample as SS
-import qualified Environment.Sokoban.Samples.WikiSample   as WS
+import qualified Environment.Sokoban.Samples.BigSample     as BS
+import qualified Environment.Sokoban.Samples.LargeSample   as LS
+import qualified Environment.Sokoban.Samples.SimpleSample  as SS
+import qualified Environment.Sokoban.Samples.SimpleSampleV as SSV
+import qualified Environment.Sokoban.Samples.WikiSample    as WS
 import           Environment.Sokoban.SokobanDomain
 import           Environment.Sokoban.SokobanView
 import           Learning
-import qualified Learning.PDDL                            as PDDL
-import qualified Learning.PDDL.ConditionalKnowledge       as CK
+import qualified Learning.PDDL                             as PDDL
+import qualified Learning.PDDL.ConditionalKnowledge        as CK
 import           Learning.PDDL.Experiment
 import           Learning.PDDL.NonConditionalKnowledge
-import qualified Learning.PDDL.NonConditionalTypes        as NCT
+import qualified Learning.PDDL.NonConditionalTypes         as NCT
 import           Learning.PDDL.OptimisticStrategy
 import           Planning
 import           Planning.PDDL
 
-import           Control.Arrow                            (second, (&&&))
-import           Control.Monad                            (unless)
-import           Data.List                                (intercalate, tails)
-import qualified Data.Map                                 as Map
-import           Data.Set                                 ((\\))
-import           Data.Set                                 (Set)
-import qualified Data.Set                                 as Set
-import           Graph.Search.Astar                       as Astar
+import           Control.Arrow                             (second, (&&&))
+import           Control.Monad                             (unless)
+import           Data.List                                 (intercalate, tails)
+import qualified Data.Map                                  as Map
+import           Data.Set                                  ((\\))
+import           Data.Set                                  (Set)
+import qualified Data.Set                                  as Set
+import           Graph.Search.Astar                        as Astar
 import           Logic.Formula
 import           System.Console.ANSI
-import           System.Directory                         (removeFile)
+import           System.Directory                          (removeFile)
 import           System.IO.Error
 import           Text.Show.Pretty
 
@@ -73,6 +74,14 @@ actKnl step = (NCT.knlFromPk p, NCT.knlFromEk e) where
                Just k -> k
                Nothing -> error "ERROR"
 
+actKnl' :: SokoSimStep -> (String, NCT.PreKnowledge, NCT.EffKnowledge)
+actKnl' step = (aName act, pk, ek) where
+    domKnl = domainKnowledge $ ssKnl step
+    act = lastAction step
+    (pk, ek) = case Map.lookup (aName act) domKnl of
+               Just k -> k
+               Nothing -> error "ERROR"
+
 learned :: SokoSimStep -> SokoSimStep -> (NCT.Knowledge, NCT.Knowledge)
 learned prev latest = deltaKnl (actKnl prev) (actKnl latest) where
    domKnl = domainKnowledge . ssKnl
@@ -85,11 +94,9 @@ showWorld :: [SokoSimStep] -> IO ()
 showWorld (step : _) = visualize $ ssWorld step
 showWorld [] = return ()
 
-showLearned :: SokoSimStep -> String
-showLearned step =  "Step " ++ show (ssStep step) ++ "\n"
-                 ++ concatMap showMapping alist where
-    alist = Map.toList $ domainKnowledge $ ssKnl step
-    showMapping (n, (pk, ek)) = n ++ ": "
+showLearned :: Int -> SokoSimStep -> String
+showLearned m step = showMapping (actKnl' step) where
+    showMapping (n, pk, ek) = n ++ ": " ++ show m ++ ", "
                               ++ showEk ek ++ ", "
                               ++ showPk pk ++ "\n"
     showPk (NCT.PreKnowledge knl cands) =  intercalate ", "
@@ -120,10 +127,14 @@ writeSim steps =  showAct steps
 historyFile :: FilePath
 historyFile = "statistics"
 
-writeHistory :: PDDLDomain -> [SokoSimStep] -> IO ()
-writeHistory dom hist = writeFile historyFile cont where
-    cont =  (concatMap showActSize actSizes)
-         ++ concatMap showLearned (reverse hist)
+writeHistory :: Int -> [SokoSimStep] -> String
+writeHistory n hist = concatMap (showLearned n) (reverse hist)
+
+writeHistories :: PDDLDomain -> [[SokoSimStep]] -> IO ()
+writeHistories dom hists = writeFile historyFile cont where
+    cont =  concatMap showActSize actSizes
+         ++ "-- RUNNING --\n"
+         ++ concat (zipWith writeHistory [0 ..] hists)
     actSizes = map (id &&& allPredsForAction dom)
                    (map asName $ dmActionsSpecs dom)
     showActSize (n, s) = n ++ ": " ++ show (Set.size s) ++ "\n"
@@ -134,11 +145,16 @@ main = do
     clearScreen
     setTitle "SOKOBAN!"
 
-    hist <- runAll writeSim optStrat initKnl [ (ssEnv, ssProb)
-                                             , (lsEnv, lsProb)
-                                            --  , (bsEnv, bsProb)
-                                             ]
-    writeHistory dom hist
+    -- hist1 <- scientificMethod writeSim optStrat initKnl ssEnv ssProb
+    -- hist2 <- scientificMethod writeSim optStrat (ssKnl $ head hist1) ssVEnv ssVProb
+    hist3 <- scientificMethod writeSim optStrat initKnl lsEnv lsProb
+
+    -- hist <- runAll writeSim optStrat initKnl [ (ssEnv, ssProb)
+    --                                          , (ssVEnv, ssVProb)
+    --                                          , (lsEnv, lsProb)
+    --                                         --  , (bsEnv, bsProb)
+    --                                          ]
+    writeHistories dom [hist3]
     -- putStrLn (ppShow fenv)
     -- putStrLn (ppShow dom''')
     -- writeFile "sokoDom.pddl" $ writeDomain dom
@@ -159,6 +175,10 @@ main = do
         simpWorld = SS.world
         ssEnv = fromWorld simpWorld
         ssProb = toProblem simpWorld
+
+        simpWorldV = SSV.world
+        ssVEnv = fromWorld simpWorldV
+        ssVProb = toProblem simpWorldV
 
         -- wsWorld = WS.world
         -- wsEnv = fromWorld wsWorld
