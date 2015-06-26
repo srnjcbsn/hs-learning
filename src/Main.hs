@@ -122,7 +122,7 @@ writeSim :: [SokoSimStep] -> IO ()
 writeSim steps =  showAct steps
                >> showWorld steps
                -- >> showLearned steps
-               >> showBound steps
+               -- >> showBound steps
 
 historyFile :: FilePath
 historyFile = "statistics"
@@ -145,9 +145,9 @@ main = do
     clearScreen
     setTitle "SOKOBAN!"
 
-    -- hist1 <- scientificMethod writeSim optStrat initKnl ssEnv ssProb
-    -- hist2 <- scientificMethod writeSim optStrat (ssKnl $ head hist1) ssVEnv ssVProb
-    hist3 <- scientificMethod writeSim optStrat initKnl lsEnv lsProb
+    hist1 <- scientificMethod writeSim optStrat initKnl ssEnv ssProb
+    hist2 <- scientificMethod writeSim optStrat (ssKnl $ head hist1) ssVEnv ssVProb
+    hist3 <- scientificMethod writeSim optStrat (ssKnl $ head hist2) lsEnv lsProb
 
     -- hist <- runAll writeSim optStrat initKnl [ (ssEnv, ssProb)
     --                                          , (ssVEnv, ssVProb)
