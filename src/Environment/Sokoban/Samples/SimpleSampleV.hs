@@ -1,4 +1,4 @@
-module Environment.Sokoban.Samples.SimpleSample (world) where
+module Environment.Sokoban.Samples.SimpleSampleV (world) where
 
 import           Environment.Sokoban hiding (goals)
 
@@ -9,12 +9,15 @@ c = Left $ const Clear
 b = Left Box
 
 worldmap :: [[Either (String -> Tile) Bool]]
-worldmap = [ [c, c, b, c, p] ]
+worldmap = [ [c]
+           , [c]
+           , [b]
+           , [c]
+           , [p]
+           ]
 
 goals :: [Coord]
 goals = [ Coord (0, 0) ]
 
 world :: World
 world = from2DList worldmap goals
-
--- world2 = from2DList worldMap2 goals

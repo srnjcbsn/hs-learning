@@ -1,23 +1,21 @@
 module Logic.Formula
     ( Predicate (..)
-    , Formula (..)
+    , Literal (..)
+    , signAs
+    , signs
+    , flipSign
+    , atom
     , predName
     , predArgs
-    , mapNegate
-    , conjunction
-    , evaluateCWA
     , predArity
+    , LitPred
     ) where
-
-import           Data.Set (Set)
-import qualified Data.Set as Set
 
 type Name = String
 
 data Predicate a = Predicate Name [a] deriving (Eq, Ord, Show)
 
-predArity :: Predicate a -> Int
-predArity = length . predArgs
+type LitPred a = Literal (Predicate a)
 
 instance Functor Predicate where
     fmap f (Predicate n as) = Predicate n (fmap f as)
@@ -28,42 +26,36 @@ predName (Predicate n _) = n
 predArgs :: Predicate a -> [a]
 predArgs (Predicate _ as) = as
 
-data Formula a
-    = Pred (Predicate a)
-    | Neg  (Formula a)
-    | Con  [Formula a]
-    deriving (Eq, Ord, Show)
+predArity :: Predicate a -> Int
+predArity = length . predArgs
 
-instance Functor Formula where
-    fmap f (Pred p) = Pred $ fmap f p
-    fmap f (Neg n)  = Neg  $ fmap f n
-    fmap f (Con fs) = Con  $ fmap (fmap f) fs
+data Literal a = Pos a
+               | Neg a
+               deriving (Eq, Ord, Show)
 
--- | Evaluate a formula with respect to a knowledge base under the closed-
---   world assumption
-evaluateCWA :: Ord a => Formula a -> Set (Predicate a) -> Bool
-evaluateCWA (Pred p) s = Set.member p s
-evaluateCWA (Neg f)  s = not $ evaluateCWA f s
-evaluateCWA (Con fs) s = all (`evaluateCWA` s) fs
+instance Functor Literal where
+    fmap f (Pos a) = Pos (f a)
+    fmap f (Neg a) = Neg (f a)
 
--- flatten :: Formula -> Formula
--- flatten (Con ((Con f) : fs)) = map flatten f `conjunction` map flatten fs
--- flatten (Neg (Con fs))       = Con (map (Neg . flatten) fs)
--- flatten f                    = f
+flipSign :: Literal a -> Literal a
+flipSign (Pos a) = Neg a
+flipSign (Neg a) = Pos a
 
--- | Negate a 'Formula'. If the given 'Formula' is a conjunction, the contained
---   'Formula'e are negated recursively. Note that
---   @mapNegate (Con fs) =/= Neg (Con fs)@
-mapNegate :: (Eq a, Ord a, Show a) => Formula a -> Formula a
-mapNegate (Con fs) = Con $ map Neg fs
-mapNegate (Neg f)  = f
-mapNegate f        = Neg f
+-- | Pack 'b' into a literal with same sign as 'a'
+--
+-- >>> "p" `signAs` (Neg "q")
+-- Neg "p"
+signAs :: b -> Literal a -> Literal b
+signAs b = fmap (const b)
 
--- | Forms a 'Conjunction' from two 'Formula'e.
-conjunction :: (Eq a, Ord a, Show a) => Formula a -> Formula a -> Formula a
-conjunction (Con c1) (Con c2)       = Con (c1 ++ c2)
-conjunction p@(Pred _) (Con c) = Con (p : c)
-conjunction (Con c) p@(Pred _) = Con (p : c)
-conjunction (Con f1) f2 = Con (f2:f1)
-conjunction f1 (Con f2) = Con (f1:f2)
-conjunction f1 f2 = Con [f1, f2]
+-- | A flipped version of 'signAs'
+--
+-- >>> (Pos "p") `signs` "q"
+-- Pos "q"
+signs :: Literal a -> b -> Literal b
+signs = flip signAs
+
+-- | Extract the atom of a 'Literal', throwing away the sign
+atom :: Literal a -> a
+atom (Pos a) = a
+atom (Neg a) = a

@@ -3,15 +3,14 @@ module Learning.PDDL.PreconditionKnowledge where
 import           Learning.Induction
 import           Planning
 import           Planning.PDDL
-import           Planning.PDDL.Logic
 
-import           Data.Set                (Set, (\\))
-import qualified Data.Set                as Set
-import qualified Data.TupleSet           as TSet
+import           Data.Set                          (Set, (\\))
+import qualified Data.Set                          as Set
+import qualified Data.TupleSet                     as TSet
 import qualified Learning.PDDL.NonConditionalTypes as NCT
 
-update :: PDDLDomain -> NCT.PreKnowledge -> Transition -> NCT.PreKnowledge
-update domain (NCT.PreKnowledge knl cnfs) (s, action, s')
+update :: PDDLDomain -> AllPossibleObjects -> NCT.PreKnowledge -> Transition -> NCT.PreKnowledge
+update domain allobjs (NCT.PreKnowledge knl cnfs) (s, action, s')
     | s == s'   =
         let -- All predicates that are not in the state are candidates
             -- for being positive preconditions
@@ -51,8 +50,9 @@ update domain (NCT.PreKnowledge knl cnfs) (s, action, s')
         in NCT.PreKnowledge knl' cnfs''
 
     where unground' :: GroundedPredicate -> Set FluentPredicate
-          unground' = ungroundNExpand aSpecParas (aArgs action)
+          unground' = unground aSpecParas (aArgs action)
           aSpecParas = asParas $ findActionSpec domain action
+          actionContext = contextFromDom allobjs domain action
 
           posUnkns = (fst . NCT.unknowns) knl
           posKns   = (fst . NCT.knowns) knl
@@ -62,7 +62,7 @@ update domain (NCT.PreKnowledge knl cnfs) (s, action, s')
           rel unkns = Set.unions
                     $ Set.toList
                     $ Set.map unground'
-                    $ ground domain action unkns `Set.intersection` s
+                    $ groundMany actionContext unkns `Set.intersection` s
 
           posRelevant = rel posUnkns
           negRelevant = rel negUnkns

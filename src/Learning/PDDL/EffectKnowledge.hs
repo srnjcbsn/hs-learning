@@ -5,32 +5,32 @@ import qualified Learning.PDDL.NonConditionalTypes as NCT
 
 import           Planning
 import           Planning.PDDL
-import           Planning.PDDL.Logic
 
-import           Data.Set                (Set, (\\))
-import qualified Data.Set                as Set
+import           Data.Set                          (Set, (\\))
+import qualified Data.Set                          as Set
 
 
 -- | Updates the effect hypothesis based on the transition
 updateEffectKnl :: PDDLDomain
+                -> AllPossibleObjects
                 -> NCT.EffKnowledge
                 -> Transition
                 -> NCT.EffKnowledge
 -- if the action application was unsuccessful, we cannot learn anything
-updateEffectKnl domain (NCT.EffKnowledge knl) (s, action, s')
+updateEffectKnl domain allobjs (NCT.EffKnowledge knl) (s, action, s')
     | s == s' = NCT.EffKnowledge knl
     | otherwise = NCT.EffKnowledge knl' where
         aSpec = findActionSpec domain action
         aSpecParas = asParas aSpec
 
         unground' :: GroundedPredicate -> Set FluentPredicate
-        unground' = ungroundNExpand aSpecParas (aArgs action)
+        unground' = unground aSpecParas (aArgs action)
 
         unions :: Ord a => Set (Set a) -> Set a
         unions = Set.unions . Set.toList
 
         gAdd :: Set GroundedPredicate
-        gAdd = addList aSpec action domain
+        gAdd = addList  aSpec action domain allobjs s
         kAdd = s' \\ s
         uAdd = s' `Set.intersection` s `Set.intersection` gAdd
 
@@ -75,5 +75,5 @@ extractUnambiguous unk (uAmb,amb) test =
         Left uap  -> (Set.insert uap uAmb, amb)
         Right aps -> (uAmb, Set.union amb aps)
 
-addList :: ActionSpec -> Action -> PDDLDomain -> Set GroundedPredicate
-addList aSpec action _ = fst $ snd $ instantiateAction aSpec action
+addList :: ActionSpec -> Action -> PDDLDomain -> AllPossibleObjects -> State -> Set GroundedPredicate
+addList aSpec action _ allobjs s = fst $ instantiateAction allobjs aSpec s action

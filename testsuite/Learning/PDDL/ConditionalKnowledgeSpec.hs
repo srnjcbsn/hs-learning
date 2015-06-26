@@ -1,11 +1,14 @@
 module Learning.PDDL.ConditionalKnowledgeSpec where
 
-import Learning.PDDL.ConditionalKnowledge
+import           Learning.PDDL.ConditionalKnowledge
 
-import Data.Set (Set,fromList)
-import qualified Data.Set as Set
-import Logic.Formula
-import Planning.PDDL
+import           Logic.Formula
+import           Planning.PDDL
+
+import           Data.Map                           (Map)
+import qualified Data.Map                           as Map
+import           Data.Set                           (Set, fromList)
+import qualified Data.Set                           as Set
 
 import           Test.Hspec
 
@@ -83,14 +86,15 @@ conditionalKnowledgeSpec = do
             o2 = "o2"
             objs = [o1, o2]
             predSpec = [Predicate pn [("x",baseType),("y",baseType)]]
+            peSpec = PDDLEnvSpec predSpec [] objs Map.empty
             s0 = Set.fromList [ Predicate pn [o1, o2]
-                              ,  Predicate pn [o1, o1]
+                              , Predicate pn [o1, o1]
                               ]
             s1 = s0 `Set.union`
-                 Set.fromList [  Predicate pn [o2, o2]
+                 Set.fromList [ Predicate pn [o2, o2]
                               ]
             trans = (s0, ("a", []), s1)
-            hyp = fromTransition predSpec objs trans
+            hyp = fromTransition peSpec trans
             hyp' = map snd hyp
             hyp'' = head hyp'
             predicateEdges = Set.filter (isEdgeOfType PredicateEdge) hyp''
@@ -106,14 +110,14 @@ conditionalKnowledgeSpec = do
                                 (fromList [ Vertex 2 (Precond,Pos "p",1)
                                           , Vertex 3 (Precond,Pos "p",2)])
                            , Edge PredicateEdge
-                                (fromList [ Vertex 4 (Precond,Not "p",1)
-                                          , Vertex 5 (Precond,Not "p",2)])
+                                (fromList [ Vertex 4 (Precond,Neg "p",1)
+                                          , Vertex 5 (Precond,Neg "p",2)])
                            , Edge PredicateEdge
-                                (fromList [ Vertex 6 (Precond,Not "p",1)
-                                          , Vertex 7 (Precond,Not "p",2)])
+                                (fromList [ Vertex 6 (Precond,Neg "p",1)
+                                          , Vertex 7 (Precond,Neg "p",2)])
                            , Edge PredicateEdge
-                                (fromList [ Vertex 8 (Effect,Pos "p",1)
-                                          , Vertex 9 (Effect,Pos "p",2)])
+                                (fromList [ Vertex (-2) (Effect,Pos "p",1)
+                                          , Vertex (-1) (Effect,Pos "p",2)])
                            ]
              in expectedPredicateEdges `shouldBe` predicateEdges
            it "can get correct binding edges" $ do
@@ -122,17 +126,17 @@ conditionalKnowledgeSpec = do
                                 (fromList [ Vertex 0 (Precond,Pos "p",1)
                                           , Vertex 1 (Precond,Pos "p",2)
                                           , Vertex 2 (Precond,Pos "p",1)
-                                          , Vertex 5 (Precond,Not "p",2)])
+                                          , Vertex 5 (Precond,Neg "p",2)])
                            , Edge BindingEdge
                                 (fromList [ Vertex 3 (Precond,Pos "p",2)
-                                          , Vertex 4 (Precond,Not "p",1)
-                                          , Vertex 6 (Precond,Not "p",1)
-                                          , Vertex 7 (Precond,Not "p",2)
+                                          , Vertex 4 (Precond,Neg "p",1)
+                                          , Vertex 6 (Precond,Neg "p",1)
+                                          , Vertex 7 (Precond,Neg "p",2)
 
-                                          , Vertex 8 (Effect,Pos "p",1)
-                                          , Vertex 9 (Effect,Pos "p",2)])
+                                          , Vertex (-2) (Effect,Pos "p",1)
+                                          , Vertex (-1) (Effect,Pos "p",2)])
                            ]
-             in expectedBindingEdges `shouldBe` bindingEdges
+             in bindingEdges `shouldBe` expectedBindingEdges
 
 
 spec :: Spec

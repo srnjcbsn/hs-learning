@@ -5,6 +5,8 @@ import           Environment.Sokoban hiding (Object)
 import           Logic.Formula
 import           Planning
 import           Planning.PDDL
+import           Learning
+import qualified Learning.PDDL       as PDDL
 
 import           Data.Char           (isDigit)
 import           Data.List           (partition)
@@ -14,12 +16,14 @@ import qualified Data.Map            as Map
 import           Data.Maybe          (mapMaybe)
 import           Data.Set            (Set)
 import qualified Data.Set            as Set
-
 data SokobanPDDL = SokobanPDDL
     { world           :: World
     , locMap          :: Map Location Coord
     , persistentState :: Set GroundedPredicate
     } deriving (Show)
+
+instance Inquirable SokobanPDDL PDDLProblem (PDDL.PDDLInfo SokobanPDDL) where
+    inquire _ _ = return Nothing
 
 instance Env.Environment SokobanPDDL where
     toState     = toState
@@ -311,8 +315,8 @@ toProblem :: World -> PDDLProblem
 toProblem pWorld =
     let crateObjs = [ t | Box t <- Map.elems (coordMap pWorld) ]
         structObjs = map writeLocation $ Map.keys (coordMap pWorld)
-        goalPred c = Pred $ Predicate atGoalName [c]
-        goalsF = Con $ map goalPred crateObjs
+        goalPred c = GLit . Pos $ Predicate atGoalName [TName c]
+        goalsF = GAnd $ map goalPred crateObjs
         boxMap = zip crateObjs (repeat crateType)
         structMap = zip structObjs (repeat locType)
     in PDDLProblem

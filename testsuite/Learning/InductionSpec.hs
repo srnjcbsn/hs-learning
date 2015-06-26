@@ -1,19 +1,17 @@
 module Learning.InductionSpec (main, spec) where
 
-import qualified Data.Set              as Set
+import qualified Data.Set           as Set
 import           Learning.Induction
 import           Logic.Formula
 import           Planning.PDDL
 import           Test.Hspec
 
+p :: (Name -> Term) -> Name -> Name -> Predicate Term
 p f x y = Predicate "p" [f x,f y]
-pP x y = Pred $ p Ref x y
 
+q :: (Name -> Term) -> Name -> Name -> Predicate Term
 q f x y = Predicate "q" [f x,f y]
-qP x y = Pred $ q Ref x y
 
-getArgs  = map predArgs
-getNames = map predName
 
 testLogicSpec :: Spec
 testLogicSpec = do
@@ -39,12 +37,12 @@ testLogicSpec = do
             expected = [ Set.fromList [Left "1"] ] in
             induct paras actArgs objs `shouldBe` expected
 
-    describe "asPDDL" $ do
+    describe "asPDDL" $
       it "can turn deduct output into pddl format" $
         let deduction = [ Set.fromList [Right "x"], Set.fromList [Left "A"] ] in
-            asPDDL deduction `shouldBe` [Set.fromList [Ref "x"], Set.fromList [Const "A"]]
+            asPDDL deduction `shouldBe` [Set.fromList [TVar "x"], Set.fromList [TName "A"]]
 
-    describe "variants" $ do
+    describe "variants" $
       it "can find all possible combinations" $
         let argumentOptions = [ Set.fromList ["x", "y"], Set.fromList ["x", "y"] ]
             expected = Set.fromList [["x", "x"], ["y", "y"], ["x", "y"], ["y", "x"]]
@@ -53,30 +51,30 @@ testLogicSpec = do
 
     describe "unambiguate" $ do
       it "can find that a predicate is unambigous" $
-        let allPreds = Set.fromList [p Ref "x" "y", p Ref "y" "y"]
-            checkingPreds = Set.fromList [ p Ref "x" "y"
-                                         , p Ref "x" "x"]
+        let allPreds = Set.fromList [p TVar "x" "y", p TVar "y" "y"]
+            checkingPreds = Set.fromList [ p TVar "x" "y"
+                                         , p TVar "x" "x"]
             actual = unambiguate allPreds checkingPreds in
-            actual `shouldBe` Left (p Ref "x" "y")
+            actual `shouldBe` Left (p TVar "x" "y")
 
       it "can find that a predicate is not unambigous" $
-        let allPreds = Set.fromList [p Ref "x" "y", p Ref "y" "y"]
-            checkingPreds = Set.fromList [p Ref "x" "y", p Ref "y" "y"]
+        let allPreds = Set.fromList [p TVar "x" "y", p TVar "y" "y"]
+            checkingPreds = Set.fromList [p TVar "x" "y", p TVar "y" "y"]
             actual = unambiguate allPreds checkingPreds in
             actual `shouldBe` Right checkingPreds
 
-    describe "reducePossibilities" $ do
+    describe "reducePossibilities" $
       it "can reduce the set of possibilities using a list all the ungrounded predicates" $
-        let allPreds = Set.fromList [ p Ref "x" "y"
-                                    , q Ref "y" "y"
-                                    , p Ref "x" "x"
+        let allPreds = Set.fromList [ p TVar "x" "y"
+                                    , q TVar "y" "y"
+                                    , p TVar "x" "x"
                                     ]
 
-            predsToRemove = [Set.fromList [ p Ref "x" "y"
-                                          , q Ref "y" "y"
+            predsToRemove = [Set.fromList [ p TVar "x" "y"
+                                          , q TVar "y" "y"
                                           ]
                             ]
-            expected = Set.fromList [p Ref "x" "x"]
+            expected = Set.fromList [p TVar "x" "x"]
             actual = reducePossibilities allPreds predsToRemove in
             actual `shouldBe` expected
 
