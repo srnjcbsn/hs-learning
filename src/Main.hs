@@ -139,6 +139,11 @@ writeHistories dom hists = writeFile historyFile cont where
                    (map asName $ dmActionsSpecs dom)
     showActSize (n, s) = n ++ ": " ++ show (Set.size s) ++ "\n"
 
+experiments :: [[SokoSimStep]] -> String
+experiments hists = concat $ zipWith exp hists [1 .. ] where
+    exp h n = "Problem " ++ show n ++ ": "
+            ++ show (length h) ++ " experiments\n"
+
 main :: IO ()
 main = do
     catchIOError (removeFile logPath) (\_ -> return ())
@@ -154,7 +159,9 @@ main = do
     --                                          , (lsEnv, lsProb)
     --                                         --  , (bsEnv, bsProb)
     --                                          ]
-    writeHistories dom [hist3]
+    let hists = [hist1, hist2, hist3]
+    putStrLn $ experiments hists
+    writeHistories dom hists
     -- putStrLn (ppShow fenv)
     -- putStrLn (ppShow dom''')
     -- writeFile "sokoDom.pddl" $ writeDomain dom
