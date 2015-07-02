@@ -160,7 +160,11 @@ main = do
     --                                         --  , (bsEnv, bsProb)
     --                                          ]
     let hists = [hist1, hist2, hist3]
+
+    -- putStrLn $ ppShow $ ssKnl $ head hist3
+
     putStrLn $ experiments hists
+
     writeHistories dom hists
     -- putStrLn (ppShow fenv)
     -- putStrLn (ppShow dom''')
